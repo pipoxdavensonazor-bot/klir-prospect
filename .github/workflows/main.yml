@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klir Prospect — Trouvez vos prochains clients avec l’IA</title>
+<meta name="description" content="Votre moteur IA pour trouver et prioriser vos prochaines opportunités commerciales. Données + qualification + priorité + contexte + action.">
+<style>
+body{text-align:left;font-family:Inter,system-ui,sans-serif;background:#0b0e1a;color:#e8eaf2;margin:0}
+.lay{display:flex;min-height:100vh}.side{width:230px;background:#11152b;padding:16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.side a{color:#aab;padding:8px 10px;border-radius:8px;text-decoration:none;font-size:14px}.side a.on,.side a:hover{background:#1e2450;color:#fff}
+.brand{color:#fff;margin-bottom:12px}.brand b{background:linear-gradient(90deg,#6366f1,#a855f7);-webkit-background-clip:text;color:transparent}.brand span{display:block;font-size:11px;color:#777}
+.sfoot{margin-top:auto;display:flex;gap:8px}.gtitle{font-size:10px;letter-spacing:1px;color:#5b6194;margin:10px 4px 2px}.subnav a.on{background:#4f46e5;color:#fff;padding:4px 10px;border-radius:8px}.subnav a{padding:4px 10px}.main{flex:1}.top{display:flex;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid #22284f;background:#0e1230;position:sticky;top:0}.page{padding:20px;max-width:1100px}
+.card{background:#141941;border:1px solid #262c5e;border-radius:14px;padding:16px;margin:10px 0}.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat span{font-size:11px;color:#8b90b8}.stat b{font-size:28px;display:block}
+button{background:#232a5e;color:#fff;border:0;border-radius:10px;padding:9px 14px;cursor:pointer;margin:4px}.cta{background:linear-gradient(90deg,#6366f1,#a855f7)}.ghost{background:transparent;border:1px solid #555}.big{font-size:16px;padding:12px 22px}
+input,textarea,select{width:100%;background:#0e1230;border:1px solid #2b3270;color:#fff;border-radius:10px;padding:10px;margin:6px 0;box-sizing:border-box}
+.tbl{overflow:auto}.tbl table{width:100%;border-collapse:collapse;font-size:13px}.tbl th,.tbl td{padding:8px;border-bottom:1px solid #232a5e;text-align:left}
+.bq{background:#0e3b2e;color:#34d399;padding:2px 8px;border-radius:20px}.br{background:#1e1b4b;color:#a5b4fc;padding:2px 8px;border-radius:20px}.pill{background:#232a5e;padding:3px 10px;border-radius:20px;font-size:12px}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #222}.rowb{display:flex;gap:8px}
+.bar{background:#0e1230;border-radius:10px;height:10px;overflow:hidden}.bar div{background:linear-gradient(90deg,#6366f1,#22d3ee);height:100%;transition:width .4s}
+.kanban{display:flex;gap:8px;overflow:auto}.col{min-width:150px;background:#141941;border-radius:12px;padding:8px}.lead{background:#1e2450;border-radius:8px;padding:8px;margin:6px 0}
+.drawer{position:fixed;right:0;top:0;width:min(480px,95vw);height:100vh;background:#12173a;border-left:1px solid #333;padding:20px;overflow:auto;z-index:50}
+.land nav{display:flex;justify-content:space-between;padding:16px 24px}.hero{text-align:center;padding:60px 20px}.hero h1{font-size:clamp(32px,5vw,56px);max-width:700px;margin:0 auto}.hero p{color:#aab;max-width:600px;margin:16px auto}
+.demoB{border-left:4px solid #f59e0b;background:#1a1740}
+.demoB a{color:#fbbf24}
+.auth{display:flex;justify-content:center;padding:60px 16px}.auth .card{width:380px}.wide{width:520px!important}
+#chat{display:flex;flex-direction:column;gap:8px;max-height:400px;overflow:auto}.me{align-self:flex-end;background:#4f46e5;padding:8px 12px;border-radius:12px;max-width:80%}.bot{align-self:flex-start;background:#1e2450;padding:8px 12px;border-radius:12px;max-width:85%}
+footer{text-align:center;color:#666;padding:30px}
+@media(max-width:800px){.lay{flex-direction:column}.side{width:100%;height:auto;flex-direction:row;flex-wrap:wrap}.cols{grid-template-columns:1fr}}
+html{color-scheme:dark}
+#fab{position:fixed;right:18px;bottom:18px;z-index:99;background:linear-gradient(90deg,#6366f1,#a855f7);border:0;color:#fff;border-radius:30px;padding:13px 18px;font-size:14px;cursor:pointer;box-shadow:0 6px 24px rgba(99,102,241,.5)}
+.why{background:#0e1230;border:1px solid #2b3270;border-radius:10px;padding:10px;margin:8px 0;font-size:13px}
+.why b{color:#a5b4fc}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.tbl table{min-width:920px}
+.kanban .col{min-width:200px;max-width:230px}
+.lead{font-size:12px;padding:6px}
+.lead small{color:#8b90b8}
+.ctaRow{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center}
+.ctaRow button{white-space:nowrap}
+.reassure{color:#8b90b8;font-size:13px;margin-top:10px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}
+.modal .box{background:#141941;border:1px solid #2b3270;border-radius:14px;padding:20px;max-width:440px;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chips button{background:#1e2450;font-size:12px;padding:7px 10px}
+.scoreBtn{background:none!important;border:none!important;padding:0!important;margin:0!important;cursor:pointer}
+.dup{border-left:4px solid #f59e0b}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="src/data.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/store.js"></script>
+<script src="src/sources.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>
