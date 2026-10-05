@@ -1,0 +1,16 @@
+{
+  "name": "klir-prospect",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "node tools/clean.mjs",
+    "lint": "node tools/lint.mjs",
+    "test": "node --test",
+    "build": "node tools/build.mjs",
+    "check": "npm run lint && npm test && npm run build"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
