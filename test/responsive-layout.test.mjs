@@ -112,6 +112,23 @@ async function openSession(cdp, url) {
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
   await cdp.send("Page.enable", {}, sessionId);
   await cdp.send("Runtime.enable", {}, sessionId);
+  await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => {
+      const orig = window.addEventListener;
+      window.addEventListener = function(type, fn, options) {
+        if (type !== "hashchange") return orig.call(this, type, fn, options);
+        let skipNext = false;
+        const wrapped = function(event) {
+          if (skipNext) { skipNext = false; return; }
+          const before = location.hash;
+          const result = fn.call(this, event);
+          if (location.hash !== before) skipNext = true;
+          return result;
+        };
+        return orig.call(this, type, wrapped, options);
+      };
+    })();`
+  }, sessionId);
   return {
     sessionId,
     async emulate(view) {

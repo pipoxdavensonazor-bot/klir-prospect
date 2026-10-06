@@ -2,7 +2,7 @@ var KS=window.KlirStore, E=window.KlirEngine;
 var App=document.getElementById("app");
 var sel=new Set(), curSearch=null, adv={industry:"construction",city:"montréal",qty:100,size:"11–50"};
 var authState={configured:false,user:null,profile:null,passwordRecovery:false};
-function nav(h){location.hash=h;}
+function nav(h){const next=h.charAt(0)==="#"?h:"#"+h;if(location.hash!==next)location.hash=next;render();}
 window.addEventListener("hashchange",render);
 window.addEventListener("klir-auth-change",event=>{syncAuthState(event.detail).then(render);});
 function isAuth(){return !!(KS.S.user&&KS.S.org);}
