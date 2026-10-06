@@ -31,10 +31,12 @@ test("conserve les sessions dans l’onglet et utilise PKCE", () => {
   assert.match(authClient, /signOut\(\{\s*scope:\s*"global"\s*\}\)/);
 });
 
-test("la suppression exige identité, confirmation et révocation globale", () => {
+test("la suppression exige identité, mot de passe, confirmation et révocation globale", () => {
   assert.match(deleteAccount, /getUser\(token\)/);
   assert.match(deleteAccount, /confirmation !== "SUPPRIMER"/);
-  assert.match(deleteAccount, /admin\.signOut\(token, "global"\)/);
+  assert.match(deleteAccount, /signInWithPassword/);
+  assert.match(deleteAccount, /admin\.signOut\(sessionToken, "global"\)/);
   assert.match(deleteAccount, /admin\.deleteUser\(user\.id\)/);
   assert.doesNotMatch(deleteAccount, /SUPABASE_SERVICE_ROLE_KEY["']?\s*[:=]\s*["'][^"']+/);
+  assert.match(deleteAccount, /body\.password/);
 });

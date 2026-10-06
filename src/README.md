@@ -1,6 +1,7 @@
 # Client Klir Prospect
 
-- `auth.js` encapsule Supabase Auth, le profil RLS, la synchronisation explicite et la suppression de compte.
+- `auth.js` encapsule Supabase Auth (inscription, confirmation, connexion, récupération, déconnexion globale), le profil RLS, la migration hors démo et la suppression de compte.
+- `auth-policy.js` porte les règles testables : e-mail, mot de passe, lien d’e-mail et confirmation de suppression.
 - `store.js` conserve le mode démonstration dans `sessionStorage`; aucun mot de passe ni secret n’y est enregistré.
 - `security.js` neutralise les entrées et protège les exports/imports.
 - les autres modules contiennent les fonctionnalités historiques de démonstration.

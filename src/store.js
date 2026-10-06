@@ -1,4 +1,7 @@
 var LS = "klir_demo_session_v3";
+var liveAccount = false;
+var afterSave = null;
+var saving = false;
 var LIMITS = { Free: { searches: 10, prospects: 500, ai: 100, exports: 20 } };
 var DEF = {
   user: null, org: null, searches: [], prospects: [], crm: [], campaigns: [],
@@ -26,7 +29,7 @@ function normalizeState(value){
   s.integrations = structuredClone(DEF.integrations);
   s.apiKey = null;
   s.plan = "Free";
-  s.demo = true;
+  s.demo = !liveAccount;
   delete s.team;
   delete s.grants;
   delete s.sharedFrom;
@@ -42,19 +45,28 @@ function readSession(){
   }
 }
 var _S = normalizeState(readSession());
+function setLiveAccount(value){ liveAccount = value === true; _S.demo = !liveAccount; }
+function isLiveAccount(){ return liveAccount; }
+function setAfterSave(fn){ afterSave = typeof fn === "function" ? fn : null; }
 function save(){
+  if (saving) return;
+  saving = true;
   _S = normalizeState(_S);
   _S._savedAt = Date.now();
   try {
     var payload = JSON.stringify(_S);
     if (new Blob([payload]).size > 2 * 1024 * 1024) throw new Error("quota-session");
     sessionStorage.setItem(LS, payload);
+    if (afterSave) afterSave(_S);
   } catch (error) {
     console.error("Sauvegarde de session impossible", error);
     notify("Sauvegarde impossible : exportez ou réduisez les données.");
+  } finally {
+    saving = false;
   }
 }
 function startDemo(){
+  liveAccount = false;
   _S = blankState();
   _S.user = { email: "demo@local.invalid" };
   _S.org = { name: "Espace de démonstration", city: "Montréal" };
@@ -64,7 +76,7 @@ function startDemo(){
 function disabledAuth(){
   return { err: "Authentification désactivée : un backend avec sessions HttpOnly est requis." };
 }
-function logoutUser(){ _S = blankState(); sessionStorage.removeItem(LS); }
+function logoutUser(){ liveAccount = false; _S = blankState(); sessionStorage.removeItem(LS); }
 function deleteAccount(){
   logoutUser();
   return { ok: true };
@@ -93,6 +105,7 @@ window.KlirStore = {
   save: save, addActivity: addActivity, notify: notify, audit: audit, uid: uid,
   aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState,
   startDemo: startDemo, deleteAccount: deleteAccount, logoutUser: logoutUser,
+  setLiveAccount: setLiveAccount, isLiveAccount: isLiveAccount, setAfterSave: setAfterSave,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
   restoreKv: async function(){ return null; }, getAccounts: function(){ return {}; },

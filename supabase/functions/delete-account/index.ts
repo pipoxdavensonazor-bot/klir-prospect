@@ -11,17 +11,23 @@ function response(status: number, body: Record<string, unknown>, origin = "") {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+function passwordShape(value: unknown) {
+  return typeof value === "string" && value.length >= 12 && value.length <= 72;
+}
+
 Deno.serve(async (request) => {
   const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "";
   const origin = request.headers.get("origin") ?? "";
-  if (origin && origin !== allowedOrigin) return response(403, { error: "origin_not_allowed" });
+  if (!allowedOrigin || (origin && origin !== allowedOrigin)) {
+    return response(403, { error: "origin_not_allowed" }, origin === allowedOrigin ? origin : "");
+  }
 
   if (request.method === "OPTIONS") {
     return new Response(null, {
       status: 204,
       headers: {
         "access-control-allow-origin": allowedOrigin,
-        "access-control-allow-headers": "authorization, apikey, content-type",
+        "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
         "access-control-allow-methods": "POST",
         vary: "origin"
       }
@@ -33,7 +39,7 @@ Deno.serve(async (request) => {
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) return response(401, { error: "authentication_required" }, origin);
 
-  let body: { confirmation?: string };
+  let body: { confirmation?: string; password?: string };
   try {
     body = await request.json();
   } catch {
@@ -41,6 +47,9 @@ Deno.serve(async (request) => {
   }
   if (body.confirmation !== "SUPPRIMER") {
     return response(400, { error: "confirmation_required" }, origin);
+  }
+  if (!passwordShape(body.password)) {
+    return response(401, { error: "authentication_required" }, origin);
   }
 
   const url = Deno.env.get("SUPABASE_URL");
@@ -51,21 +60,18 @@ Deno.serve(async (request) => {
     auth: { autoRefreshToken: false, persistSession: false }
   });
   const { data: { user }, error: userError } = await admin.auth.getUser(token);
-  if (userError || !user) return response(401, { error: "authentication_required" }, origin);
+  if (userError || !user?.id || !user.email) return response(401, { error: "authentication_required" }, origin);
 
-  let payload: { iat?: number };
-  try {
-    const encoded = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    payload = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=")));
-  } catch {
+  const signedIn = await admin.auth.signInWithPassword({
+    email: user.email,
+    password: body.password
+  });
+  const sessionToken = signedIn.data?.session?.access_token;
+  if (signedIn.error || signedIn.data?.user?.id !== user.id || !sessionToken) {
     return response(401, { error: "authentication_required" }, origin);
   }
-  const issuedAt = Number(payload.iat || 0) * 1000;
-  if (!issuedAt || Date.now() - issuedAt > 10 * 60 * 1000) {
-    return response(403, { error: "recent_authentication_required" }, origin);
-  }
 
-  const { error: signOutError } = await admin.auth.admin.signOut(token, "global");
+  const { error: signOutError } = await admin.auth.admin.signOut(sessionToken, "global");
   if (signOutError) return response(502, { error: "session_revocation_failed" }, origin);
 
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
