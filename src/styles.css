@@ -90,6 +90,13 @@ small, .gtitle { font-size: 0.875rem; line-height: 1.4; }
   background: rgba(0, 0, 0, 0.55);
 }
 .brand { font-size: 1.2rem; margin-bottom: 1rem; }
+.brand img, .land-brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #fff;
+}
 .brand span, .gtitle, small { color: #aeb2d0; }
 .gtitle { margin-top: 1rem; letter-spacing: 0.08em; }
 .sfoot { margin-top: 2rem; }
@@ -148,6 +155,7 @@ a.cta, .big {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  max-width: min(12.5rem, 62vw);
   color: #fff;
   font-weight: 700;
   text-decoration: none;
