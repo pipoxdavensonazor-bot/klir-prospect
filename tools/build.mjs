@@ -12,6 +12,8 @@ await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 await cp(new URL("../src/index.html", import.meta.url), new URL("index.html", out));
 await cp(new URL("../_headers", import.meta.url), new URL("_headers", out));
+await cp(new URL("../src/manifest.webmanifest", import.meta.url), new URL("manifest.webmanifest", out));
+await cp(new URL("../src/icons", import.meta.url), new URL("icons", out), { recursive: true });
 for (const file of runtime) {
   await cp(new URL("../src/" + file, import.meta.url), new URL(file, out));
 }
@@ -44,9 +46,15 @@ for (const file of ["config.js", "auth.js"]) {
 if (html.includes("text/x-server-plugin") || html.includes("nuage.js") || html.includes("team.js")) {
   throw new Error("Un chemin sensible a été inclus dans le build.");
 }
+if (!html.includes('rel="manifest" href="manifest.webmanifest"')) {
+  throw new Error("Le manifeste web est absent de src/index.html.");
+}
+for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"]) {
+  await readFile(new URL(file, out));
+}
 await writeFile(join(out.pathname, "build.json"), JSON.stringify({
   reproducible: true,
-  files: runtime.length + 5,
+  files: runtime.length + 9,
   supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey)
 }, null, 2) + "\n");
-console.log(`dist créé avec ${runtime.length + 5} fichiers`);
+console.log(`dist créé avec ${runtime.length + 9} fichiers`);
