@@ -29,16 +29,14 @@ La configuration locale impose confirmation e-mail, mots de passe de 12 caractè
 
 ## Liaison distante
 
-Le seul projet accessible pendant l’implémentation était `KlirlienCORE_database-68347165` (`bhyhcbfmkdpmqivnqwsb`). Son nom ne permet pas de confirmer qu’il s’agit de KlirProspect : aucune migration, fonction ou configuration n’y a été appliquée.
+Le seul projet Supabase accessible est `KlirlienCORE_database-68347165` (`bhyhcbfmkdpmqivnqwsb`). Ce n’est pas un projet KlirProspect identifiable, et créer un projet peut être facturé. Aucune migration, fonction, configuration ou projet distant n’a donc été créé ou modifié.
 
-Après confirmation explicite de la cible :
+Réglage manquant : lier un projet Supabase dédié à KlirProspect, puis fournir au build `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY`, et le secret de fonction `ALLOWED_ORIGIN` (origine exacte du site). Copier aussi les modèles `supabase/templates/` dans les e-mails Auth du projet. Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` au build client.
 
 ```bash
 npx supabase link --project-ref PROJECT_REF
 npx supabase db push --dry-run
 npx supabase functions deploy delete-account
 ```
-
-Configurer ensuite `ALLOWED_ORIGIN` comme secret de fonction et les URLs de redirection Auth dans le Dashboard. Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` au build client.
 
 Voir [SECURITY.md](SECURITY.md) pour le modèle de sécurité et les limites résiduelles.

@@ -1,0 +1,1 @@
+-- No demo accounts are seeded. Users are created through Supabase Auth.

@@ -161,7 +161,7 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["http://127.0.0.1:3000/#/auth/callback", "http://127.0.0.1:3000/#/reset-password"]
+additional_redirect_urls = ["http://127.0.0.1:3000", "http://127.0.0.1:3000/#/auth/callback", "http://127.0.0.1:3000/#/reset-password", "http://localhost:3000", "http://localhost:3000/#/auth/callback", "http://localhost:3000/#/reset-password"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -244,10 +244,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.confirmation]
+subject = "Confirmez votre compte Klir Prospect"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Réinitialisez votre mot de passe Klir Prospect"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -371,6 +374,11 @@ enabled = false
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
+
+# The function checks the caller JWT itself, then the current password.
+# Platform JWT verification also rejects the browser CORS preflight.
+[functions.delete-account]
+verify_jwt = false
 
 [edge_runtime]
 enabled = true
