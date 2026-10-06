@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 
 const files = [
-  "security.js", "data.js", "engine.js", "store.js", "webintel.js",
+  "security.js", "data.js", "engine.js", "store.js", "auth.js", "webintel.js",
   "opportunity.js", "sources.js", "webai.js", "projects.js", "app.js"
 ];
 

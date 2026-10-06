@@ -12,5 +12,11 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

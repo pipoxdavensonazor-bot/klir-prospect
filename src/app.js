@@ -1,9 +1,13 @@
 var KS=window.KlirStore, E=window.KlirEngine;
 var App=document.getElementById("app");
 var sel=new Set(), curSearch=null, adv={industry:"construction",city:"montréal",qty:100,size:"11–50"};
+var authState={configured:false,user:null,profile:null,passwordRecovery:false};
 function nav(h){location.hash=h;}
 window.addEventListener("hashchange",render);
+window.addEventListener("klir-auth-change",event=>{syncAuthState(event.detail).then(render);});
 function isAuth(){return !!(KS.S.user&&KS.S.org);}
+function applyAuthState(next){authState=next||authState;if(authState.user){KS.S.user={email:authState.user.email,id:authState.user.id};KS.S.org=KS.S.org||{name:(authState.profile&&authState.profile.display_name)||"Mon espace",city:""};KS.save();}}
+async function syncAuthState(next){authState=next||authState;if(authState.user&&window.KlirAuth){const cloud=await window.KlirAuth.loadWorkspace();if(!cloud.error&&cloud.data&&cloud.data.payload)KS.S=cloud.data.payload;}applyAuthState(authState);}
 function shell(body,active){
   const G=[["",[["dashboard","🏠 Dashboard"]]],["PROSPECTING",[["prospecting/new","New Search"],["prospecting/searches","My Searches"],["prospects","Prospects"],["radar","Prospect Radar"],["lists","Smart Lists"]]],["IDEAL CUSTOMER",[["icp","ICP Builder"]]],["CRM",[["crm/companies","Companies"],["crm/contacts","Contacts"],["crm/leads","Leads"],["crm/deals","Deals"],["crm","Activities"]]],["KLIR AI",[["ai","AI Assistant"],["copilot","Sales Copilot"]]],["OUTREACH",[["outreach/messages","Messages"],["campaigns","Campaigns"]]],["KLIR WEB AI",[["webai/projects","🌐 Projects"],["webai/audits","Audits"],["webai/proposals","Proposals"],["webai/templates","Templates"]]],["PROJECTS",[["projects","📁 Dossiers"]]],["MON COMPTE",[["profile","👤 Session locale"]]],["",[["analytics","📊 Analytics"],["settings","⚙️ Settings"]]],["OUTILS",[["import","📥 Import"]]]];
   const unread=KS.S.notifications.filter(n=>!n.read).length;
@@ -16,11 +20,13 @@ function render(){
   const h=(location.hash||"#/landing").replace("#/","");
   const m=h.match(/([^\/]+)(\/(.+))?/)||[]; const page=m[1], arg=m[3];
   if(page==="demo"){KS.startDemo();return nav("/dashboard");}
-  if(["team","api","admin","forgot"].includes(page))return nav("/settings");
-  if(!window.KlirStore.S.user&&!["landing","login","register"].includes(page))return nav("/landing");
+  if(["team","api","admin"].includes(page))return nav("/settings");
+  if(!window.KlirStore.S.user&&!["landing","login","register","forgot","reset-password","auth"].includes(page))return nav("/landing");
   if(page==="landing")return vLanding();
   if(page==="login"||page==="register")return vAuth(page);
   if(page==="forgot")return vForgot();
+  if(page==="reset-password")return vResetPassword();
+  if(page==="auth")return vAuthCallback();
   if(page==="onboarding")return vOnb();
   const b=App;
   if(page==="dashboard")b.innerHTML=shell(vDash(),"dashboard");
@@ -55,7 +61,7 @@ function render(){
   else if(page==="team")b.innerHTML=shell(window.KlirTeam?window.KlirTeam.view():"<p>Chargement…</p>","team");
   else if(page==="profile")b.innerHTML=shell(vProfile(),"profile");
   else b.innerHTML=shell(vDash(),"dashboard");
-  const doLogout=()=>{if(window.KlirTeam)window.KlirTeam.logout();else{KS.logoutUser();nav("/landing");}};
+  const doLogout=async()=>{if(authState.user&&window.KlirAuth){const result=await window.KlirAuth.signOut();if(result.error)return alert(result.error.message);}KS.logoutUser();nav("/landing");render();};
   const lo=document.getElementById("logoutBtn"); if(lo)lo.onclick=doLogout;
   const tlo=document.getElementById("topLogoutBtn"); if(tlo)tlo.onclick=doLogout;
   const tp=document.getElementById("topProfileBtn"); if(tp)tp.onclick=()=>nav("/profile");
@@ -63,8 +69,8 @@ function render(){
   if(mb&&sn){mb.onclick=()=>{sn.classList.toggle("open");if(ov)ov.classList.toggle("show",sn.classList.contains("open"));};if(ov)ov.onclick=()=>{sn.classList.remove("open");ov.classList.remove("show");};sn.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>{sn.classList.remove("open");if(ov)ov.classList.remove("show");}));}
   bind();
 }
-function vProfile(){return `<h1>👤 Session locale</h1><div class="card"><p><b>Démonstration locale</b></p><p><small>Aucun compte, mot de passe, jeton ou secret n'est conservé. Les données sont supprimées à la fermeture de l'onglet.</small></p><div class="rowb"><button id="profLogout">Effacer et quitter</button><button onclick="location.hash='#/settings'">⚙️ Réglages</button></div></div>`;}
-function vLanding(){App.innerHTML=`<div class="land"><nav><b>⬢ Klir Prospect</b><div><a class="cta" href="#/demo">Essayer la démo</a></div></nav>
+function vProfile(){const connected=authState.user&&authState.profile;return `<h1>👤 Mon profil</h1>${connected?`<div class="card"><label>Nom affiché<input id="profileName" maxlength="120" value="${authState.profile.display_name||""}"></label><p><small>${authState.user.email} • e-mail ${authState.user.email_confirmed_at?"vérifié":"à vérifier"}</small></p><div class="rowb"><button class="cta" id="profileSave">Enregistrer</button><button id="profileMigrate">${authState.profile.demo_migrated_at?"Resynchroniser mes données":"Migrer mes données démo"}</button><button id="profLogout">Se déconnecter</button></div><p id="profileMsg"></p></div><div class="card demoB"><h3>Supprimer définitivement le compte</h3><p><small>Cette action supprime l’utilisateur Auth, son profil et ses données via cascade. Une authentification récente est exigée.</small></p><label>Écrivez SUPPRIMER<input id="deleteConfirm" autocomplete="off"></label><button id="deleteAccount">Supprimer mon compte</button></div>`:`<div class="card"><p><b>Démonstration locale</b></p><p><small>Les données restent limitées à cet onglet.</small></p><div class="rowb"><a class="cta" href="#/register">Créer un compte vérifié</a><button id="profLogout">Effacer et quitter</button></div></div>`;}
+function vLanding(){App.innerHTML=`<div class="land"><nav><b>⬢ Klir Prospect</b><div><a href="#/login">Connexion</a><a href="#/register">Inscription</a><a class="cta" href="#/demo">Essayer la démo</a></div></nav>
 <header class="hero"><h1>Trouvez vos prochains clients avec l'IA.</h1><p>Votre moteur IA pour trouver et prioriser vos prochaines opportunités commerciales. Données + qualification + priorité + contexte + action.</p>
 <div class="ctaRow"><button class="cta big" onclick="location.hash='#/demo'">Essayer sans compte</button><button class="ghost big" onclick="document.getElementById('demo').scrollIntoView()">Voir une démonstration</button></div><p class="reassure">Aucun secret stocké • Session limitée à cet onglet</p></header>
 <section class="grid4" id="demo">
@@ -74,8 +80,10 @@ function vLanding(){App.innerHTML=`<div class="land"><nav><b>⬢ Klir Prospect</
 <div class="card"><h3>✉️ Automatisez</h3><p>Préparez des messages personnalisés avec Klir AI.</p></div></section>
 <section class="card demo"><h3>Exemple : « Trouve-moi 200 entreprises de rénovation à Montréal »</h3><table><tr><th>Entreprise</th><th>Secteur</th><th>Ville</th><th>Quality</th><th>Relevance</th></tr><tr><td>Nord Rénovation</td><td>Construction</td><td>Montréal</td><td>94</td><td>91</td></tr><tr><td>Atelier Toiture Montréal</td><td>Construction</td><td>Montréal</td><td>88</td><td>87</td></tr></table></section>
 <footer>© Klirline — Prospect Intelligence + AI Sales Automation</footer></div>`;}
-function vAuth(){App.innerHTML=`<div class="auth"><div class="card"><h2>Comptes temporairement désactivés</h2><p>Cette version ne simule plus une authentification dans le navigateur. Un backend avec cookies HttpOnly, KDF robuste, récupération vérifiée et RBAC serveur est requis.</p><a class="cta" href="#/demo">Essayer la démonstration locale</a></div></div>`;}
-function vForgot(){App.innerHTML=`<div class="auth"><div class="card"><h2>Mot de passe oublié</h2><p><small>Mot de passe oublié sur cet appareil ? Entrez votre e-mail. Compte Klir : utilisez votre code de récupération (Réglages → Compte Klir). Nouvel appareil : connectez votre Compte Klir ou restaurez votre fichier de secours.</small></p><input id="fEmail" placeholder="email@entreprise.com"><button class="cta" id="fBtn">Envoyer le lien</button><p id="fMsg"></p><p><a href="#/login">← Retour</a></p></div></div>`;document.getElementById("fBtn").onclick=()=>{const em=document.getElementById("fEmail").value.trim();document.getElementById("fMsg").textContent="Si ce compte existe sur cet appareil, un lien a été envoyé à "+em+". Nouvel appareil ? Restaurez votre fichier de secours (Réglages → Secours & récupération).";};} 
+function vAuth(mode){if(!authState.configured){App.innerHTML=`<div class="auth"><div class="card"><h2>Supabase non configuré</h2><p>Renseignez les variables publiques de l’environnement de build. Le mode démo reste disponible.</p><a class="cta" href="#/demo">Essayer la démo</a></div></div>`;return;}const register=mode==="register";App.innerHTML=`<div class="auth"><form class="card" id="authForm"><h2>${register?"Créer mon compte":"Connexion"}</h2>${register?'<label>Nom affiché<input id="authName" maxlength="120" autocomplete="name" required></label>':""}<label>E-mail<input id="authEmail" type="email" autocomplete="email" required></label><label>Mot de passe<input id="authPassword" type="password" minlength="12" autocomplete="${register?"new-password":"current-password"}" required></label><button class="cta" type="submit">${register?"S’inscrire":"Se connecter"}</button><p id="authMsg" role="status"></p><p>${register?'<a href="#/login">Déjà inscrit ?</a>':'<a href="#/forgot">Mot de passe oublié ?</a> · <a href="#/register">Créer un compte</a>'}</p></form></div>`;document.getElementById("authForm").onsubmit=async event=>{event.preventDefault();const msg=document.getElementById("authMsg");const values={email:document.getElementById("authEmail").value,password:document.getElementById("authPassword").value,displayName:register?document.getElementById("authName").value:""};const result=register?await window.KlirAuth.signUp(values):await window.KlirAuth.signIn(values);if(result.error){msg.textContent=result.error.message;return;}if(register&&!result.data.session){msg.textContent="Vérifiez votre e-mail pour activer le compte.";return;}const next=await window.KlirAuth.initialize();await syncAuthState(next);nav("/dashboard");};}
+function vForgot(){App.innerHTML=`<div class="auth"><form class="card" id="forgotForm"><h2>Mot de passe oublié</h2><p><small>Si le compte existe, un lien de récupération sera envoyé.</small></p><label>E-mail<input id="fEmail" type="email" autocomplete="email" required></label><button class="cta" type="submit">Envoyer le lien</button><p id="fMsg" role="status"></p><p><a href="#/login">← Retour</a></p></form></div>`;document.getElementById("forgotForm").onsubmit=async event=>{event.preventDefault();const result=await window.KlirAuth.sendRecovery(document.getElementById("fEmail").value);document.getElementById("fMsg").textContent=result.error?result.error.message:"Si ce compte existe, le lien a été envoyé.";};}
+function vResetPassword(){App.innerHTML=`<div class="auth"><form class="card" id="resetForm"><h2>Nouveau mot de passe</h2><label>Mot de passe (12 caractères minimum)<input id="resetPassword" type="password" minlength="12" autocomplete="new-password" required></label><button class="cta" type="submit">Mettre à jour</button><p id="resetMsg" role="status"></p></form></div>`;document.getElementById("resetForm").onsubmit=async event=>{event.preventDefault();const result=await window.KlirAuth.updatePassword(document.getElementById("resetPassword").value);document.getElementById("resetMsg").textContent=result.error?result.error.message:"Mot de passe mis à jour. Vous pouvez continuer.";if(!result.error)setTimeout(()=>nav("/dashboard"),800);};}
+function vAuthCallback(){App.innerHTML=`<div class="auth"><div class="card"><h2>Vérification du compte</h2><p>Validation en cours…</p></div></div>`;window.KlirAuth.initialize().then(async next=>{await syncAuthState(next);nav(next.user?"/dashboard":"/login");}).catch(()=>nav("/login"));}
 function vOnb(){App.innerHTML=`<div class="auth"><div class="card wide"><h2>Bienvenue 👋 — configurons Klir Prospect</h2>
 <input id="o1" placeholder="Nom de l'entreprise"><input id="o2" placeholder="Secteur (ex: Rénovation)"><input id="o3" placeholder="Localisation (ex: Montréal)"><input id="o4" placeholder="Que vendez-vous ?"><input id="o5" placeholder="Client idéal ?">
 <button class="cta" id="onbBtn">Créer ma première recherche →</button></div></div>`;
@@ -244,7 +252,10 @@ function bind(){
   document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{const c=KS.S.campaigns.find(x=>x.id===b.dataset.ship);if(window.KlirTeam&&!window.KlirTeam.guard("campaigns"))return;const ch=KS.S.integrations.outreach;if(!ch||!ch.on)return alert("⛔ Envoi bloqué : configurez un canal d'envoi (Réglages → Intégrations) et respectez opt-out/consentement.");const bad=(c.drafts||[]).filter(d=>d.status!=="Approved");if(bad.length)return alert(`${bad.length} brouillon(s) non approuvés. Approuvez tout avant envoi.`);c.status="Active";KS.save();KS.notify("Campagne envoyée (simulation, canal de démo) : "+c.name);KS.audit("campaign.sent",c.name+" via "+(ch.name||"canal"));render();});
   if($("saveSet"))$("saveSet").onclick=()=>{if(window.KlirTeam&&!window.KlirTeam.guard("settings"))return;KS.S.org.name=$("setOrg").value;KS.save();KS.addActivity("Réglages mis à jour");};
   if($("wipeBtn"))$("wipeBtn").onclick=()=>{if(confirm("Effacer définitivement toutes les données de cet onglet ?")){KS.deleteAccount();location.hash="#/landing";location.reload();}};
-  if($("profLogout"))$("profLogout").onclick=()=>{if(window.KlirTeam)window.KlirTeam.logout();else{KS.logoutUser();nav("/landing");}};
+  if($("profLogout"))$("profLogout").onclick=async()=>{if(authState.user&&window.KlirAuth){const result=await window.KlirAuth.signOut();if(result.error)return alert(result.error.message);}KS.logoutUser();nav("/landing");render();};
+  if($("profileSave"))$("profileSave").onclick=async()=>{const result=await window.KlirAuth.updateProfile($("profileName").value);$("profileMsg").textContent=result.error?result.error.message:"Profil enregistré.";if(!result.error){authState=window.KlirAuth.state();render();}};
+  if($("profileMigrate"))$("profileMigrate").onclick=async()=>{if(!confirm("Copier les données de cette session vers votre espace Supabase protégé par RLS ?"))return;const result=await window.KlirAuth.migrateDemo(KS.S);$("profileMsg").textContent=result.error?result.error.message:"Données migrées et synchronisées.";};
+  if($("deleteAccount"))$("deleteAccount").onclick=async()=>{const confirmation=$("deleteConfirm").value;if(confirmation!=="SUPPRIMER")return alert("Écrivez SUPPRIMER pour confirmer.");if(!confirm("Supprimer définitivement le compte et toutes ses données ?"))return;const result=await window.KlirAuth.deleteAccount(confirmation);if(result.error)return alert(result.error.message||"Suppression impossible.");KS.logoutUser();nav("/landing");render();};
   if($("profBackMine"))$("profBackMine").onclick=()=>{if(window.KlirTeam)window.KlirTeam.leave();};
   if(window.WebAI&&window.WebAI.bindPage)try{window.WebAI.bindPage();}catch(e){}
   if(window.WebAI&&window.WebAI.bindAdmin)try{window.WebAI.bindAdmin();}catch(e){}
@@ -394,4 +405,6 @@ function importCsvText(txt){const lines=txt.split(/\r?\n/).filter(l=>l.trim());i
   return {rows:out,dups};}
 function drawCharts(){const c=document.getElementById("ch");if(c){const x=c.getContext("2d");x.fillStyle="#6366f1";[40,70,55,90,80,110,95].forEach((v,i)=>x.fillRect(10+i*48,150-v,30,v));}
   const c2=document.getElementById("ch2");if(c2){const x=c2.getContext("2d");x.fillStyle="#10b981";[30,60,90,70,120,140,110].forEach((v,i)=>x.fillRect(10+i*80,170-v,50,v));}}
-render();
+if(window.KlirAuth){
+  window.KlirAuth.initialize().then(syncAuthState).catch(error=>console.error("Initialisation Auth impossible",error)).finally(render);
+}else render();
