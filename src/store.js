@@ -26,7 +26,7 @@ function normalizeState(value){
   s.integrations = structuredClone(DEF.integrations);
   s.apiKey = null;
   s.plan = "Free";
-  s.demo = true;
+  s.demo = !trustedLive;
   delete s.team;
   delete s.grants;
   delete s.sharedFrom;
@@ -41,6 +41,7 @@ function readSession(){
     return null;
   }
 }
+var trustedLive = false;
 var _S = normalizeState(readSession());
 function save(){
   _S = normalizeState(_S);
@@ -54,7 +55,12 @@ function save(){
     notify("Sauvegarde impossible : exportez ou réduisez les données.");
   }
 }
+function setTrustedLive(on){
+  trustedLive = !!on;
+  if (_S) _S.demo = !trustedLive;
+}
 function startDemo(){
+  trustedLive = false;
   _S = blankState();
   _S.user = { email: "demo@local.invalid" };
   _S.org = { name: "Espace de démonstration", city: "Montréal" };
@@ -64,7 +70,7 @@ function startDemo(){
 function disabledAuth(){
   return { err: "Authentification désactivée : un backend avec sessions HttpOnly est requis." };
 }
-function logoutUser(){ _S = blankState(); sessionStorage.removeItem(LS); }
+function logoutUser(){ trustedLive = false; _S = blankState(); sessionStorage.removeItem(LS); }
 function deleteAccount(){
   logoutUser();
   return { ok: true };
@@ -92,7 +98,7 @@ window.KlirStore = {
   get S(){ return _S; }, set S(value){ _S = normalizeState(value); },
   save: save, addActivity: addActivity, notify: notify, audit: audit, uid: uid,
   aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState,
-  startDemo: startDemo, deleteAccount: deleteAccount, logoutUser: logoutUser,
+  startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
   restoreKv: async function(){ return null; }, getAccounts: function(){ return {}; },

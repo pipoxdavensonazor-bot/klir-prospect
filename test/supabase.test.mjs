@@ -27,8 +27,13 @@ test("ne prend aucune décision d’autorisation depuis user_metadata", () => {
 
 test("conserve les sessions dans l’onglet et utilise PKCE", () => {
   assert.match(authClient, /sessionStorage/);
+  assert.doesNotMatch(authClient, /localStorage/);
   assert.match(authClient, /flowType:\s*"pkce"/);
+  assert.match(authClient, /storageKey:\s*"klir-auth"/);
   assert.match(authClient, /signOut\(\{\s*scope:\s*"global"\s*\}\)/);
+  assert.match(authClient, /verifyOtp\(\{ token_hash: pending\.tokenHash, type: pending\.type \}\)/);
+  assert.match(authClient, /signInWithPassword\(\{ email: currentUser\.email, password \}\)/);
+  assert.doesNotMatch(authClient, /demo_migrated_at:\s*new Date/);
 });
 
 test("la suppression exige identité, confirmation et révocation globale", () => {
