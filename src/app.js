@@ -4,8 +4,9 @@ var sel=new Set(), curSearch=null, adv={industry:"construction",city:"montréal"
 var authState={configured:false,user:null,profile:null,passwordRecovery:false};
 var historyLoading=false;
 var historyError="";
+var searchRunning=false;
 function nav(h){const next=h.charAt(0)==="#"?h:"#"+h;if(location.hash!==next)location.hash=next;render();}
-window.addEventListener("hashchange",render);
+window.addEventListener("hashchange",()=>{if(!searchRunning)render();});
 window.addEventListener("klir-auth-change",event=>{syncAuthState(event.detail).then(render);});
 function isAuth(){return !!(KS.S.user&&KS.S.org);}
 function esc(value){return window.KlirSecurity.text(value, 300);}
@@ -368,6 +369,8 @@ function deleteSavedSearch(id){
   render();
 }
 async function runSearch(q,savedParams){
+  searchRunning=true;
+  try{
   const L=window.KlirStore.LIMITS[KS.S.plan];
   if(KS.S.usage.searches>=L.searches)return alert(`Limite du plan ${KS.S.plan} atteinte (${L.searches} recherches/mois). Changez de plan dans Réglages.`);
   if(!q||!q.trim())return alert("Décrivez d'abord le type de client recherché.");if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
@@ -398,6 +401,7 @@ async function runSearch(q,savedParams){
   curSearch=s.id; sel=new Set(final.filter(p=>p.rel>=75).slice(0,10).map(p=>p.id));
   nav("/prospecting/results/"+s.id);
   try{if(window.WebIntel&&window.WebIntel.settings().enabled){var _ids=final.map(p=>p.id);window.WebIntel.bulkCheck(_ids,{onProgress:(d,t)=>{var el=document.getElementById("webProg");if(el)el.textContent="Website verification in progress... "+d+" / "+t;}}).then(st=>{try{KS.save();}catch(e){}var el2=document.getElementById("webProg");if(el2)el2.textContent="Website check terminé : "+st.active+" actifs • "+st.inactive+" inactifs • "+st.available+" disponibles • "+st.unknown+" inconnus.";});}}catch(e){}
+  } finally { searchRunning=false; }
 }
 function toCrm(){if(window.KlirTeam&&!window.KlirTeam.guard("crm"))return;let n=0;for(const id of sel){const p=KS.S.prospects.find(x=>x.id===id);if(p&&!p.inCrm){p.inCrm=true;KS.S.crm.push({id:KS.uid("l"),company_name:p.company_name,city:p.city,stage:"New",prospectId:id,log:[{t:"Lead créé depuis la recherche",at:new Date().toLocaleString()}],lastActivity:new Date().toLocaleString()});n++;}}
   const s=KS.S.searches.find(x=>x.id===curSearch); if(s)s.crm+=n; KS.save(); KS.addActivity(`${n} prospects ajoutés au CRM`); KS.notify(`Import CRM terminé : ${n} prospects.`); KS.audit("crm.lead.created",n+" leads"); render();}
