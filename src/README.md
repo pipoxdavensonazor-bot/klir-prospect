@@ -7,4 +7,4 @@
 
 `tools/build.mjs` regroupe `auth.js` avec `@supabase/supabase-js` et génère `dist/config.js` depuis `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY`. Ces valeurs sont publiques; une clé `service_role` ne doit jamais être fournie au build.
 
-La migration vers Supabase reste opt-in depuis le profil : l’utilisateur choisit quand copier son état de démonstration vers `workspace_states`.
+Une fois le compte ouvert, les recherches sont écrites dans `workspace_states` et rechargées sur un autre ordinateur. La démonstration anonyme reste dans l’onglet tant que l’utilisateur ne la copie pas vers le compte.

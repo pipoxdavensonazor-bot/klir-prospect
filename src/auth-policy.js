@@ -67,3 +67,25 @@ export function workspaceForMigration(payload) {
 export function isLiveProfile(profile) {
   return Boolean(profile && profile.demo_migrated_at);
 }
+
+function isAccountState(local) {
+  const email = local && local.user && local.user.email;
+  return Boolean(email && email !== "demo@local.invalid");
+}
+
+export function accountSessionPlan(localState, cloudRow) {
+  const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
+  const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
+    ? cloudRow.payload
+    : null;
+  if (payload && isAccountState(local)) {
+    const localSaved = Number(local._savedAt) || 0;
+    const cloudSaved = cloudRow.updated_at ? Date.parse(cloudRow.updated_at) : 0;
+    if (localSaved > cloudSaved) return { source: "local", state: local, stashDemo: false };
+  }
+  if (payload) return { source: "cloud", state: payload, stashDemo: false };
+  if (isAccountState(local)) return { source: "local", state: local, stashDemo: false };
+  const searches = Array.isArray(local.searches) ? local.searches.length : 0;
+  const prospects = Array.isArray(local.prospects) ? local.prospects.length : 0;
+  return { source: "empty", state: null, stashDemo: searches + prospects > 0 };
+}

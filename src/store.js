@@ -1,4 +1,7 @@
 var LS = "klir_demo_session_v3";
+var DEMO_STASH = "klir_demo_stash_v1";
+var cloudTimer = 0;
+var cloudSeq = 0;
 var LIMITS = { Free: { searches: 10, prospects: 500, ai: 100, exports: 20 } };
 var DEF = {
   user: null, org: null, searches: [], prospects: [], crm: [], campaigns: [],
@@ -54,6 +57,43 @@ function save(){
     console.error("Sauvegarde de session impossible", error);
     notify("Sauvegarde impossible : exportez ou réduisez les données.");
   }
+  scheduleCloudPersist();
+}
+function scheduleCloudPersist() {
+  if (!trustedLive || !window.KlirAuth || typeof window.KlirAuth.persistWorkspace !== "function") return;
+  var seq = ++cloudSeq;
+  var snapshot = structuredClone(_S);
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(function () {
+    if (seq !== cloudSeq) return;
+    Promise.resolve(window.KlirAuth.persistWorkspace(snapshot)).then(function (result) {
+      if (seq !== cloudSeq) return;
+      if (result && result.error) notify("Enregistrement du compte impossible. Les données restent dans cet onglet.");
+    }).catch(function () {
+      if (seq !== cloudSeq) return;
+      notify("Enregistrement du compte impossible. Les données restent dans cet onglet.");
+    });
+  }, 400);
+}
+function stashDemoState() {
+  try {
+    sessionStorage.setItem(DEMO_STASH, JSON.stringify(_S));
+  } catch (error) {
+    console.warn("Démo locale non conservée", error);
+  }
+}
+function peekDemoStash() {
+  try {
+    var raw = sessionStorage.getItem(DEMO_STASH);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+function takeDemoStash() {
+  var stashed = peekDemoStash();
+  sessionStorage.removeItem(DEMO_STASH);
+  return stashed;
 }
 function setTrustedLive(on){
   trustedLive = !!on;
@@ -99,6 +139,7 @@ window.KlirStore = {
   save: save, addActivity: addActivity, notify: notify, audit: audit, uid: uid,
   aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState,
   startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
+  stashDemoState: stashDemoState, peekDemoStash: peekDemoStash, takeDemoStash: takeDemoStash,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
   restoreKv: async function(){ return null; }, getAccounts: function(){ return {}; },

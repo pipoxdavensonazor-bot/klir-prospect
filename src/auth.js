@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import {
   CONFIRM_PHRASE,
+  accountSessionPlan,
   appRedirectUrl,
   displayName,
   isLiveProfile,
@@ -164,7 +165,9 @@ async function loadWorkspace() {
   return supabase.from("workspace_states").select("schema_version, payload, updated_at").eq("user_id", currentUser.id).maybeSingle();
 }
 
-async function migrateDemo(payload) {
+let workspaceQueue = Promise.resolve();
+
+async function writeWorkspace(payload) {
   const supabase = await requireClient();
   if (!currentUser) throw new Error("Session requise.");
   const cleanPayload = workspaceForMigration(window.KlirSecurity.cleanState(payload || {}));
@@ -175,8 +178,21 @@ async function migrateDemo(payload) {
     schema_version: 1,
     payload: cleanPayload
   }, { onConflict: "user_id" }).select("updated_at").single();
-  if (!result.error) await hydrate();
+  if (!result.error && (!currentProfile || !currentProfile.demo_migrated_at)) await hydrate();
   return result;
+}
+
+async function migrateDemo(payload) {
+  return persistWorkspace(payload);
+}
+
+function persistWorkspace(payload) {
+  const job = workspaceQueue.then(() => writeWorkspace(payload)).catch((error) => ({
+    data: null,
+    error: { message: error && error.message ? error.message : "Enregistrement impossible." }
+  }));
+  workspaceQueue = job.then(() => {}, () => {});
+  return job;
 }
 
 async function deleteAccount(confirmation, password) {
@@ -251,6 +267,8 @@ window.KlirAuth = {
   updateProfile,
   loadWorkspace,
   migrateDemo,
+  persistWorkspace,
+  accountSessionPlan,
   deleteAccount,
   completeCallback,
   dismissCallback
