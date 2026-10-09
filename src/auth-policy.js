@@ -68,24 +68,33 @@ export function isLiveProfile(profile) {
   return Boolean(profile && profile.demo_migrated_at);
 }
 
-function isAccountState(local) {
+function localEmail(local) {
   const email = local && local.user && local.user.email;
-  return Boolean(email && email !== "demo@local.invalid");
+  return email ? String(email) : "";
 }
 
-export function accountSessionPlan(localState, cloudRow) {
+function isAccountState(local, accountEmail) {
+  const email = localEmail(local);
+  if (!email || email === "demo@local.invalid") return false;
+  if (accountEmail && email !== accountEmail) return false;
+  return true;
+}
+
+export function accountSessionPlan(localState, cloudRow, accountEmail) {
   const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
+  const sessionEmail = accountEmail ? String(accountEmail) : "";
   const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
     ? cloudRow.payload
     : null;
-  if (payload && isAccountState(local)) {
+  if (payload && isAccountState(local, sessionEmail)) {
     const localSaved = Number(local._savedAt) || 0;
     const cloudSaved = cloudRow.updated_at ? Date.parse(cloudRow.updated_at) : 0;
     if (localSaved > cloudSaved) return { source: "local", state: local, stashDemo: false };
   }
   if (payload) return { source: "cloud", state: payload, stashDemo: false };
-  if (isAccountState(local)) return { source: "local", state: local, stashDemo: false };
+  if (isAccountState(local, sessionEmail)) return { source: "local", state: local, stashDemo: false };
+  const foreign = Boolean(sessionEmail && localEmail(local) && localEmail(local) !== "demo@local.invalid" && localEmail(local) !== sessionEmail);
   const searches = Array.isArray(local.searches) ? local.searches.length : 0;
   const prospects = Array.isArray(local.prospects) ? local.prospects.length : 0;
-  return { source: "empty", state: null, stashDemo: searches + prospects > 0 };
+  return { source: "empty", state: null, stashDemo: !foreign && searches + prospects > 0 };
 }

@@ -15,7 +15,7 @@ async function syncAuthState(next){
     let cloud={data:null,error:null};
     try{cloud=await window.KlirAuth.loadWorkspace();}catch(error){cloud={data:null,error:{message:error.message}};}
     if(!cloud.error&&typeof window.KlirAuth.accountSessionPlan==="function"){
-      const plan=window.KlirAuth.accountSessionPlan(KS.S,cloud.data);
+      const plan=window.KlirAuth.accountSessionPlan(KS.S,cloud.data,authState.user.email);
       if(plan.source==="empty"){
         if(plan.stashDemo)KS.stashDemoState();
         KS.setTrustedLive(true);

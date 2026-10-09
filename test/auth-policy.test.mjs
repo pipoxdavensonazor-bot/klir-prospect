@@ -74,10 +74,27 @@ test("le même compte recharge les recherches distantes et laisse la démo de c�
 
   const unsynced = accountSessionPlan(
     { demo: false, user: { email: "ada@example.com" }, searches: [{ id: "local", label: "Québec" }], _savedAt: Date.parse("2026-10-09T12:00:00.000Z") },
-    { payload: { searches: [{ id: "cloud" }] }, updated_at: "2026-10-09T00:00:00.000Z" }
+    { payload: { searches: [{ id: "cloud" }] }, updated_at: "2026-10-09T00:00:00.000Z" },
+    "ada@example.com"
   );
   assert.equal(unsynced.source, "local");
   assert.equal(unsynced.state.searches[0].label, "Québec");
+
+  const foreign = accountSessionPlan(
+    { demo: false, user: { email: "ada@example.com" }, searches: [{ id: "local", label: "Québec" }], prospects: [{ id: "p" }], _savedAt: Date.now() },
+    null,
+    "bea@example.com"
+  );
+  assert.equal(foreign.source, "empty");
+  assert.equal(foreign.stashDemo, false);
+
+  const foreignCloud = accountSessionPlan(
+    { demo: false, user: { email: "ada@example.com" }, searches: [{ id: "local" }], _savedAt: Date.now() },
+    { payload: { searches: [{ id: "cloud", label: "Bea" }] }, updated_at: "2026-10-09T00:00:00.000Z" },
+    "bea@example.com"
+  );
+  assert.equal(foreignCloud.source, "cloud");
+  assert.equal(foreignCloud.state.searches[0].label, "Bea");
 });
 
 test("borne le nom affiché", () => {
