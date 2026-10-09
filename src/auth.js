@@ -3,6 +3,8 @@ import {
   CONFIRM_PHRASE,
   accountSessionPlan,
   appRedirectUrl,
+  describeSearch,
+  mergeWorkspace,
   displayName,
   isLiveProfile,
   parseAuthCallback,
@@ -269,6 +271,8 @@ window.KlirAuth = {
   migrateDemo,
   persistWorkspace,
   accountSessionPlan,
+  describeSearch,
+  mergeWorkspace,
   deleteAccount,
   completeCallback,
   dismissCallback

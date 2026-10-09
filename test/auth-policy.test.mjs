@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   accountSessionPlan,
   appRedirectUrl,
+  describeSearch,
   displayName,
+  mergeWorkspace,
   parseAuthCallback,
   passwordIssues,
   workspaceForMigration
@@ -95,6 +97,33 @@ test("le même compte recharge les recherches distantes et laisse la démo de c�
   );
   assert.equal(foreignCloud.source, "cloud");
   assert.equal(foreignCloud.state.searches[0].label, "Bea");
+});
+
+test("la migration ajoute les recherches manquantes et garde celles du compte", () => {
+  const merged = mergeWorkspace(
+    { searches: [{ id: "s1", label: "Déjà sur le compte", query: "rénovation Montréal" }], prospects: [{ id: "p1", searchId: "s1" }], crm: [] },
+    { searches: [{ id: "s1", label: "Doublon démo" }, { id: "s2", label: "Nouvelle démo" }], prospects: [{ id: "p1" }, { id: "p2", searchId: "s2" }], crm: [{ id: "c2" }] }
+  );
+  assert.equal(merged.searches.length, 2);
+  assert.equal(merged.searches[0].label, "Déjà sur le compte");
+  assert.equal(merged.searches[1].id, "s2");
+  assert.equal(merged.prospects.length, 2);
+  assert.equal(merged.crm.length, 1);
+});
+
+test("une recherche décrit ses mots-clés, filtres et son statut", () => {
+  const info = describeSearch({
+    query: "10 entreprises de rénovation à Montréal",
+    date: "09/10/2026",
+    status: "terminée",
+    total: 10,
+    params: { industry: "construction", city: { city: "Montréal" }, size: "11–50", quantity: 10, raw: "10 entreprises de rénovation à Montréal" }
+  });
+  assert.equal(info.keywords, "10 entreprises de rénovation à Montréal");
+  assert.equal(info.date, "09/10/2026");
+  assert.equal(info.status, "terminée");
+  assert.equal(info.city, "Montréal");
+  assert.equal(info.quantity, "10");
 });
 
 test("borne le nom affiché", () => {

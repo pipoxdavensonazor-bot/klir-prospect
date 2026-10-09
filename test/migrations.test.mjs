@@ -101,5 +101,21 @@ test("les recherches d'un compte restent lisibles par le même compte sur une au
   await db.exec("set role authenticated");
   const foreign = await db.query("select payload from public.workspace_states");
   assert.equal(foreign.rows.length, 0);
+
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${ada}', false)`);
+  await db.exec("set role authenticated");
+  await db.exec(`
+    update public.workspace_states
+    set payload = '{"searches":[],"prospects":[],"crm":[]}'
+    where user_id = '${ada}'
+  `);
+  const deleted = await db.query("select payload from public.workspace_states where user_id = $1", [ada]);
+  assert.equal(deleted.rows[0].payload.searches.length, 0);
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${bea}', false)`);
+  await db.exec("set role authenticated");
+  const stillHidden = await db.query("select payload from public.workspace_states");
+  assert.equal(stillHidden.rows.length, 0);
   await db.close();
 });

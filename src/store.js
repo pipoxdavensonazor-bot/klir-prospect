@@ -1,7 +1,10 @@
 var LS = "klir_demo_session_v3";
 var DEMO_STASH = "klir_demo_stash_v1";
+var OUTBOX = "klir_search_outbox_v1";
 var cloudTimer = 0;
 var cloudSeq = 0;
+var cloudStatus = "idle";
+var cloudError = "";
 var LIMITS = { Free: { searches: 10, prospects: 500, ai: 100, exports: 20 } };
 var DEF = {
   user: null, org: null, searches: [], prospects: [], crm: [], campaigns: [],
@@ -59,21 +62,104 @@ function save(){
   }
   scheduleCloudPersist();
 }
+function writeOutbox(snapshot) {
+  var userId = snapshot && snapshot.user && snapshot.user.id;
+  if (!userId) return;
+  try {
+    sessionStorage.setItem(OUTBOX, JSON.stringify({ userId: userId, payload: snapshot, at: Date.now() }));
+  } catch (error) {
+    console.warn("File d'attente locale impossible", error);
+  }
+}
+function readOutbox() {
+  try {
+    var raw = sessionStorage.getItem(OUTBOX);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+function clearOutbox() {
+  try { sessionStorage.removeItem(OUTBOX); } catch (error) { /* déjà absente */ }
+}
+function noteCloudFailure(seq, snapshot, message) {
+  if (seq !== cloudSeq) return;
+  cloudStatus = "error";
+  cloudError = message || "Enregistrement impossible.";
+  writeOutbox(snapshot);
+  notify("Enregistrement du compte impossible. La recherche reste sur cet appareil et sera réessayée.");
+}
+function noteCloudSuccess(seq) {
+  if (seq !== cloudSeq) return;
+  cloudStatus = "saved";
+  cloudError = "";
+  clearOutbox();
+}
+function sendCloud(seq, snapshot, attempt) {
+  if (seq !== cloudSeq) return;
+  Promise.resolve(window.KlirAuth.persistWorkspace(snapshot)).then(function (result) {
+    if (seq !== cloudSeq) return;
+    if (result && result.error) {
+      if (attempt < 2) {
+        cloudTimer = setTimeout(function () { sendCloud(seq, snapshot, attempt + 1); }, 700 * (attempt + 1));
+        return;
+      }
+      noteCloudFailure(seq, snapshot, result.error.message);
+      return;
+    }
+    noteCloudSuccess(seq);
+  }).catch(function (error) {
+    if (seq !== cloudSeq) return;
+    if (attempt < 2) {
+      cloudTimer = setTimeout(function () { sendCloud(seq, snapshot, attempt + 1); }, 700 * (attempt + 1));
+      return;
+    }
+    noteCloudFailure(seq, snapshot, error && error.message);
+  });
+}
 function scheduleCloudPersist() {
   if (!trustedLive || !window.KlirAuth || typeof window.KlirAuth.persistWorkspace !== "function") return;
   var seq = ++cloudSeq;
   var snapshot = structuredClone(_S);
+  cloudStatus = "saving";
+  cloudError = "";
   clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(function () {
-    if (seq !== cloudSeq) return;
-    Promise.resolve(window.KlirAuth.persistWorkspace(snapshot)).then(function (result) {
-      if (seq !== cloudSeq) return;
-      if (result && result.error) notify("Enregistrement du compte impossible. Les données restent dans cet onglet.");
-    }).catch(function () {
-      if (seq !== cloudSeq) return;
-      notify("Enregistrement du compte impossible. Les données restent dans cet onglet.");
-    });
-  }, 400);
+  cloudTimer = setTimeout(function () { sendCloud(seq, snapshot, 0); }, 400);
+}
+function flushCloudPersist() {
+  if (!trustedLive || !window.KlirAuth || typeof window.KlirAuth.persistWorkspace !== "function") {
+    return Promise.resolve({ data: null, error: { message: "Session de compte requise." } });
+  }
+  var seq = ++cloudSeq;
+  clearTimeout(cloudTimer);
+  var snapshot = structuredClone(_S);
+  cloudStatus = "saving";
+  return Promise.resolve().then(function () {
+    return window.KlirAuth.persistWorkspace(snapshot);
+  }).then(function (result) {
+    if (result && result.error) {
+      noteCloudFailure(seq, snapshot, result.error.message);
+      return result;
+    }
+    noteCloudSuccess(seq);
+    return result || { data: {}, error: null };
+  }).catch(function (error) {
+    noteCloudFailure(seq, snapshot, error && error.message);
+    return { data: null, error: { message: cloudError } };
+  });
+}
+function pendingOutbox(userId) {
+  var box = readOutbox();
+  if (!box || !userId || box.userId !== userId || !box.payload) return null;
+  return box.payload;
+}
+function cloudSyncState() {
+  return { status: cloudStatus, error: cloudError };
+}
+function removeSearch(id) {
+  _S.searches = (_S.searches || []).filter(function (item) { return item.id !== id; });
+  _S.prospects = (_S.prospects || []).filter(function (item) { return item.searchId !== id; });
+  save();
 }
 function stashDemoState() {
   try {
@@ -140,6 +226,7 @@ window.KlirStore = {
   aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState,
   startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
   stashDemoState: stashDemoState, peekDemoStash: peekDemoStash, takeDemoStash: takeDemoStash,
+  flushCloudPersist: flushCloudPersist, pendingOutbox: pendingOutbox, cloudSyncState: cloudSyncState, removeSearch: removeSearch,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
   restoreKv: async function(){ return null; }, getAccounts: function(){ return {}; },

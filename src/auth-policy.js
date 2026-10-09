@@ -98,3 +98,41 @@ export function accountSessionPlan(localState, cloudRow, accountEmail) {
   const prospects = Array.isArray(local.prospects) ? local.prospects.length : 0;
   return { source: "empty", state: null, stashDemo: !foreign && searches + prospects > 0 };
 }
+
+function rowsById(list) {
+  const ids = new Set();
+  const rows = [];
+  for (const item of Array.isArray(list) ? list : []) {
+    if (!item || !item.id || ids.has(String(item.id))) continue;
+    ids.add(String(item.id));
+    rows.push(item);
+  }
+  return rows;
+}
+
+export function mergeWorkspace(base, incoming) {
+  const account = base && typeof base === "object" && !Array.isArray(base) ? { ...base } : {};
+  const extra = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
+  for (const key of ["searches", "prospects", "crm"]) {
+    account[key] = rowsById([...(Array.isArray(account[key]) ? account[key] : []), ...(Array.isArray(extra[key]) ? extra[key] : [])]);
+  }
+  return account;
+}
+
+export function describeSearch(search) {
+  const item = search && typeof search === "object" ? search : {};
+  const params = item.params && typeof item.params === "object" ? item.params : {};
+  const city = params.city && typeof params.city === "object" && params.city.city ? params.city.city : "";
+  return {
+    keywords: String(item.query || params.raw || ""),
+    date: item.date ? String(item.date) : "",
+    status: String(item.status || (Number(item.total) > 0 ? "terminée" : "enregistrée")),
+    industry: params.industry ? String(params.industry) : "",
+    city: city || (params.cityKey ? String(params.cityKey) : ""),
+    size: params.size ? String(params.size) : "",
+    quantity: params.quantity ? String(params.quantity) : "",
+    web: params.webFilter && typeof params.webFilter === "object"
+      ? Object.keys(params.webFilter).filter((key) => params.webFilter[key])
+      : []
+  };
+}
