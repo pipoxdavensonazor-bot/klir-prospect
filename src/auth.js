@@ -5,6 +5,7 @@ import {
   appRedirectUrl,
   describeSearch,
   mergeWorkspace,
+  resyncWorkspace,
   displayName,
   isLiveProfile,
   parseAuthCallback,
@@ -273,6 +274,7 @@ window.KlirAuth = {
   accountSessionPlan,
   describeSearch,
   mergeWorkspace,
+  resyncWorkspace,
   deleteAccount,
   completeCallback,
   dismissCallback

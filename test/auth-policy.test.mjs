@@ -7,6 +7,7 @@ import {
   displayName,
   mergeWorkspace,
   parseAuthCallback,
+  resyncWorkspace,
   passwordIssues,
   workspaceForMigration
 } from "../src/auth-policy.js";
@@ -109,6 +110,20 @@ test("la migration ajoute les recherches manquantes et garde celles du compte", 
   assert.equal(merged.searches[1].id, "s2");
   assert.equal(merged.prospects.length, 2);
   assert.equal(merged.crm.length, 1);
+});
+
+test("la resynchronisation garde les recherches de l'appareil et celles du compte", () => {
+  const merged = resyncWorkspace(
+    { org: { name: "Klirline" }, searches: [{ id: "s1", label: "Ici" }], prospects: [{ id: "p1", searchId: "s1" }], crm: [] },
+    { payload: { searches: [{ id: "s1", label: "Ancienne" }, { id: "s2", label: "Autre ordinateur" }], prospects: [{ id: "p2", searchId: "s2" }], crm: [{ id: "c9" }] }, updated_at: "2026-10-09T00:00:00.000Z" }
+  );
+  assert.equal(merged.org.name, "Klirline");
+  assert.deepEqual(merged.searches.map((item) => item.id), ["s1", "s2"]);
+  assert.equal(merged.searches[0].label, "Ici");
+  assert.equal(merged.prospects.length, 2);
+  assert.equal(merged.crm[0].id, "c9");
+  const localOnly = resyncWorkspace({ searches: [{ id: "s1" }] }, null);
+  assert.equal(localOnly.searches[0].id, "s1");
 });
 
 test("une recherche décrit ses mots-clés, filtres et son statut", () => {

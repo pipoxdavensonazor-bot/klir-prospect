@@ -119,6 +119,15 @@ export function mergeWorkspace(base, incoming) {
   return account;
 }
 
+export function resyncWorkspace(localState, cloudRow) {
+  const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
+  const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
+    ? cloudRow.payload
+    : null;
+  if (!payload) return local;
+  return mergeWorkspace(local, payload);
+}
+
 export function describeSearch(search) {
   const item = search && typeof search === "object" ? search : {};
   const params = item.params && typeof item.params === "object" ? item.params : {};

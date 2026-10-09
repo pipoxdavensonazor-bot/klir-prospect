@@ -5,6 +5,8 @@ var authState={configured:false,user:null,profile:null,passwordRecovery:false};
 var historyLoading=false;
 var historyError="";
 var searchRunning=false;
+var profileNotice="";
+var resyncing=false;
 function nav(h){const next=h.charAt(0)==="#"?h:"#"+h;if(location.hash!==next)location.hash=next;render();}
 window.addEventListener("hashchange",()=>{if(!searchRunning)render();});
 window.addEventListener("klir-auth-change",event=>{syncAuthState(event.detail).then(render);});
@@ -53,7 +55,41 @@ async function leaveAccount(){
   }
   KS.logoutUser();
   historyError="";
+  profileNotice="";
   nav("/landing");
+}
+async function resyncAccount(){
+  if(resyncing)return;
+  if(!authState.user||!window.KlirAuth||typeof window.KlirAuth.loadWorkspace!=="function"){
+    profileNotice="Session de compte requise.";
+    render();
+    return;
+  }
+  resyncing=true;
+  profileNotice="Resynchronisation…";
+  render();
+  try{
+    let cloud={data:null,error:null};
+    try{cloud=await window.KlirAuth.loadWorkspace();}catch(error){cloud={data:null,error:{message:error.message||"Resynchronisation impossible."}};}
+    if(cloud.error){
+      profileNotice=(cloud.error.message||"Resynchronisation impossible.")+" Les recherches de cet appareil sont conservées.";
+      return;
+    }
+    const merged=typeof window.KlirAuth.resyncWorkspace==="function"?window.KlirAuth.resyncWorkspace(KS.S,cloud.data):KS.S;
+    const pending=KS.pendingOutbox?KS.pendingOutbox(authState.user.id):null;
+    const next=pending&&window.KlirAuth.mergeWorkspace?window.KlirAuth.mergeWorkspace(merged,pending):merged;
+    KS.setTrustedLive(true);
+    KS.S=next;
+    applyAuthState(authState);
+    const saved=KS.flushCloudPersist?await KS.flushCloudPersist():{error:null};
+    const count=Array.isArray(KS.S.searches)?KS.S.searches.length:0;
+    profileNotice=saved&&saved.error
+      ?saved.error.message+" Les recherches restent sur cet appareil et seront réessayées."
+      :(count?`Données resynchronisées. ${count} recherche(s) sur ce compte.`:"Données resynchronisées. Aucune recherche enregistrée sur ce compte pour l'instant.");
+  }finally{
+    resyncing=false;
+    render();
+  }
 }
 function shell(body,active){
   const G=[["",[["dashboard","🏠 Dashboard"]]],["PROSPECTING",[["prospecting/new","New Search"],["prospecting/searches","Historique"],["prospects","Prospects"],["radar","Prospect Radar"],["lists","Smart Lists"]]],["IDEAL CUSTOMER",[["icp","ICP Builder"]]],["CRM",[["crm/companies","Companies"],["crm/contacts","Contacts"],["crm/leads","Leads"],["crm/deals","Deals"],["crm","Activities"]]],["KLIR AI",[["ai","AI Assistant"],["copilot","Sales Copilot"]]],["OUTREACH",[["outreach/messages","Messages"],["campaigns","Campaigns"]]],["KLIR WEB AI",[["webai/projects","🌐 Projects"],["webai/audits","Audits"],["webai/proposals","Proposals"],["webai/templates","Templates"]]],["PROJECTS",[["projects","📁 Dossiers"]]],["MON COMPTE",[["profile","👤 Session locale"]]],["",[["analytics","📊 Analytics"],["settings","⚙️ Settings"]]],["OUTILS",[["import","📥 Import"]]]];
@@ -125,7 +161,7 @@ function vProfile(){
   const verified=authState.user.email_confirmed_at?"vérifié":"à vérifier";
   const stash=KS.peekDemoStash?KS.peekDemoStash():null;
   const stashCount=stash&&Array.isArray(stash.searches)?stash.searches.length:0;
-  return `<h1>👤 Mon profil</h1><div class="card"><label>Nom affiché<input id="profileName" maxlength="120" value="${name}"></label><p><small>${email} • e-mail ${verified}</small></p><p><small>Les recherches, prospects et données CRM de ce compte sont enregistrés. Connectez-vous avec le même compte sur un autre ordinateur pour retrouver les mêmes informations.</small></p><div class="rowb"><button class="cta" id="profileSave">Enregistrer</button><button id="profileSaveCloud">Enregistrer les recherches</button>${stashCount?`<button id="profileMigrate">Copier ${stashCount} recherche(s) démo vers ce compte</button>`:""}<button id="profLogout">Se déconnecter</button></div><p id="profileMsg"></p></div><div class="card demoB"><h3>Supprimer définitivement le compte</h3><p><small>Le mot de passe est redemandé, les sessions sont révoquées, puis le compte Auth, son profil et ses données sont supprimés.</small></p><label>Mot de passe actuel<input id="deletePassword" type="password" autocomplete="current-password"></label><label>Écrivez SUPPRIMER<input id="deleteConfirm" autocomplete="off"></label><button id="deleteAccount">Supprimer mon compte</button></div>`;
+  return `<h1>👤 Mon profil</h1><div class="card"><label>Nom affiché<input id="profileName" maxlength="120" value="${name}"></label><p><small>${email} • e-mail ${verified}</small></p><p><small>Les recherches, prospects et données CRM de ce compte sont enregistrés. Connectez-vous avec le même compte sur un autre ordinateur pour retrouver les mêmes informations.</small></p><div class="rowb"><button class="cta" id="profileSave" type="button">Enregistrer</button><button class="sync" id="profileResync" type="button" aria-busy="${resyncing?"true":"false"}">${resyncing?"Resynchronisation…":"Resynchroniser mes données"}</button>${stashCount?`<button id="profileMigrate" type="button">Copier ${stashCount} recherche(s) démo vers ce compte</button>`:""}<button id="profLogout" type="button">Se déconnecter</button></div><p id="profileMsg" role="status">${esc(profileNotice)}</p></div><div class="card demoB"><h3>Supprimer définitivement le compte</h3><p><small>Le mot de passe est redemandé, les sessions sont révoquées, puis le compte Auth, son profil et ses données sont supprimés.</small></p><label>Mot de passe actuel<input id="deletePassword" type="password" autocomplete="current-password"></label><label>Écrivez SUPPRIMER<input id="deleteConfirm" autocomplete="off"></label><button id="deleteAccount">Supprimer mon compte</button></div>`;
 }
 function vLanding(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-label="Navigation principale"><a class="land-brand" href="#/landing"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"></a><div class="land-actions"><a href="#/login">Connexion</a><a href="#/register">Inscription</a><a class="cta" href="#/demo">Démo</a></div></nav>
 <header class="hero"><h1>Trouvez vos prochains clients avec l'IA.</h1><p>Votre moteur IA pour trouver et prioriser vos prochaines opportunités commerciales. Données + qualification + priorité + contexte + action.</p>
@@ -337,8 +373,8 @@ function bind(){
   if($("saveSet"))$("saveSet").onclick=()=>{if(window.KlirTeam&&!window.KlirTeam.guard("settings"))return;KS.S.org.name=$("setOrg").value;KS.save();KS.addActivity("Réglages mis à jour");};
   if($("wipeBtn"))$("wipeBtn").onclick=()=>{if(confirm("Effacer définitivement toutes les données de cet onglet ?")){KS.deleteAccount();location.hash="#/landing";location.reload();}};
   if($("profLogout"))$("profLogout").onclick=()=>leaveAccount();
-  if($("profileSave"))$("profileSave").onclick=async()=>{const result=await window.KlirAuth.updateProfile($("profileName").value);$("profileMsg").textContent=result.error?result.error.message:"Profil enregistré.";if(!result.error){authState=window.KlirAuth.state();render();}};
-  if($("profileSaveCloud"))$("profileSaveCloud").onclick=async()=>{const result=await KS.flushCloudPersist();$("profileMsg").textContent=result.error?result.error.message:"Recherches enregistrées sur ce compte.";render();};if($("profileMigrate"))$("profileMigrate").onclick=async()=>{const stash=KS.peekDemoStash();if(!stash)return;if(!confirm("Copier les recherches de démonstration de cet onglet vers ce compte ? Les recherches déjà enregistrées sont conservées."))return;const merged=window.KlirAuth.mergeWorkspace(KS.S,stash);const result=await window.KlirAuth.migrateDemo(merged);if(result.error){$("profileMsg").textContent=result.error.message;return;}KS.S=merged;KS.takeDemoStash();KS.save();$("profileMsg").textContent="Recherches démo ajoutées sans effacer l'historique du compte.";render();};
+  if($("profileSave"))$("profileSave").onclick=async()=>{const result=await window.KlirAuth.updateProfile($("profileName").value);profileNotice=result.error?result.error.message:"Profil enregistré.";if(!result.error)authState=window.KlirAuth.state();render();};
+  if($("profileResync"))$("profileResync").onclick=()=>{resyncAccount();};if($("profileMigrate"))$("profileMigrate").onclick=async()=>{const stash=KS.peekDemoStash();if(!stash)return;if(!confirm("Copier les recherches de démonstration de cet onglet vers ce compte ? Les recherches déjà enregistrées sont conservées."))return;const merged=window.KlirAuth.mergeWorkspace(KS.S,stash);const result=await window.KlirAuth.migrateDemo(merged);if(result.error){profileNotice=result.error.message;render();return;}KS.S=merged;KS.takeDemoStash();KS.save();profileNotice="Recherches démo ajoutées sans effacer l'historique du compte.";render();};
   if($("deleteAccount"))$("deleteAccount").onclick=async()=>{const confirmation=$("deleteConfirm").value;const password=$("deletePassword").value;if(confirmation!=="SUPPRIMER")return alert("Écrivez SUPPRIMER pour confirmer.");if(!confirm("Supprimer définitivement le compte et toutes ses données ?"))return;const result=await window.KlirAuth.deleteAccount(confirmation,password);if(result.error)return alert(result.error.message||"Suppression impossible.");KS.logoutUser();nav("/landing");render();};
   if($("profBackMine"))$("profBackMine").onclick=()=>{if(window.KlirTeam)window.KlirTeam.leave();};
   if(window.WebAI&&window.WebAI.bindPage)try{window.WebAI.bindPage();}catch(e){}
