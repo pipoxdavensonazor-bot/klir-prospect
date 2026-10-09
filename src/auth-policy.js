@@ -67,3 +67,81 @@ export function workspaceForMigration(payload) {
 export function isLiveProfile(profile) {
   return Boolean(profile && profile.demo_migrated_at);
 }
+
+function localEmail(local) {
+  const email = local && local.user && local.user.email;
+  return email ? String(email) : "";
+}
+
+function isAccountState(local, accountEmail) {
+  const email = localEmail(local);
+  if (!email || email === "demo@local.invalid") return false;
+  if (accountEmail && email !== accountEmail) return false;
+  return true;
+}
+
+export function accountSessionPlan(localState, cloudRow, accountEmail) {
+  const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
+  const sessionEmail = accountEmail ? String(accountEmail) : "";
+  const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
+    ? cloudRow.payload
+    : null;
+  if (payload && isAccountState(local, sessionEmail)) {
+    const localSaved = Number(local._savedAt) || 0;
+    const cloudSaved = cloudRow.updated_at ? Date.parse(cloudRow.updated_at) : 0;
+    if (localSaved > cloudSaved) return { source: "local", state: local, stashDemo: false };
+  }
+  if (payload) return { source: "cloud", state: payload, stashDemo: false };
+  if (isAccountState(local, sessionEmail)) return { source: "local", state: local, stashDemo: false };
+  const foreign = Boolean(sessionEmail && localEmail(local) && localEmail(local) !== "demo@local.invalid" && localEmail(local) !== sessionEmail);
+  const searches = Array.isArray(local.searches) ? local.searches.length : 0;
+  const prospects = Array.isArray(local.prospects) ? local.prospects.length : 0;
+  return { source: "empty", state: null, stashDemo: !foreign && searches + prospects > 0 };
+}
+
+function rowsById(list) {
+  const ids = new Set();
+  const rows = [];
+  for (const item of Array.isArray(list) ? list : []) {
+    if (!item || !item.id || ids.has(String(item.id))) continue;
+    ids.add(String(item.id));
+    rows.push(item);
+  }
+  return rows;
+}
+
+export function mergeWorkspace(base, incoming) {
+  const account = base && typeof base === "object" && !Array.isArray(base) ? { ...base } : {};
+  const extra = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
+  for (const key of ["searches", "prospects", "crm"]) {
+    account[key] = rowsById([...(Array.isArray(account[key]) ? account[key] : []), ...(Array.isArray(extra[key]) ? extra[key] : [])]);
+  }
+  return account;
+}
+
+export function resyncWorkspace(localState, cloudRow) {
+  const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
+  const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
+    ? cloudRow.payload
+    : null;
+  if (!payload) return local;
+  return mergeWorkspace(local, payload);
+}
+
+export function describeSearch(search) {
+  const item = search && typeof search === "object" ? search : {};
+  const params = item.params && typeof item.params === "object" ? item.params : {};
+  const city = params.city && typeof params.city === "object" && params.city.city ? params.city.city : "";
+  return {
+    keywords: String(item.query || params.raw || ""),
+    date: item.date ? String(item.date) : "",
+    status: String(item.status || (Number(item.total) > 0 ? "terminée" : "enregistrée")),
+    industry: params.industry ? String(params.industry) : "",
+    city: city || (params.cityKey ? String(params.cityKey) : ""),
+    size: params.size ? String(params.size) : "",
+    quantity: params.quantity ? String(params.quantity) : "",
+    web: params.webFilter && typeof params.webFilter === "object"
+      ? Object.keys(params.webFilter).filter((key) => params.webFilter[key])
+      : []
+  };
+}

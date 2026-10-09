@@ -76,3 +76,46 @@ test("les migrations créent un profil isolé et ignorent un horodatage client",
   assert.ok(profile.rows[0].demo_migrated_at);
   await db.close();
 });
+
+test("les recherches d'un compte restent lisibles par le même compte sur une autre session", async () => {
+  const db = await database();
+  const ada = "11111111-1111-1111-1111-111111111111";
+  const bea = "22222222-2222-2222-2222-222222222222";
+  await db.exec(`insert into auth.users (id, raw_user_meta_data) values ('${ada}', '{"display_name":"Ada"}'), ('${bea}', '{"display_name":"Bea"}')`);
+  await db.exec(`select set_config('request.jwt.claim.sub', '${ada}', false)`);
+  await db.exec("set role authenticated");
+  await db.exec(`
+    insert into public.workspace_states (user_id, payload)
+    values ('${ada}', '{"searches":[{"id":"s1","label":"Rénovation Montréal","total":10}],"prospects":[{"id":"p1","company_name":"Nord Rénovation","city":"Montréal"}],"crm":[{"id":"l1","company_name":"Nord Rénovation"}]}')
+  `);
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${ada}', false)`);
+  await db.exec("set role authenticated");
+  const again = await db.query("select payload from public.workspace_states where user_id = $1", [ada]);
+  assert.equal(again.rows.length, 1);
+  assert.equal(again.rows[0].payload.searches[0].label, "Rénovation Montréal");
+  assert.equal(again.rows[0].payload.prospects[0].company_name, "Nord Rénovation");
+  assert.equal(again.rows[0].payload.crm[0].company_name, "Nord Rénovation");
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${bea}', false)`);
+  await db.exec("set role authenticated");
+  const foreign = await db.query("select payload from public.workspace_states");
+  assert.equal(foreign.rows.length, 0);
+
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${ada}', false)`);
+  await db.exec("set role authenticated");
+  await db.exec(`
+    update public.workspace_states
+    set payload = '{"searches":[],"prospects":[],"crm":[]}'
+    where user_id = '${ada}'
+  `);
+  const deleted = await db.query("select payload from public.workspace_states where user_id = $1", [ada]);
+  assert.equal(deleted.rows[0].payload.searches.length, 0);
+  await db.exec("reset role");
+  await db.exec(`select set_config('request.jwt.claim.sub', '${bea}', false)`);
+  await db.exec("set role authenticated");
+  const stillHidden = await db.query("select payload from public.workspace_states");
+  assert.equal(stillHidden.rows.length, 0);
+  await db.close();
+});

@@ -2,15 +2,97 @@ var KS=window.KlirStore, E=window.KlirEngine;
 var App=document.getElementById("app");
 var sel=new Set(), curSearch=null, adv={industry:"construction",city:"montréal",qty:100,size:"11–50"};
 var authState={configured:false,user:null,profile:null,passwordRecovery:false};
+var historyLoading=false;
+var historyError="";
+var searchRunning=false;
+var profileNotice="";
+var resyncing=false;
 function nav(h){const next=h.charAt(0)==="#"?h:"#"+h;if(location.hash!==next)location.hash=next;render();}
-window.addEventListener("hashchange",render);
+window.addEventListener("hashchange",()=>{if(!searchRunning)render();});
 window.addEventListener("klir-auth-change",event=>{syncAuthState(event.detail).then(render);});
 function isAuth(){return !!(KS.S.user&&KS.S.org);}
 function esc(value){return window.KlirSecurity.text(value, 300);}
 function applyAuthState(next){authState=next||authState;if(authState.user){KS.S.user={email:authState.user.email,id:authState.user.id};KS.S.org=KS.S.org||{name:esc((authState.profile&&authState.profile.display_name)||"")||"Mon espace",city:""};KS.save();}}
-async function syncAuthState(next){authState=next||authState;KS.setTrustedLive(false);if(authState.user&&window.KlirAuth){const cloud=await window.KlirAuth.loadWorkspace();const migrated=!!(authState.profile&&authState.profile.demo_migrated_at);if(!cloud.error&&cloud.data&&cloud.data.payload&&migrated){KS.setTrustedLive(true);KS.S=cloud.data.payload;}}applyAuthState(authState);}
+async function syncAuthState(next){
+  authState=next||authState;
+  historyLoading=true;
+  historyError="";
+  KS.setTrustedLive(false);
+  try{
+    if(authState.user&&window.KlirAuth&&typeof window.KlirAuth.loadWorkspace==="function"){
+      let cloud={data:null,error:null};
+      try{cloud=await window.KlirAuth.loadWorkspace();}catch(error){cloud={data:null,error:{message:error.message}};}
+      if(cloud.error){
+        historyError=cloud.error.message||"Impossible de charger l'historique.";
+        KS.setTrustedLive(true);
+      }else if(typeof window.KlirAuth.accountSessionPlan==="function"){
+        const plan=window.KlirAuth.accountSessionPlan(KS.S,cloud.data,authState.user.email);
+        if(plan.source==="empty"){
+          if(plan.stashDemo)KS.stashDemoState();
+          KS.setTrustedLive(true);
+          KS.S=KS.blankState();
+        }else{
+          KS.setTrustedLive(true);
+          KS.S=plan.state;
+        }
+        const pending=KS.pendingOutbox?KS.pendingOutbox(authState.user.id):null;
+        if(pending&&window.KlirAuth.mergeWorkspace)KS.S=window.KlirAuth.mergeWorkspace(KS.S,pending);
+      }
+    }
+    applyAuthState(authState);
+  }finally{
+    historyLoading=false;
+  }
+}
+async function leaveAccount(){
+  if(KS.flushCloudPersist&&KS.S&&!KS.S.demo){
+    const flushed=await KS.flushCloudPersist();
+    if(flushed&&flushed.error)alert("La dernière recherche n'a pas pu être envoyée. Elle reste sur cet appareil et sera réessayée à la prochaine connexion.");
+  }
+  if(authState.user&&window.KlirAuth){
+    const result=await window.KlirAuth.signOut();
+    if(result.error)return alert(result.error.message);
+  }
+  KS.logoutUser();
+  historyError="";
+  profileNotice="";
+  nav("/landing");
+}
+async function resyncAccount(){
+  if(resyncing)return;
+  if(!authState.user||!window.KlirAuth||typeof window.KlirAuth.loadWorkspace!=="function"){
+    profileNotice="Session de compte requise.";
+    render();
+    return;
+  }
+  resyncing=true;
+  profileNotice="Resynchronisation…";
+  render();
+  try{
+    let cloud={data:null,error:null};
+    try{cloud=await window.KlirAuth.loadWorkspace();}catch(error){cloud={data:null,error:{message:error.message||"Resynchronisation impossible."}};}
+    if(cloud.error){
+      profileNotice=(cloud.error.message||"Resynchronisation impossible.")+" Les recherches de cet appareil sont conservées.";
+      return;
+    }
+    const merged=typeof window.KlirAuth.resyncWorkspace==="function"?window.KlirAuth.resyncWorkspace(KS.S,cloud.data):KS.S;
+    const pending=KS.pendingOutbox?KS.pendingOutbox(authState.user.id):null;
+    const next=pending&&window.KlirAuth.mergeWorkspace?window.KlirAuth.mergeWorkspace(merged,pending):merged;
+    KS.setTrustedLive(true);
+    KS.S=next;
+    applyAuthState(authState);
+    const saved=KS.flushCloudPersist?await KS.flushCloudPersist():{error:null};
+    const count=Array.isArray(KS.S.searches)?KS.S.searches.length:0;
+    profileNotice=saved&&saved.error
+      ?saved.error.message+" Les recherches restent sur cet appareil et seront réessayées."
+      :(count?`Données resynchronisées. ${count} recherche(s) sur ce compte.`:"Données resynchronisées. Aucune recherche enregistrée sur ce compte pour l'instant.");
+  }finally{
+    resyncing=false;
+    render();
+  }
+}
 function shell(body,active){
-  const G=[["",[["dashboard","🏠 Dashboard"]]],["PROSPECTING",[["prospecting/new","New Search"],["prospecting/searches","My Searches"],["prospects","Prospects"],["radar","Prospect Radar"],["lists","Smart Lists"]]],["IDEAL CUSTOMER",[["icp","ICP Builder"]]],["CRM",[["crm/companies","Companies"],["crm/contacts","Contacts"],["crm/leads","Leads"],["crm/deals","Deals"],["crm","Activities"]]],["KLIR AI",[["ai","AI Assistant"],["copilot","Sales Copilot"]]],["OUTREACH",[["outreach/messages","Messages"],["campaigns","Campaigns"]]],["KLIR WEB AI",[["webai/projects","🌐 Projects"],["webai/audits","Audits"],["webai/proposals","Proposals"],["webai/templates","Templates"]]],["PROJECTS",[["projects","📁 Dossiers"]]],["MON COMPTE",[["profile","👤 Session locale"]]],["",[["analytics","📊 Analytics"],["settings","⚙️ Settings"]]],["OUTILS",[["import","📥 Import"]]]];
+  const G=[["",[["dashboard","🏠 Dashboard"]]],["PROSPECTING",[["prospecting/new","New Search"],["prospecting/searches","Historique"],["prospects","Prospects"],["radar","Prospect Radar"],["lists","Smart Lists"]]],["IDEAL CUSTOMER",[["icp","ICP Builder"]]],["CRM",[["crm/companies","Companies"],["crm/contacts","Contacts"],["crm/leads","Leads"],["crm/deals","Deals"],["crm","Activities"]]],["KLIR AI",[["ai","AI Assistant"],["copilot","Sales Copilot"]]],["OUTREACH",[["outreach/messages","Messages"],["campaigns","Campaigns"]]],["KLIR WEB AI",[["webai/projects","🌐 Projects"],["webai/audits","Audits"],["webai/proposals","Proposals"],["webai/templates","Templates"]]],["PROJECTS",[["projects","📁 Dossiers"]]],["MON COMPTE",[["profile","👤 Session locale"]]],["",[["analytics","📊 Analytics"],["settings","⚙️ Settings"]]],["OUTILS",[["import","📥 Import"]]]];
   const unread=KS.S.notifications.filter(n=>!n.read).length;
   return `<div class="lay"><div id="sideOverlay"></div><aside class="side" id="sideNav"><div class="brand"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"><span>by Klirline</span></div>
   ${G.map(([t,items])=>`${t?`<div class="gtitle">${t}</div>`:""}${items.map(([k,l])=>`<a href="#/${k}" class="${active===k?"on":""}">${l}</a>`).join("")}`).join("")}
@@ -21,7 +103,7 @@ function render(){
   const h=(location.hash||"#/landing").replace("#/","");
   const m=h.match(/([^\/]+)(\/(.+))?/)||[]; const page=m[1], arg=m[3];
   if(window.KlirAuth&&window.KlirAuth.state().pending&&page!=="auth")return nav("/auth/confirm");
-  if(page==="demo"){KS.startDemo();return nav("/dashboard");}
+  if(page==="demo"){if(authState.user)return nav("/dashboard");KS.startDemo();return nav("/dashboard");}
   if(["team","api","admin"].includes(page))return nav("/settings");
   if(!window.KlirStore.S.user&&!["landing","login","register","forgot","reset-password","auth"].includes(page))return nav("/landing");
   if(page==="landing")return vLanding();
@@ -63,7 +145,7 @@ function render(){
   else if(page==="team")b.innerHTML=shell(window.KlirTeam?window.KlirTeam.view():"<p>Chargement…</p>","team");
   else if(page==="profile")b.innerHTML=shell(vProfile(),"profile");
   else b.innerHTML=shell(vDash(),"dashboard");
-  const doLogout=async()=>{if(authState.user&&window.KlirAuth){const result=await window.KlirAuth.signOut();if(result.error)return alert(result.error.message);}KS.logoutUser();nav("/landing");render();};
+  const doLogout=()=>leaveAccount();
   const lo=document.getElementById("logoutBtn"); if(lo)lo.onclick=doLogout;
   const tlo=document.getElementById("topLogoutBtn"); if(tlo)tlo.onclick=doLogout;
   const tp=document.getElementById("topProfileBtn"); if(tp)tp.onclick=()=>nav("/profile");
@@ -77,8 +159,9 @@ function vProfile(){
   const name=esc(authState.profile.display_name||"");
   const email=esc(authState.user.email||"");
   const verified=authState.user.email_confirmed_at?"vérifié":"à vérifier";
-  const migrate=authState.profile.demo_migrated_at?"Resynchroniser mes données":"Migrer hors du mode démo";
-  return `<h1>👤 Mon profil</h1><div class="card"><label>Nom affiché<input id="profileName" maxlength="120" value="${name}"></label><p><small>${email} • e-mail ${verified}</small></p><div class="rowb"><button class="cta" id="profileSave">Enregistrer</button><button id="profileMigrate">${migrate}</button><button id="profLogout">Se déconnecter</button></div><p id="profileMsg"></p></div><div class="card demoB"><h3>Supprimer définitivement le compte</h3><p><small>Le mot de passe est redemandé, les sessions sont révoquées, puis le compte Auth, son profil et ses données sont supprimés.</small></p><label>Mot de passe actuel<input id="deletePassword" type="password" autocomplete="current-password"></label><label>Écrivez SUPPRIMER<input id="deleteConfirm" autocomplete="off"></label><button id="deleteAccount">Supprimer mon compte</button></div>`;
+  const stash=KS.peekDemoStash?KS.peekDemoStash():null;
+  const stashCount=stash&&Array.isArray(stash.searches)?stash.searches.length:0;
+  return `<h1>👤 Mon profil</h1><div class="card"><label>Nom affiché<input id="profileName" maxlength="120" value="${name}"></label><p><small>${email} • e-mail ${verified}</small></p><p><small>Les recherches, prospects et données CRM de ce compte sont enregistrés. Connectez-vous avec le même compte sur un autre ordinateur pour retrouver les mêmes informations.</small></p><div class="rowb"><button class="cta" id="profileSave" type="button">Enregistrer</button><button class="sync" id="profileResync" type="button" aria-busy="${resyncing?"true":"false"}">${resyncing?"Resynchronisation…":"Resynchroniser mes données"}</button>${stashCount?`<button id="profileMigrate" type="button">Copier ${stashCount} recherche(s) démo vers ce compte</button>`:""}<button id="profLogout" type="button">Se déconnecter</button></div><p id="profileMsg" role="status">${esc(profileNotice)}</p></div><div class="card demoB"><h3>Supprimer définitivement le compte</h3><p><small>Le mot de passe est redemandé, les sessions sont révoquées, puis le compte Auth, son profil et ses données sont supprimés.</small></p><label>Mot de passe actuel<input id="deletePassword" type="password" autocomplete="current-password"></label><label>Écrivez SUPPRIMER<input id="deleteConfirm" autocomplete="off"></label><button id="deleteAccount">Supprimer mon compte</button></div>`;
 }
 function vLanding(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-label="Navigation principale"><a class="land-brand" href="#/landing"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"></a><div class="land-actions"><a href="#/login">Connexion</a><a href="#/register">Inscription</a><a class="cta" href="#/demo">Démo</a></div></nav>
 <header class="hero"><h1>Trouvez vos prochains clients avec l'IA.</h1><p>Votre moteur IA pour trouver et prioriser vos prochaines opportunités commerciales. Données + qualification + priorité + contexte + action.</p>
@@ -148,7 +231,30 @@ function vNew(){const on=Object.values(KS.S.integrations).filter(i=>i.on).length
 <label>Quantité<input id="aQty" type="number" value="100" min="10" max="500"></label>
 <label>Taille<select id="aSize"><option>1–10</option><option selected>11–50</option><option>51–200</option><option>201–500</option><option>500+</option></select></label></div></div>
 <div id="parsed"></div><div id="prog"></div><div class="card"><h3>🌐 Présence numérique (Website Intelligence)</h3><p><small>Filtre appliqué après la recherche. La vérification réelle des sites se fait en arrière-plan dans les résultats.</small></p><div>${["webActive|Website active","webInactive|Website inactive","noSite|No active website detected","regInactive|Registered domain / inactive website","domainAvailable|Domain available","domainRegistered|Domain registered","httpsIssue|HTTPS unavailable"].map(s=>{const kv=s.split("|");return `<label style="display:inline-block;margin-right:12px"><input type="checkbox" data-webf="${kv[0]}" style="width:auto"> ${kv[1]}</label>`;}).join("")}</div></div></div>`;}
-function vSearches(){const em=KS.S.user?KS.S.user.email:"—";return `<h1>Mes recherches</h1><div class="card"><small>Compte : <b>${em}</b> • ${KS.S.searches.length} recherche(s) • ${KS.S.prospects.length} prospect(s). Astuce : utilisez toujours le même e-mail sur le même navigateur pour retrouver vos données. Après connexion, vos recherches sont ici + dans Résultats, CRM et Analytics.</small></div>${KS.S.searches.map(s=>`<div class="card row"><div><b>${s.label}</b><br><small>${s.date} • ${s.total} résultats • ${s.qual} qualifiés • ${s.crm} au CRM</small></div><button onclick="location.hash='#/prospecting/results/${s.id}'">Voir</button></div>`).join("")||"<div class='card'>Aucune recherche sur ce compte. Lancez-en une via <a href='#/prospecting/new'>New Search</a>. Si vous venez de vous connecter avec un autre e-mail, reconnectez-vous avec l'e-mail utilisé lors de la recherche.</div>"}`;}
+function searchFilters(search){
+  const info=window.KlirAuth&&window.KlirAuth.describeSearch?window.KlirAuth.describeSearch(search):{};
+  const bits=[];
+  if(info.industry&&window.KlirData&&KlirData.INDUSTRIES[info.industry])bits.push(KlirData.INDUSTRIES[info.industry].label);
+  else if(info.industry)bits.push(info.industry);
+  if(info.city)bits.push(info.city);
+  if(info.size)bits.push(info.size);
+  if(info.quantity)bits.push(info.quantity+" résultats");
+  if(info.web&&info.web.length)bits.push("web : "+info.web.join(", "));
+  return bits.join(" · ")||"—";
+}
+function vSearches(){
+  const em=KS.S.user?KS.S.user.email:"—";
+  const sync=KS.cloudSyncState?KS.cloudSyncState():{status:"idle",error:""};
+  const syncNote=KS.S.demo?"Démonstration : ces recherches restent dans cet onglet. Connectez-vous pour les enregistrer sur votre compte.":"Ces recherches sont enregistrées sur le compte. Le même compte sur un autre ordinateur retrouve les mêmes recherches, prospects et CRM.";
+  if(historyLoading)return `<h1>Historique des recherches</h1><div class="card"><p>Chargement de l'historique…</p></div>`;
+  const err=historyError||(sync.status==="error"?sync.error:"");
+  const cards=KS.S.searches.map(s=>{
+    const info=window.KlirAuth&&window.KlirAuth.describeSearch?window.KlirAuth.describeSearch(s):{keywords:s.label||"",date:s.date||"",status:s.status||"enregistrée"};
+    const saved=KS.S.prospects.filter(p=>p.searchId===s.id&&p.status!=="Archived").length;
+    return `<div class="card row"><div><b>${esc(s.label||info.keywords||"Recherche")}</b><br><small>${esc(info.date||"—")} · Mots-clés : ${esc(info.keywords||"—")} · Filtres : ${esc(searchFilters(s))} · Statut : ${esc(info.status)} · ${saved} résultat(s) enregistré(s)</small></div><div class="rowb"><button type="button" data-open="${esc(s.id)}">Voir</button><button type="button" data-rerun="${esc(s.id)}">Relancer</button><button type="button" data-delsearch="${esc(s.id)}">Supprimer</button></div></div>`;
+  }).join("");
+  return `<h1>Historique des recherches</h1><div class="card"><small>Compte : <b>${esc(em)}</b> • ${KS.S.searches.length} recherche(s) • ${KS.S.prospects.length} prospect(s). ${syncNote}${sync.status==="saving"?" Enregistrement…":""}</small></div>${err?`<div class="card"><p>${esc(err)}</p><button type="button" id="historyRetry">Réessayer l'enregistrement</button></div>`:""}${cards||"<div class='card'>Aucune recherche enregistrée sur ce compte. Lancez-en une via <a href='#/prospecting/new'>New Search</a>.</div>"}`;
+}
 function dupPairs(rows){ const byN={},byP={},out=[],seen=new Set(); for(const p of rows){ const k=E.normStr(p.company_name); (byN[k]=byN[k]||[]).push(p); if(p.phone){ const ph=E.normPhone(p.phone); (byP[ph]=byP[ph]||[]).push(p); } } const byE={}; for(const p of rows){ if(!p.public_email)continue; const e=p.public_email.toLowerCase().trim(); (byE[e]=byE[e]||[]).push(p); } const push=(a,b,why,lv)=>{ const key=[a.id,b.id].sort().join("+"); if(a.id!==b.id&&!seen.has(key)){ seen.add(key); const exact=lv||((a.domain&&a.domain===b.domain)||(a.phone&&a.phone===b.phone)); out.push({a,b,why,level:exact?"exact":"possible"}); } }; for(const k of Object.keys(byN)){ const g=byN[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même nom normalisé"); } } for(const k of Object.keys(byP)){ const g=byP[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même téléphone","exact"); } } for(const k of Object.keys(byE)){ const g=byE[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même email","exact"); } } return out; } function mergeProspects(aId,bId){ const a=KS.S.prospects.find(x=>x.id===aId),b=KS.S.prospects.find(x=>x.id===bId); if(!a||!b)return; const keep=a.rel>=b.rel?a:b,drop=keep===a?b:a; for(const f of ["website","domain","phone","public_email","address","description","website_url","website_status","website_http_status","website_https","website_redirect_url","website_last_checked","domain_name","domain_status","domain_source","domain_last_checked","dns_status","ssl_status","website_confidence","domain_confidence"])if(!keep[f]&&drop[f])keep[f]=drop[f]; keep.signals=[...new Set([...keep.signals,...drop.signals])]; drop.status="Archived"; KS.save(); KS.addActivity("Doublons fusionnés : "+keep.company_name); KS.audit("prospect.merged",keep.company_name); } function vResults(id){const s=KS.S.searches.find(x=>x.id===id); if(!s)return "<p>Recherche introuvable.</p>";
 const rows=KS.S.prospects.filter(p=>p.searchId===id&&p.status!=="Archived");
 const arch=KS.S.prospects.filter(p=>p.searchId===id&&p.status==="Archived").length; const dups=dupPairs(rows);
@@ -207,6 +313,10 @@ function bind(){
   const $=id=>document.getElementById(id);
   if($("advBtn"))$("advBtn").onclick=()=>{$("advBox").hidden=!$("advBox").hidden;};
   if($("runBtn"))$("runBtn").onclick=()=>runSearch($("qInput").value);
+  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{location.hash="#/prospecting/results/"+b.dataset.open;});
+  document.querySelectorAll("[data-rerun]").forEach(b=>b.onclick=()=>relaunchSearch(b.dataset.rerun));
+  document.querySelectorAll("[data-delsearch]").forEach(b=>b.onclick=()=>deleteSavedSearch(b.dataset.delsearch));
+  if($("historyRetry"))$("historyRetry").onclick=async()=>{historyError="";const result=await KS.flushCloudPersist();if(result&&result.error)historyError=result.error.message;render();};
   if($("fInput"))$("fInput").oninput=e=>{document.querySelectorAll("#pTbl tr[data-r]").forEach(tr=>tr.style.display=tr.dataset.r.includes(e.target.value.toLowerCase())?"":"none");};
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>showDrawer(b.dataset.view));
   document.querySelectorAll("input[type=checkbox][data-id]").forEach(c=>c.onchange=()=>{c.checked?sel.add(c.dataset.id):sel.delete(c.dataset.id);const n=$("nSel");if(n)n.textContent=sel.size;});
@@ -262,9 +372,9 @@ function bind(){
   document.querySelectorAll("[data-ship]").forEach(b=>b.onclick=()=>{const c=KS.S.campaigns.find(x=>x.id===b.dataset.ship);if(window.KlirTeam&&!window.KlirTeam.guard("campaigns"))return;const ch=KS.S.integrations.outreach;if(!ch||!ch.on)return alert("⛔ Envoi bloqué : configurez un canal d'envoi (Réglages → Intégrations) et respectez opt-out/consentement.");const bad=(c.drafts||[]).filter(d=>d.status!=="Approved");if(bad.length)return alert(`${bad.length} brouillon(s) non approuvés. Approuvez tout avant envoi.`);c.status="Active";KS.save();KS.notify("Campagne envoyée (simulation, canal de démo) : "+c.name);KS.audit("campaign.sent",c.name+" via "+(ch.name||"canal"));render();});
   if($("saveSet"))$("saveSet").onclick=()=>{if(window.KlirTeam&&!window.KlirTeam.guard("settings"))return;KS.S.org.name=$("setOrg").value;KS.save();KS.addActivity("Réglages mis à jour");};
   if($("wipeBtn"))$("wipeBtn").onclick=()=>{if(confirm("Effacer définitivement toutes les données de cet onglet ?")){KS.deleteAccount();location.hash="#/landing";location.reload();}};
-  if($("profLogout"))$("profLogout").onclick=async()=>{if(authState.user&&window.KlirAuth){const result=await window.KlirAuth.signOut();if(result.error)return alert(result.error.message);}KS.logoutUser();nav("/landing");render();};
-  if($("profileSave"))$("profileSave").onclick=async()=>{const result=await window.KlirAuth.updateProfile($("profileName").value);$("profileMsg").textContent=result.error?result.error.message:"Profil enregistré.";if(!result.error){authState=window.KlirAuth.state();render();}};
-  if($("profileMigrate"))$("profileMigrate").onclick=async()=>{if(!confirm("Copier les données de cette session vers votre espace Supabase protégé par RLS et quitter le mode démo ?"))return;const result=await window.KlirAuth.migrateDemo(KS.S);if(result.error){$("profileMsg").textContent=result.error.message;return;}const next=window.KlirAuth.state();await syncAuthState(next);render();};
+  if($("profLogout"))$("profLogout").onclick=()=>leaveAccount();
+  if($("profileSave"))$("profileSave").onclick=async()=>{const result=await window.KlirAuth.updateProfile($("profileName").value);profileNotice=result.error?result.error.message:"Profil enregistré.";if(!result.error)authState=window.KlirAuth.state();render();};
+  if($("profileResync"))$("profileResync").onclick=()=>{resyncAccount();};if($("profileMigrate"))$("profileMigrate").onclick=async()=>{const stash=KS.peekDemoStash();if(!stash)return;if(!confirm("Copier les recherches de démonstration de cet onglet vers ce compte ? Les recherches déjà enregistrées sont conservées."))return;const merged=window.KlirAuth.mergeWorkspace(KS.S,stash);const result=await window.KlirAuth.migrateDemo(merged);if(result.error){profileNotice=result.error.message;render();return;}KS.S=merged;KS.takeDemoStash();KS.save();profileNotice="Recherches démo ajoutées sans effacer l'historique du compte.";render();};
   if($("deleteAccount"))$("deleteAccount").onclick=async()=>{const confirmation=$("deleteConfirm").value;const password=$("deletePassword").value;if(confirmation!=="SUPPRIMER")return alert("Écrivez SUPPRIMER pour confirmer.");if(!confirm("Supprimer définitivement le compte et toutes ses données ?"))return;const result=await window.KlirAuth.deleteAccount(confirmation,password);if(result.error)return alert(result.error.message||"Suppression impossible.");KS.logoutUser();nav("/landing");render();};
   if($("profBackMine"))$("profBackMine").onclick=()=>{if(window.KlirTeam)window.KlirTeam.leave();};
   if(window.WebAI&&window.WebAI.bindPage)try{window.WebAI.bindPage();}catch(e){}
@@ -276,15 +386,42 @@ function bind(){
   if(window.KlirNuage&&window.KlirNuage.bind)try{window.KlirNuage.bind();}catch(e){}
   drawCharts();
 }
-async function runSearch(q){
+function relaunchSearch(id){
+  const s=KS.S.searches.find(x=>x.id===id);
+  if(!s)return;
+  const q=s.query||(s.params&&s.params.raw)||"";
+  if(!String(q).trim())return alert("Cette recherche n'a pas de paramètres à relancer.");
+  nav("/prospecting/new");
+  const input=document.getElementById("qInput");
+  if(input)input.value=q;
+  runSearch(q,s.params);
+}
+function deleteSavedSearch(id){
+  const s=KS.S.searches.find(x=>x.id===id);
+  if(!s)return;
+  if(!confirm("Supprimer cette recherche et ses résultats de votre compte ?"))return;
+  KS.removeSearch(id);
+  KS.audit("search.deleted",s.label||id);
+  render();
+}
+async function runSearch(q,savedParams){
+  searchRunning=true;
+  try{
   const L=window.KlirStore.LIMITS[KS.S.plan];
   if(KS.S.usage.searches>=L.searches)return alert(`Limite du plan ${KS.S.plan} atteinte (${L.searches} recherches/mois). Changez de plan dans Réglages.`);
   if(!q||!q.trim())return alert("Décrivez d'abord le type de client recherché.");if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
   const _costQ=(E.parseQuery(q).quantity||100);
   if(!spendCredits(5+Math.ceil(_costQ/10),"Recherche"))return;
   const params=E.parseQuery(q);
-  if(!document.getElementById("advBox").hidden){params.industry=document.getElementById("aInd").value;params.cityKey=document.getElementById("aCity").value;params.city=KlirData.CITIES[params.cityKey];params.quantity=parseInt(document.getElementById("aQty").value)||100;params.size=document.getElementById("aSize").value;}
-  try{var _wfn=(window.WebIntel?window.WebIntel.parseFilter(q):{});var _wfc={};document.querySelectorAll("[data-webf]:checked").forEach(c=>{_wfc[c.dataset.webf]=true;});params.webFilter=Object.assign({},_wfn,_wfc);}catch(e){params.webFilter={};}
+  if(savedParams&&typeof savedParams==="object"){
+    if(savedParams.industry)params.industry=savedParams.industry;
+    if(savedParams.cityKey)params.cityKey=savedParams.cityKey;
+    if(savedParams.city)params.city=savedParams.city;
+    if(savedParams.quantity)params.quantity=savedParams.quantity;
+    if(savedParams.size)params.size=savedParams.size;
+    if(savedParams.webFilter)params.webFilter=savedParams.webFilter;
+  }else if(document.getElementById("advBox")&&!document.getElementById("advBox").hidden){params.industry=document.getElementById("aInd").value;params.cityKey=document.getElementById("aCity").value;params.city=KlirData.CITIES[params.cityKey];params.quantity=parseInt(document.getElementById("aQty").value)||100;params.size=document.getElementById("aSize").value;}
+  try{var _wfn=(window.WebIntel?window.WebIntel.parseFilter(q):{});var _wfc={};document.querySelectorAll("[data-webf]:checked").forEach(c=>{_wfc[c.dataset.webf]=true;});params.webFilter=Object.assign({},(savedParams&&savedParams.webFilter)||{},_wfn,_wfc);}catch(e){if(!params.webFilter)params.webFilter={};}
   document.getElementById("parsed").innerHTML=`<div class="grid4"><div class="card"><small>Industry</small><b>${KlirData.INDUSTRIES[params.industry].label}</b></div><div class="card"><small>Location</small><b>${params.city.city}</b></div><div class="card"><small>Quantity</small><b>${params.quantity}</b></div><div class="card"><small>Taille</small><b>${params.size||"PME"}</b></div></div>`;
   const prog=document.getElementById("prog"); prog.innerHTML=`<div class="card"><b id="pt">Recherche en cours...</b><div class="bar"><div id="pb" style="width:5%"></div></div><small id="ps"></small></div>`;
   const steps=[["Analyse IA de la requête",15],["Sources analysées : 2/7",35],["Sources analysées : 4/7",55],["Normalisation + déduplication",75],["Qualification IA + scoring",90]];
@@ -293,13 +430,14 @@ async function runSearch(q){
   const {unique,dups}=E.dedup(raw);
   const final=unique.slice(0,params.quantity).map(p=>{const sc=E.scoreProspect(p,params,KS.S.weights);return {...p,...{dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score},ai:E.aiAnalysis(p,params),searchId:null,icp:KS.S.icp?E.icpFit(p,KS.S.icp):null};});
   try{if(window.OppEngine){final.forEach(p=>window.OppEngine.attach(p,params));var _of=window.OppEngine.parse(params.raw||q||"");if(_of.service||_of.sort==="opp"||_of.minOpp!=null){params.oppSort=_of.sort||"opp";params.oppService=_of.service||null;params.oppMin=_of.minOpp!=null?_of.minOpp:null;}}}catch(e){}
-  const s={id:KS.uid("s"),label:`${KlirData.INDUSTRIES[params.industry].label} ${params.city.city} — ${final.length} prospects`,date:new Date().toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:dups.length};
+  const s={id:KS.uid("s"),query:String(q||"").trim(),status:"terminée",label:`${KlirData.INDUSTRIES[params.industry].label} ${params.city.city} — ${final.length} prospects`,date:new Date().toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:dups.length};
   try{if(window.WebIntel&&params.webFilter&&Object.keys(params.webFilter).length){var _fw=params.webFilter;var _hasWebF=_fw.webActive||_fw.noSite||_fw.webInactive||_fw.regInactive;if(_hasWebF){var _ff=final.filter(p=>{var has=!!(p.website||p.domain);if(_fw.webActive)return has;return !has;});if(_ff.length){_ff.forEach(p=>{p.searchId=s.id;if(!p.website&&!p.domain){window.WebIntel.ensure(p);p.website_status="INACTIVE";p.domain_status="UNKNOWN";}});KS.S.searches.unshift(Object.assign({},s,{label:s.label+" 🌐",total:_ff.length,qual:_ff.filter(p=>p.rel>=75).length}));KS.S.prospects=[..._ff,...KS.S.prospects];KS.S.usage.searches++;KS.S.usage.prospects+=_ff.length;KS.save();KS.addActivity(`${_ff.length} prospects trouvés (filtre présence numérique)`);KS.notify(`Recherche terminée : ${_ff.length} prospects (filtre 🌐). Vérification des sites en arrière-plan.`);KS.audit("search.completed",s.label+" [webfilter]");curSearch=KS.S.searches[0].id;sel=new Set(_ff.filter(p=>p.rel>=75).slice(0,10).map(p=>p.id));nav("/prospecting/results/"+curSearch);try{var _ids=_ff.map(p=>p.id);window.WebIntel.bulkCheck(_ids,{onProgress:(d,t)=>{var el=document.getElementById("webProg");if(el)el.textContent="Website verification in progress... "+d+" / "+t;}}).then(st=>{try{KS.save();}catch(e){}var el2=document.getElementById("webProg");if(el2)el2.textContent="Website check terminé : "+st.active+" actifs • "+st.inactive+" inactifs • "+st.available+" disponibles • "+st.unknown+" inconnus.";});}catch(e){}render();return;}}}}catch(e){}
   final.forEach(p=>p.searchId=s.id);
   KS.S.searches.unshift(s); KS.S.prospects=[...final,...KS.S.prospects]; KS.S.usage.searches++; KS.S.usage.prospects+=final.length; KS.save(); KS.addActivity(`${final.length} prospects trouvés (${dups.length} doublons supprimés)`); KS.notify(`Recherche terminée : ${final.length} prospects (${dups.length} doublons écartés).`); KS.audit("search.completed",s.label);
   curSearch=s.id; sel=new Set(final.filter(p=>p.rel>=75).slice(0,10).map(p=>p.id));
   nav("/prospecting/results/"+s.id);
   try{if(window.WebIntel&&window.WebIntel.settings().enabled){var _ids=final.map(p=>p.id);window.WebIntel.bulkCheck(_ids,{onProgress:(d,t)=>{var el=document.getElementById("webProg");if(el)el.textContent="Website verification in progress... "+d+" / "+t;}}).then(st=>{try{KS.save();}catch(e){}var el2=document.getElementById("webProg");if(el2)el2.textContent="Website check terminé : "+st.active+" actifs • "+st.inactive+" inactifs • "+st.available+" disponibles • "+st.unknown+" inconnus.";});}}catch(e){}
+  } finally { searchRunning=false; }
 }
 function toCrm(){if(window.KlirTeam&&!window.KlirTeam.guard("crm"))return;let n=0;for(const id of sel){const p=KS.S.prospects.find(x=>x.id===id);if(p&&!p.inCrm){p.inCrm=true;KS.S.crm.push({id:KS.uid("l"),company_name:p.company_name,city:p.city,stage:"New",prospectId:id,log:[{t:"Lead créé depuis la recherche",at:new Date().toLocaleString()}],lastActivity:new Date().toLocaleString()});n++;}}
   const s=KS.S.searches.find(x=>x.id===curSearch); if(s)s.crm+=n; KS.save(); KS.addActivity(`${n} prospects ajoutés au CRM`); KS.notify(`Import CRM terminé : ${n} prospects.`); KS.audit("crm.lead.created",n+" leads"); render();}
