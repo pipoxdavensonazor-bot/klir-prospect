@@ -48,6 +48,7 @@ function readSession(){
   }
 }
 var trustedLive = false;
+var cloudPersistEnabled = false;
 var _S = normalizeState(readSession());
 function save(){
   _S = normalizeState(_S);
@@ -117,8 +118,11 @@ function sendCloud(seq, snapshot, attempt) {
     noteCloudFailure(seq, snapshot, error && error.message);
   });
 }
+function setCloudPersistEnabled(on) {
+  cloudPersistEnabled = !!on;
+}
 function scheduleCloudPersist() {
-  if (!trustedLive || !window.KlirAuth || typeof window.KlirAuth.persistWorkspace !== "function") return;
+  if (!trustedLive || !cloudPersistEnabled || !window.KlirAuth || typeof window.KlirAuth.persistWorkspace !== "function") return;
   var seq = ++cloudSeq;
   var snapshot = structuredClone(_S);
   cloudStatus = "saving";
@@ -157,6 +161,9 @@ function cloudSyncState() {
   return { status: cloudStatus, error: cloudError };
 }
 function removeSearch(id) {
+  var sid = String(id);
+  _S.removedSearchIds = Array.isArray(_S.removedSearchIds) ? _S.removedSearchIds : [];
+  if (_S.removedSearchIds.indexOf(sid) < 0) _S.removedSearchIds.push(sid);
   _S.searches = (_S.searches || []).filter(function (item) { return item.id !== id; });
   _S.prospects = (_S.prospects || []).filter(function (item) { return item.searchId !== id; });
   save();
@@ -227,6 +234,7 @@ window.KlirStore = {
   startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
   stashDemoState: stashDemoState, peekDemoStash: peekDemoStash, takeDemoStash: takeDemoStash,
   flushCloudPersist: flushCloudPersist, pendingOutbox: pendingOutbox, cloudSyncState: cloudSyncState, removeSearch: removeSearch,
+  setCloudPersistEnabled: setCloudPersistEnabled,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
   restoreKv: async function(){ return null; }, getAccounts: function(){ return {}; },

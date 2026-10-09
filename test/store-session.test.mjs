@@ -47,6 +47,7 @@ test("une session de compte envoie les recherches au stockage du compte", async 
     }
   };
   store.setTrustedLive(true);
+  store.setCloudPersistEnabled(true);
   store.S.user = { email: "ada@example.com", id: "11111111-1111-1111-1111-111111111111" };
   store.S.searches = [{ id: "s1", label: "Rénovation Montréal", total: 10 }];
   store.S.prospects = [{ id: "p1", company_name: "Nord Rénovation", searchId: "s1" }];
@@ -107,6 +108,7 @@ test("une suppression retire la recherche envoyée au compte", async () => {
     }
   };
   store.setTrustedLive(true);
+  store.setCloudPersistEnabled(true);
   store.S.user = { id: "11111111-1111-1111-1111-111111111111", email: "ada@example.com" };
   store.S.searches = [{ id: "s1", label: "À garder" }, { id: "s2", label: "À supprimer" }];
   store.S.prospects = [{ id: "p1", searchId: "s1" }, { id: "p2", searchId: "s2" }];
@@ -117,6 +119,30 @@ test("une suppression retire la recherche envoyée au compte", async () => {
   assert.equal(store.S.prospects.length, 1);
   assert.equal(calls.at(-1).searches.length, 1);
   assert.equal(calls.at(-1).prospects[0].searchId, "s1");
+  assert.deepEqual(calls.at(-1).removedSearchIds, ["s2"]);
+});
+
+test("tant que l'historique n'est pas chargé, une sauvegarde n'écrase pas le compte", async () => {
+  const { store, sandbox } = await loadStore();
+  const calls = [];
+  sandbox.KlirAuth = {
+    persistWorkspace(payload) {
+      calls.push(payload);
+      return Promise.resolve({ data: {}, error: null });
+    }
+  };
+  store.setTrustedLive(true);
+  store.S.user = { id: "11111111-1111-1111-1111-111111111111", email: "ada@example.com" };
+  store.S.searches = [];
+  store.save();
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  assert.equal(calls.length, 0);
+  store.setCloudPersistEnabled(true);
+  store.S.searches = [{ id: "s1", label: "Après chargement" }];
+  store.save();
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].searches[0].id, "s1");
 });
 
 test("une session migrée peut quitter le mode démo, puis la déconnexion le rétablit", async () => {

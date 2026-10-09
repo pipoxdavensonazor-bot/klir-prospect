@@ -3,7 +3,9 @@ var App=document.getElementById("app");
 var sel=new Set(), curSearch=null, adv={industry:"construction",city:"montréal",qty:100,size:"11–50"};
 var authState={configured:false,user:null,profile:null,passwordRecovery:false};
 var historyLoading=false;
+var historyLoadFailed=false;
 var historyError="";
+var syncSeq=0;
 var searchRunning=false;
 var profileNotice="";
 var resyncing=false;
@@ -15,17 +17,22 @@ function esc(value){return window.KlirSecurity.text(value, 300);}
 function applyAuthState(next){authState=next||authState;if(authState.user){KS.S.user={email:authState.user.email,id:authState.user.id};KS.S.org=KS.S.org||{name:esc((authState.profile&&authState.profile.display_name)||"")||"Mon espace",city:""};KS.save();}}
 async function syncAuthState(next){
   authState=next||authState;
+  const seq=++syncSeq;
   historyLoading=true;
   historyError="";
   KS.setTrustedLive(false);
+  if(KS.setCloudPersistEnabled)KS.setCloudPersistEnabled(false);
   try{
     if(authState.user&&window.KlirAuth&&typeof window.KlirAuth.loadWorkspace==="function"){
       let cloud={data:null,error:null};
       try{cloud=await window.KlirAuth.loadWorkspace();}catch(error){cloud={data:null,error:{message:error.message}};}
+      if(seq!==syncSeq)return;
       if(cloud.error){
+        historyLoadFailed=true;
         historyError=cloud.error.message||"Impossible de charger l'historique.";
         KS.setTrustedLive(true);
       }else if(typeof window.KlirAuth.accountSessionPlan==="function"){
+        historyLoadFailed=false;
         const plan=window.KlirAuth.accountSessionPlan(KS.S,cloud.data,authState.user.email);
         if(plan.source==="empty"){
           if(plan.stashDemo)KS.stashDemoState();
@@ -37,15 +44,19 @@ async function syncAuthState(next){
         }
         const pending=KS.pendingOutbox?KS.pendingOutbox(authState.user.id):null;
         if(pending&&window.KlirAuth.mergeWorkspace)KS.S=window.KlirAuth.mergeWorkspace(KS.S,pending);
+        if(KS.setCloudPersistEnabled)KS.setCloudPersistEnabled(true);
       }
     }
+    if(seq!==syncSeq)return;
     applyAuthState(authState);
   }finally{
-    historyLoading=false;
+    if(seq===syncSeq)historyLoading=false;
   }
 }
 async function leaveAccount(){
-  if(KS.flushCloudPersist&&KS.S&&!KS.S.demo){
+  const sameAccount=!!(authState.user&&KS.S&&KS.S.user&&KS.S.user.id===authState.user.id);
+  if(KS.flushCloudPersist&&sameAccount){
+    KS.setTrustedLive(true);
     const flushed=await KS.flushCloudPersist();
     if(flushed&&flushed.error)alert("La dernière recherche n'a pas pu être envoyée. Elle reste sur cet appareil et sera réessayée à la prochaine connexion.");
   }
@@ -79,6 +90,7 @@ async function resyncAccount(){
     const pending=KS.pendingOutbox?KS.pendingOutbox(authState.user.id):null;
     const next=pending&&window.KlirAuth.mergeWorkspace?window.KlirAuth.mergeWorkspace(merged,pending):merged;
     KS.setTrustedLive(true);
+    if(KS.setCloudPersistEnabled)KS.setCloudPersistEnabled(true);
     KS.S=next;
     applyAuthState(authState);
     const saved=KS.flushCloudPersist?await KS.flushCloudPersist():{error:null};
@@ -245,7 +257,7 @@ function searchFilters(search){
 function vSearches(){
   const em=KS.S.user?KS.S.user.email:"—";
   const sync=KS.cloudSyncState?KS.cloudSyncState():{status:"idle",error:""};
-  const syncNote=KS.S.demo?"Démonstration : ces recherches restent dans cet onglet. Connectez-vous pour les enregistrer sur votre compte.":"Ces recherches sont enregistrées sur le compte. Le même compte sur un autre ordinateur retrouve les mêmes recherches, prospects et CRM.";
+  const syncNote=KS.S.demo?"Démonstration : ces recherches restent dans cet onglet. Connectez-vous pour les enregistrer sur votre compte.":sync.status==="saving"?"Enregistrement des recherches sur le compte…":sync.status==="error"?"Les recherches de cet appareil sont conservées. L'envoi vers le compte sera réessayé.":"Ces recherches sont enregistrées sur le compte. Le même compte sur un autre ordinateur retrouve les mêmes recherches, prospects et CRM.";
   if(historyLoading)return `<h1>Historique des recherches</h1><div class="card"><p>Chargement de l'historique…</p></div>`;
   const err=historyError||(sync.status==="error"?sync.error:"");
   const cards=KS.S.searches.map(s=>{
@@ -253,7 +265,7 @@ function vSearches(){
     const saved=KS.S.prospects.filter(p=>p.searchId===s.id&&p.status!=="Archived").length;
     return `<div class="card row"><div><b>${esc(s.label||info.keywords||"Recherche")}</b><br><small>${esc(info.date||"—")} · Mots-clés : ${esc(info.keywords||"—")} · Filtres : ${esc(searchFilters(s))} · Statut : ${esc(info.status)} · ${saved} résultat(s) enregistré(s)</small></div><div class="rowb"><button type="button" data-open="${esc(s.id)}">Voir</button><button type="button" data-rerun="${esc(s.id)}">Relancer</button><button type="button" data-delsearch="${esc(s.id)}">Supprimer</button></div></div>`;
   }).join("");
-  return `<h1>Historique des recherches</h1><div class="card"><small>Compte : <b>${esc(em)}</b> • ${KS.S.searches.length} recherche(s) • ${KS.S.prospects.length} prospect(s). ${syncNote}${sync.status==="saving"?" Enregistrement…":""}</small></div>${err?`<div class="card"><p>${esc(err)}</p><button type="button" id="historyRetry">Réessayer l'enregistrement</button></div>`:""}${cards||"<div class='card'>Aucune recherche enregistrée sur ce compte. Lancez-en une via <a href='#/prospecting/new'>New Search</a>.</div>"}`;
+  return `<h1>Historique des recherches</h1><div class="card"><small>Compte : <b>${esc(em)}</b> • ${KS.S.searches.length} recherche(s) • ${KS.S.prospects.length} prospect(s). ${syncNote}</small></div>${err?`<div class="card"><p>${esc(err)}</p><button type="button" id="historyRetry">${historyLoadFailed?"Réessayer le chargement":"Réessayer l'enregistrement"}</button></div>`:""}${cards||"<div class='card'>Aucune recherche enregistrée sur ce compte. Lancez-en une via <a href='#/prospecting/new'>New Search</a>.</div>"}`;
 }
 function dupPairs(rows){ const byN={},byP={},out=[],seen=new Set(); for(const p of rows){ const k=E.normStr(p.company_name); (byN[k]=byN[k]||[]).push(p); if(p.phone){ const ph=E.normPhone(p.phone); (byP[ph]=byP[ph]||[]).push(p); } } const byE={}; for(const p of rows){ if(!p.public_email)continue; const e=p.public_email.toLowerCase().trim(); (byE[e]=byE[e]||[]).push(p); } const push=(a,b,why,lv)=>{ const key=[a.id,b.id].sort().join("+"); if(a.id!==b.id&&!seen.has(key)){ seen.add(key); const exact=lv||((a.domain&&a.domain===b.domain)||(a.phone&&a.phone===b.phone)); out.push({a,b,why,level:exact?"exact":"possible"}); } }; for(const k of Object.keys(byN)){ const g=byN[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même nom normalisé"); } } for(const k of Object.keys(byP)){ const g=byP[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même téléphone","exact"); } } for(const k of Object.keys(byE)){ const g=byE[k]; if(g.length>1&&k){ for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++)push(g[i],g[j],"même email","exact"); } } return out; } function mergeProspects(aId,bId){ const a=KS.S.prospects.find(x=>x.id===aId),b=KS.S.prospects.find(x=>x.id===bId); if(!a||!b)return; const keep=a.rel>=b.rel?a:b,drop=keep===a?b:a; for(const f of ["website","domain","phone","public_email","address","description","website_url","website_status","website_http_status","website_https","website_redirect_url","website_last_checked","domain_name","domain_status","domain_source","domain_last_checked","dns_status","ssl_status","website_confidence","domain_confidence"])if(!keep[f]&&drop[f])keep[f]=drop[f]; keep.signals=[...new Set([...keep.signals,...drop.signals])]; drop.status="Archived"; KS.save(); KS.addActivity("Doublons fusionnés : "+keep.company_name); KS.audit("prospect.merged",keep.company_name); } function vResults(id){const s=KS.S.searches.find(x=>x.id===id); if(!s)return "<p>Recherche introuvable.</p>";
 const rows=KS.S.prospects.filter(p=>p.searchId===id&&p.status!=="Archived");
@@ -316,7 +328,7 @@ function bind(){
   document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{location.hash="#/prospecting/results/"+b.dataset.open;});
   document.querySelectorAll("[data-rerun]").forEach(b=>b.onclick=()=>relaunchSearch(b.dataset.rerun));
   document.querySelectorAll("[data-delsearch]").forEach(b=>b.onclick=()=>deleteSavedSearch(b.dataset.delsearch));
-  if($("historyRetry"))$("historyRetry").onclick=async()=>{historyError="";const result=await KS.flushCloudPersist();if(result&&result.error)historyError=result.error.message;render();};
+  if($("historyRetry"))$("historyRetry").onclick=async()=>{historyError="";if(historyLoadFailed){await syncAuthState(authState);}else{const result=await KS.flushCloudPersist();if(result&&result.error)historyError=result.error.message;}render();};
   if($("fInput"))$("fInput").oninput=e=>{document.querySelectorAll("#pTbl tr[data-r]").forEach(tr=>tr.style.display=tr.dataset.r.includes(e.target.value.toLowerCase())?"":"none");};
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>showDrawer(b.dataset.view));
   document.querySelectorAll("input[type=checkbox][data-id]").forEach(c=>c.onchange=()=>{c.checked?sel.add(c.dataset.id):sel.delete(c.dataset.id);const n=$("nSel");if(n)n.textContent=sel.size;});

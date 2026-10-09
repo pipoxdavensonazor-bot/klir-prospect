@@ -3,6 +3,7 @@ import {
   CONFIRM_PHRASE,
   accountSessionPlan,
   appRedirectUrl,
+  combineWorkspace,
   describeSearch,
   mergeWorkspace,
   resyncWorkspace,
@@ -173,13 +174,16 @@ let workspaceQueue = Promise.resolve();
 async function writeWorkspace(payload) {
   const supabase = await requireClient();
   if (!currentUser) throw new Error("Session requise.");
+  const existing = await supabase.from("workspace_states").select("payload").eq("user_id", currentUser.id).maybeSingle();
+  if (existing.error) return existing;
   const cleanPayload = workspaceForMigration(window.KlirSecurity.cleanState(payload || {}));
-  const serialized = JSON.stringify(cleanPayload);
+  const combined = combineWorkspace(existing.data && existing.data.payload, cleanPayload);
+  const serialized = JSON.stringify(combined);
   if (new Blob([serialized]).size > 2 * 1024 * 1024) throw new Error("Les données dépassent 2 Mo.");
   const result = await supabase.from("workspace_states").upsert({
     user_id: currentUser.id,
     schema_version: 1,
-    payload: cleanPayload
+    payload: combined
   }, { onConflict: "user_id" }).select("updated_at").single();
   if (!result.error && (!currentProfile || !currentProfile.demo_migrated_at)) await hydrate();
   return result;
@@ -272,6 +276,7 @@ window.KlirAuth = {
   migrateDemo,
   persistWorkspace,
   accountSessionPlan,
+  combineWorkspace,
   describeSearch,
   mergeWorkspace,
   resyncWorkspace,
