@@ -5,6 +5,7 @@ import {
   appRedirectUrl,
   describeSearch,
   displayName,
+  combineWorkspace,
   mergeWorkspace,
   parseAuthCallback,
   resyncWorkspace,
@@ -82,6 +83,7 @@ test("le même compte recharge les recherches distantes et laisse la démo de c�
   );
   assert.equal(unsynced.source, "local");
   assert.equal(unsynced.state.searches[0].label, "Québec");
+  assert.ok(unsynced.state.searches.some((item) => item.id === "cloud"));
 
   const foreign = accountSessionPlan(
     { demo: false, user: { email: "ada@example.com" }, searches: [{ id: "local", label: "Québec" }], prospects: [{ id: "p" }], _savedAt: Date.now() },
@@ -98,6 +100,41 @@ test("le même compte recharge les recherches distantes et laisse la démo de c�
   );
   assert.equal(foreignCloud.source, "cloud");
   assert.equal(foreignCloud.state.searches[0].label, "Bea");
+});
+
+test("une session locale vide ne remplace pas l'historique du compte", () => {
+  const kept = accountSessionPlan(
+    { demo: false, user: { email: "ada@example.com" }, searches: [], _savedAt: Date.parse("2026-10-09T12:00:00.000Z") },
+    { payload: { searches: [{ id: "cloud", label: "Montréal" }], prospects: [{ id: "p", searchId: "cloud" }] }, updated_at: "2026-10-09T00:00:00.000Z" },
+    "ada@example.com"
+  );
+  assert.equal(kept.source, "cloud");
+  assert.equal(kept.state.searches[0].id, "cloud");
+  const explicit = accountSessionPlan(
+    { demo: false, user: { email: "ada@example.com" }, searches: [], removedSearchIds: ["cloud"], _savedAt: Date.parse("2026-10-09T12:00:00.000Z") },
+    { payload: { searches: [{ id: "cloud", label: "Montréal" }, { id: "keep", label: "Québec" }] }, updated_at: "2026-10-09T00:00:00.000Z" },
+    "ada@example.com"
+  );
+  assert.equal(explicit.source, "local");
+  assert.deepEqual(explicit.state.searches.map((item) => item.id), ["keep"]);
+});
+
+test("une liste vide n'efface pas les recherches déjà enregistrées", () => {
+  const kept = combineWorkspace(
+    { searches: [{ id: "s1", label: "Serveur" }], prospects: [{ id: "p1", searchId: "s1" }] },
+    { searches: [], prospects: [], org: { name: "Klirline" } }
+  );
+  assert.equal(kept.searches[0].id, "s1");
+  assert.equal(kept.prospects[0].searchId, "s1");
+  assert.equal(kept.org.name, "Klirline");
+  const dropped = combineWorkspace(
+    { searches: [{ id: "s1" }, { id: "s2" }], prospects: [{ id: "p1", searchId: "s1" }, { id: "p2", searchId: "s2" }] },
+    { searches: [{ id: "s1", label: "Ici" }], removedSearchIds: ["s2"] }
+  );
+  assert.deepEqual(dropped.searches.map((item) => item.id), ["s1"]);
+  assert.equal(dropped.searches[0].label, "Ici");
+  assert.equal(dropped.prospects.length, 1);
+  assert.equal(dropped.prospects[0].searchId, "s1");
 });
 
 test("la migration ajoute les recherches manquantes et garde celles du compte", () => {

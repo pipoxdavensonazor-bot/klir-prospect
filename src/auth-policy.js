@@ -89,7 +89,15 @@ export function accountSessionPlan(localState, cloudRow, accountEmail) {
   if (payload && isAccountState(local, sessionEmail)) {
     const localSaved = Number(local._savedAt) || 0;
     const cloudSaved = cloudRow.updated_at ? Date.parse(cloudRow.updated_at) : 0;
-    if (localSaved > cloudSaved) return { source: "local", state: local, stashDemo: false };
+    if (localSaved > cloudSaved) {
+      const localCount = Array.isArray(local.searches) ? local.searches.length : 0;
+      const cloudCount = Array.isArray(payload.searches) ? payload.searches.length : 0;
+      const removed = removedIds(local);
+      if (localCount === 0 && cloudCount > 0 && removed.length === 0) {
+        return { source: "cloud", state: payload, stashDemo: false };
+      }
+      return { source: "local", state: combineWorkspace(payload, local), stashDemo: false };
+    }
   }
   if (payload) return { source: "cloud", state: payload, stashDemo: false };
   if (isAccountState(local, sessionEmail)) return { source: "local", state: local, stashDemo: false };
@@ -119,13 +127,32 @@ export function mergeWorkspace(base, incoming) {
   return account;
 }
 
+function removedIds(state) {
+  const list = state && Array.isArray(state.removedSearchIds) ? state.removedSearchIds : [];
+  return list.map((id) => String(id)).filter(Boolean);
+}
+
+export function combineWorkspace(existing, incoming) {
+  const prior = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
+  const next = incoming && typeof incoming === "object" && !Array.isArray(incoming) ? incoming : {};
+  const merged = mergeWorkspace(next, prior);
+  const removed = [...new Set([...removedIds(prior), ...removedIds(next)])].slice(-5000);
+  merged.removedSearchIds = removed;
+  if (removed.length) {
+    const gone = new Set(removed);
+    merged.searches = (merged.searches || []).filter((item) => item && !gone.has(String(item.id)));
+    merged.prospects = (merged.prospects || []).filter((item) => !item || !gone.has(String(item.searchId)));
+  }
+  return merged;
+}
+
 export function resyncWorkspace(localState, cloudRow) {
   const local = localState && typeof localState === "object" && !Array.isArray(localState) ? localState : {};
   const payload = cloudRow && cloudRow.payload && typeof cloudRow.payload === "object" && !Array.isArray(cloudRow.payload)
     ? cloudRow.payload
     : null;
   if (!payload) return local;
-  return mergeWorkspace(local, payload);
+  return combineWorkspace(payload, local);
 }
 
 export function describeSearch(search) {
