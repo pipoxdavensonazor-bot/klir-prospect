@@ -203,7 +203,12 @@ function startDemo(){
 function disabledAuth(){
   return { err: "Authentification désactivée : un backend avec sessions HttpOnly est requis." };
 }
-function logoutUser(){ trustedLive = false; _S = blankState(); sessionStorage.removeItem(LS); }
+function logoutUser(){ trustedLive = false; cloudPersistEnabled = false; _S = blankState(); sessionStorage.removeItem(LS); }
+if (typeof window.addEventListener === "function") {
+  window.addEventListener("pagehide", function () {
+    if (trustedLive && cloudPersistEnabled) flushCloudPersist();
+  });
+}
 function deleteAccount(){
   logoutUser();
   return { ok: true };
