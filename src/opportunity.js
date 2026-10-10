@@ -22,17 +22,17 @@ function detectSignals(p, params){var W = oppCfg().signalW;var S = [];var now = 
   if (!p.public_email) add("digital_presence", "missing_business_information", "Aucun e-mail professionnel public renseigné", "fiche prospect", 0.80, 6, "digital");
   if (!p.social_links || !Object.keys(p.social_links).length) add("marketing", "weak_social_presence", "Aucun réseau social public détecté", "fiche prospect", 0.70, W.weak_social_presence, "marketing");
   if ((p.signals || []).includes("Présence numérique active")) add("marketing", "visible_online", "Présence numérique active détectée", "fiche prospect", 0.70, 0, "marketing");
-  else add("marketing", "low_content_activity", "Activité de contenu limitée détectée", "fiche prospect", 0.60, W.low_content_activity, "marketing");
+  else add("marketing", "low_content_activity", "Hypothèse : aucun contenu publié n'a été observé", "fiche prospect", 0.60, W.low_content_activity, "marketing");
   if (!hasDom || ws !== "ACTIVE") add("marketing", "weak_local_visibility", "Visibilité locale potentiellement limitée (site non actif)", "Website Intelligence", 0.60, W.weak_local_visibility, "marketing");
-  if ((p.signals || []).includes("Recrutement")) add("growth", "hiring_signal", "Signal recrutement détecté", "fiche prospect", 0.70, W.hiring_signal, "growth");
-  if ((p.signals || []).includes("Expansion")) add("growth", "expansion_signal", "Signal expansion détecté", "fiche prospect", 0.70, W.expansion_signal, "growth");
-  if ((p.signals || []).includes("Entreprise récente")) add("growth", "new_business", "Entreprise récente", "fiche prospect", 0.75, W.new_business, "growth");
-  if ((p.signals || []).includes("Nouveau site")) add("growth", "new_service", "Nouveau site / nouveau service détecté", "fiche prospect", 0.65, W.new_service, "growth");
+  if ((p.signals || []).includes("Recrutement")) add("growth", "hiring_signal", "Mention déjà sur la fiche : recrutement. Non revérifiée, pas un événement confirmé.", "fiche prospect", 0.70, W.hiring_signal, "growth");
+  if ((p.signals || []).includes("Expansion")) add("growth", "expansion_signal", "Mention déjà sur la fiche : expansion. Non revérifiée, pas un événement confirmé.", "fiche prospect", 0.70, W.expansion_signal, "growth");
+  if ((p.signals || []).includes("Entreprise récente")) add("growth", "new_business", "Mention déjà sur la fiche : entreprise récente. Non revérifiée.", "fiche prospect", 0.75, W.new_business, "growth");
+  if ((p.signals || []).includes("Nouveau site")) add("growth", "new_service", "Mention déjà sur la fiche : nouveau site. Non revérifiée, pas un événement confirmé.", "fiche prospect", 0.65, W.new_service, "growth");
   if ((p.employee_range === "51–200" || p.employee_range === "201–500" || p.employee_range === "500+")) add("growth", "multiple_locations", "Taille d'entreprise compatible multi-sites", "fiche prospect", 0.55, W.multiple_locations, "growth");
   var ik = p.industry_key || (params && params.industry) || "";
   if (ik === "construction" || oppHas(p, /construction|rénovation|renovation|entrepreneur|contracteur|contractor|plomberie|plumbing|électricité|electrical|toiture|roofing|maçonnerie|peinture|bâtiment|architecture|ingénierie|engineering|sous-traitant|subcontract/)) add("construction", "construction_fit", "Profil bâtiment / construction détecté", "fiche prospect", 0.90, W.construction_fit, "construction");
   if ((p.signals || []).length >= 3) add("digitalization", "fragmented_presence", "Présence publique fragmentée (plusieurs signaux)", "fiche prospect", 0.60, W.fragmented_presence, "digitalization");
-  if (!hasDom || (p.signals || []).length <= 1) add("digitalization", "limited_digital_presence", "Présence numérique limitée détectée", "Website Intelligence", 0.65, 8, "digitalization");
+  if (!hasDom || (p.signals || []).length <= 1) add("digitalization", "limited_digital_presence", "Hypothèse : peu d'éléments publiés sur la fiche, pas un site confirmé inactif", "Website Intelligence", 0.65, 8, "digitalization");
   return S;}
 function scoreIcp(p, params){var s = 0;var ind = (params && params.industry) || p.industry_key;var city = params && params.city ? params.city.city : null;
   if (!ind || ind === "all" || (p.industry_key && p.industry_key === ind)) s += 25;else if (p.industry) s += 8;
