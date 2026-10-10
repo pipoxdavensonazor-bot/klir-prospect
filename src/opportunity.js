@@ -1,4 +1,25 @@
 var OPP_V = "opportunity_engine_v1";
+var SIGNAL_LABELS = {
+  no_active_website: "Aucun site publié sur la fiche",
+  website_inactive: "Site publié sans réponse active à la dernière vérification",
+  weak_digital_presence: "Présence numérique non confirmée",
+  https_issue: "HTTPS non confirmé",
+  missing_business_information: "Courriel professionnel non publié",
+  weak_social_presence: "Réseau social non publié sur la fiche",
+  visible_online: "Mention de présence numérique, non revérifiée",
+  low_content_activity: "Hypothèse : contenu publié non observé",
+  weak_local_visibility: "Hypothèse : visibilité locale limitée",
+  hiring_signal: "Mention de recrutement, non revérifiée",
+  expansion_signal: "Mention d'expansion, non revérifiée",
+  new_service: "Mention de nouveau site, non revérifiée",
+  multiple_locations: "Taille indiquée compatible avec plusieurs sites, non vérifiée",
+  new_business: "Mention d'entreprise récente, non revérifiée",
+  construction_fit: "Secteur construction indiqué, pas une découverte",
+  growth_signal: "Indice de croissance calculé",
+  fragmented_presence: "Hypothèse : présence fragmentée",
+  limited_digital_presence: "Hypothèse : présence numérique limitée"
+};
+function signalLabel(name){return SIGNAL_LABELS[name] || "";}
 var OPP_SERVICES = {
   KLIRBUILD: {label: "KlirBuild", action: "Contacter pour proposer une démonstration KlirBuild."},
   KLIRLINE: {label: "Klirline OS", action: "Proposer une démonstration Klirline OS."},
@@ -16,12 +37,12 @@ function detectSignals(p, params){var W = oppCfg().signalW;var S = [];var now = 
   var ws = p.website_status || "UNKNOWN";
   if (!hasDom) add("digital_presence", "no_active_website", "Aucun domaine renseigné sur la fiche", "fiche prospect", 0.90, W.no_active_website, "digital");
   else if (ws === "AVAILABLE") add("digital_presence", "no_active_website", "Domaine potentiellement disponible (source registre/RDAP)", p.domain_source || "RDAP", 0.85, W.no_active_website, "digital");
-  else if (ws === "INACTIVE" || ws === "REGISTERED_INACTIVE") add("digital_presence", "website_inactive", "Domaine enregistré mais aucun site web actif détecté", "Website Intelligence", 0.88, W.website_inactive, "digital");
+  else if (ws === "INACTIVE" || ws === "REGISTERED_INACTIVE") add("digital_presence", "website_inactive", "Vérification : domaine enregistré, aucun site actif à la dernière lecture. Ce n'est pas un événement commercial.", "Website Intelligence", 0.88, W.website_inactive, "digital");
   else if (ws === "UNKNOWN") add("digital_presence", "weak_digital_presence", "Présence numérique limitée : statut du site invérifiable", "Website Intelligence", 0.55, W.weak_digital_presence, "digital");
-  if (p.website_https === false) add("digital_presence", "https_issue", "HTTPS non détecté sur le site", "Website Intelligence", 0.75, W.https_issue, "digital");
+  if (p.website_https === false) add("digital_presence", "https_issue", "Vérification : HTTPS non confirmé sur le site publié.", "Website Intelligence", 0.75, W.https_issue, "digital");
   if (!p.public_email) add("digital_presence", "missing_business_information", "Aucun e-mail professionnel public renseigné", "fiche prospect", 0.80, 6, "digital");
-  if (!p.social_links || !Object.keys(p.social_links).length) add("marketing", "weak_social_presence", "Aucun réseau social public détecté", "fiche prospect", 0.70, W.weak_social_presence, "marketing");
-  if ((p.signals || []).includes("Présence numérique active")) add("marketing", "visible_online", "Présence numérique active détectée", "fiche prospect", 0.70, 0, "marketing");
+  if (!p.social_links || !Object.keys(p.social_links).length) add("marketing", "weak_social_presence", "Aucun réseau social publié sur la fiche", "fiche prospect", 0.70, W.weak_social_presence, "marketing");
+  if ((p.signals || []).includes("Présence numérique active")) add("marketing", "visible_online", "Mention déjà sur la fiche : présence numérique active. Non revérifiée.", "fiche prospect", 0.70, 0, "marketing");
   else add("marketing", "low_content_activity", "Hypothèse : aucun contenu publié n'a été observé", "fiche prospect", 0.60, W.low_content_activity, "marketing");
   if (!hasDom || ws !== "ACTIVE") add("marketing", "weak_local_visibility", "Visibilité locale potentiellement limitée (site non actif)", "Website Intelligence", 0.60, W.weak_local_visibility, "marketing");
   if ((p.signals || []).includes("Recrutement")) add("growth", "hiring_signal", "Mention déjà sur la fiche : recrutement. Non revérifiée, pas un événement confirmé.", "fiche prospect", 0.70, W.hiring_signal, "growth");
@@ -30,7 +51,8 @@ function detectSignals(p, params){var W = oppCfg().signalW;var S = [];var now = 
   if ((p.signals || []).includes("Nouveau site")) add("growth", "new_service", "Mention déjà sur la fiche : nouveau site. Non revérifiée, pas un événement confirmé.", "fiche prospect", 0.65, W.new_service, "growth");
   if ((p.employee_range === "51–200" || p.employee_range === "201–500" || p.employee_range === "500+")) add("growth", "multiple_locations", "Taille d'entreprise compatible multi-sites", "fiche prospect", 0.55, W.multiple_locations, "growth");
   var ik = p.industry_key || (params && params.industry) || "";
-  if (ik === "construction" || oppHas(p, /construction|rénovation|renovation|entrepreneur|contracteur|contractor|plomberie|plumbing|électricité|electrical|toiture|roofing|maçonnerie|peinture|bâtiment|architecture|ingénierie|engineering|sous-traitant|subcontract/)) add("construction", "construction_fit", "Profil bâtiment / construction détecté", "fiche prospect", 0.90, W.construction_fit, "construction");
+  var tradeMention = /construction|rénovation|renovation|entrepreneur|contracteur|contractor|plomberie|plumbing|électricité|electrical|toiture|roofing|maçonnerie|peinture|bâtiment|architecture|ingénierie|engineering|sous-traitant|subcontract/.test(((p.company_name || "") + " " + (p.description || "")).toLowerCase());
+  if (ik === "construction" || tradeMention) add("construction", "construction_fit", tradeMention ? "Mention de bâtiment ou de rénovation déjà présente dans le nom ou la description publiée. Non revérifiée, pas un événement commercial confirmé." : "Correspondance au secteur construction demandé ou inscrit sur la fiche. Ce n'est pas une découverte indépendante.", "fiche prospect", 0.90, W.construction_fit, "construction");
   if ((p.signals || []).length >= 3) add("digitalization", "fragmented_presence", "Présence publique fragmentée (plusieurs signaux)", "fiche prospect", 0.60, W.fragmented_presence, "digitalization");
   if (!hasDom || (p.signals || []).length <= 1) add("digitalization", "limited_digital_presence", "Hypothèse : peu d'éléments publiés sur la fiche, pas un site confirmé inactif", "Website Intelligence", 0.65, 8, "digitalization");
   return S;}
@@ -80,7 +102,7 @@ function attachOpp(p, params){var dq = p.dq || 0;var conf = (p.conf != null ? p.
   p.opp_score = opp;p.opp_priority = pr.level;p.opp_priority_badge = pr.badge;
   p.opp_signals = signals;p.opp_action = best ? OPP_SERVICES[best].action : "Qualifier le prospect avant toute action.";
   p.opp_confidence = conf >= 80 ? "High" : (conf >= 50 ? "Medium" : "Low");
-  p.opp_why = "Correspondance " + (icp >= 70 ? "élevée" : "modérée") + " avec le profil détecté (" + (p.industry || "?") + ", " + (p.city || "?") + "). " + signals.length + " signaux publics détectés. " + (best ? OPP_SERVICES[best].label + " présente la meilleure correspondance (" + bestScore + "/100)." : "");
+  p.opp_why = "Score calculé : correspondance " + (icp >= 70 ? "élevée" : "modérée") + " avec le profil recherché (" + (p.industry || "?") + ", " + (p.city || "?") + "). " + signals.length + " indice(s) calculé(s), pas des faits vérifiés. " + (best ? OPP_SERVICES[best].label + " présente la meilleure correspondance calculée (" + bestScore + "/100)." : "");
   return p;}
 function ensureOpp(p){if (!p || p.opp_version === OPP_V) return p;try {var s = (window.KlirStore && window.KlirStore.S.searches || []).find(x => x.id === p.searchId);attachOpp(p, (s && s.params) || {});} catch (e) {}return p;}
 function topServiceLabel(p){if (!p.opp_top_service) return "—";var s = OPP_SERVICES[p.opp_top_service];return (s ? s.label : p.opp_top_service) + " " + (p.opp_top_service_score || 0);}
@@ -109,7 +131,7 @@ function drawerOppHTML(p){ensureOpp(p);if (p.opp_score == null) return "<h4>🔥
   var rows = breakRows(p);var svcs = Object.keys(p.opp_services || {}).sort((a, b) => p.opp_services[b] - p.opp_services[a]).slice(0, 4);
   var min = oppCfg().serviceMin;
   function tag(v){return v >= min.strong ? "Strong Match" : (v >= min.possible ? "Possible Match" : "Do Not Prioritize");}
-  var sigs = (p.opp_signals || []).slice(0, 6).map(function(g){var w = oppCfg().signalW[g.signal_name];return "<div class=\"row\"><span>" + esc(g.signal_name) + " <small>" + esc(g.evidence) + "</small></span><small>poids " + (w != null ? w : "?") + " \u2022 " + Math.round(g.confidence * 100) + "%</small></div>";}).join("");
+  var sigs = (p.opp_signals || []).slice(0, 6).map(function(g){var w = oppCfg().signalW[g.signal_name];var label = signalLabel(g.signal_name) || g.evidence || g.signal_name;return "<div class=\"row\"><span>" + esc(label) + " <small>" + esc(g.evidence) + "</small></span><small>poids " + (w != null ? w : "?") + " \u2022 " + Math.round(g.confidence * 100) + "%</small></div>";}).join("");
   return "<h4>\uD83D\uDD25 OPPORTUNITY INTELLIGENCE</h4><div class=\"why\"><b>Opportunity Score : " + p.opp_score + "/100</b> " + p.opp_priority_badge + "<br><small>" + esc(p.opp_why) + " Confiance : " + p.opp_confidence + " \u2022 " + p.opp_at + " \u2022 " + p.opp_version + "</small></div>"
     + "<h4>WHY " + p.opp_score + "?</h4>"
     + rows.map(function(r){return "<div class=\"row\"><span>" + esc(r[0]) + "</span><b>+" + r[1] + "</b></div>";}).join("")
@@ -122,4 +144,4 @@ var svcline = Object.keys(svcCount).map(function(k){return esc(OPP_SERVICES[k] ?
 return "<h3>\uD83D\uDD25 TOP OPPORTUNITIES</h3><div class=\"grid4\">" + cards + "</div><div class=\"card\"><small><b>SERVICE OPPORTUNITIES (match \u226570) :</b> " + svcline + "</small></div>";}catch(e){return "";}}
 function dashStats(){try{var all = window.KlirStore.S.prospects.map(function(p){return ensureOpp(p);});var hi = all.filter(function(p){return p.opp_score != null && p.opp_score >= 75;}).length;var vh = all.filter(function(p){return p.opp_priority === "VERY HIGH";}).length;function cnt(s){return all.filter(function(p){return ((p.opp_services || {})[s] || 0) >= 70;}).length;}
 return "<div class=\"grid4\">" + [["HIGH+", hi], ["VERY HIGH", vh], ["KlirBuild", cnt("KLIRBUILD")], ["KlirPromo", cnt("KLIRPROMO")], ["Klirline OS", cnt("KLIRLINE")], ["Klir IA", cnt("KLIRIA")]].map(function(kv){return "<div class=\"card stat\"><span>" + kv[0] + "</span><b>" + kv[1] + "</b></div>";}).join("") + "</div>";}catch(e){return "";}}
-window.OppEngine = {cfg: oppCfg, attach: attachOpp, ensure: ensureOpp, parse: parseOpp, match: matchOpp, sorted: sortedFor, drawerHTML: drawerOppHTML, topHTML: topHTML, dashStats: dashStats, leadBadge: leadBadge, topServiceLabel: topServiceLabel, priority: oppPriority, version: OPP_V, services: OPP_SERVICES};
+window.OppEngine = {cfg: oppCfg, attach: attachOpp, ensure: ensureOpp, parse: parseOpp, match: matchOpp, sorted: sortedFor, drawerHTML: drawerOppHTML, topHTML: topHTML, dashStats: dashStats, leadBadge: leadBadge, topServiceLabel: topServiceLabel, signalLabel: signalLabel, priority: oppPriority, version: OPP_V, services: OPP_SERVICES};
