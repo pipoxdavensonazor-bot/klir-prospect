@@ -9,4 +9,4 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://recherche-entreprises.api.gouv.fr https://nominatim.openstreetmap.org https://dns.google https://rdap.org https://rdap.verisign.com https://rdap.ca.fury.ca; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://recherche-entreprises.api.gouv.fr https://nominatim.openstreetmap.org https://overpass-api.de https://dns.google https://rdap.org https://rdap.verisign.com https://rdap.ca.fury.ca; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests

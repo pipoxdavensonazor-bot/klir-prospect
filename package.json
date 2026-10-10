@@ -8,6 +8,7 @@
     "lint": "node tools/lint.mjs",
     "test": "node --test",
     "build": "node tools/build.mjs",
+    "postinstall": "node tools/build.mjs",
     "check": "npm run lint && npm test && npm run build"
   },
   "engines": {
