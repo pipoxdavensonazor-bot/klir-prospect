@@ -541,11 +541,14 @@ function copilot(){const noAct=KS.S.prospects.filter(p=>p.rel>=75&&!p.inCrm);con
 async function genMessagesRadar(ids){const rows=KS.S.prospects.filter(p=>ids.includes(p.id));if(!rows.length)return alert("Sélection vide.");if(!spendCredits(rows.length,"Messages IA"))return;
   const drafts=[];for(const p of rows){const txt=await KS.aiText(`Message B2B court pour ${p.company_name} (${p.industry}, ${p.city}).`, `Bonjour ${p.company_name}, échange de 15 min ? — ${KS.S.org?KS.S.org.name:"Klirline"}`);drafts.push({id:KS.uid("d"),prospectId:p.id,text:txt,status:"Draft"});}
   KS.S.campaigns.unshift({id:KS.uid("c"),name:`Brouillons Copilot — ${rows.length} prospects`,prospects:rows.map(p=>p.id),drafts,status:"Review",created:new Date().toLocaleDateString(),message:"Objet : Une question concernant votre activité"});KS.save();KS.addActivity("Copilot : brouillons en Review");KS.notify("Copilot : campagne en Review, à valider.");nav("/campaigns");}
-async function radarRun(){if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;if(!spendCredits(5,"Scan Radar"))return;
+async function radarRun(){if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
+  if((KS.S.credits.balance||0)<5)return alert(`Crédits insuffisants (${KS.S.credits.balance} restants, 5 requis pour : Scan Radar). Rechargez dans Réglages → Crédits.`);
   const icp=KS.S.icp; const base=icp?{industry:icp.industry,cityKey:Object.keys(KlirData.CITIES).find(k=>KlirData.CITIES[k].city===icp.city)||"default",quantity:20,size:icp.size,raw:"radar"}:(KS.S.searches[0]?KS.S.searches[0].params:{industry:"all",cityKey:"default",city:KlirData.CITIES.default,quantity:20,raw:"radar"});
   base.city=KlirData.CITIES[base.cityKey]||base.city||KlirData.CITIES.default; base.raw="radar"+Date.now();
   let raw=[];
   try{raw=await window.KlirSources.osm.search(base,15);}catch(error){KS.notify(error&&error.message?error.message:"OpenStreetMap est indisponible.");render();return;}
+  if(!raw.length){KS.notify("Aucune entreprise publiée pour ce radar. Aucune fiche n'a été inventée.");render();return;}
+  if(!spendCredits(5,"Scan Radar"))return;
   const known=new Set(KS.S.prospects.map(p=>E.fingerprint(p)));
   let added=0;
   for(const p of raw){if(known.has(E.fingerprint(p)))continue;known.add(E.fingerprint(p));
