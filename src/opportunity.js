@@ -35,7 +35,7 @@ function detectSignals(p, params){var W = oppCfg().signalW;var S = [];var now = 
   if (!hasDom || (p.signals || []).length <= 1) add("digitalization", "limited_digital_presence", "Présence numérique limitée détectée", "Website Intelligence", 0.65, 8, "digitalization");
   return S;}
 function scoreIcp(p, params){var s = 0;var ind = (params && params.industry) || p.industry_key;var city = params && params.city ? params.city.city : null;
-  if (p.industry_key && p.industry_key === ind) s += 25;else if (p.industry) s += 8;
+  if (!ind || ind === "all" || (p.industry_key && p.industry_key === ind)) s += 25;else if (p.industry) s += 8;
   if (city && p.city === city) s += 20;else if (p.city) s += 6;
   if (p.legal_name && p.legal_name !== p.company_name) s += 15;else if (p.company_name) s += 8;
   if (params && params.size && p.employee_range === params.size) s += 15;else if (p.employee_range) s += 8;

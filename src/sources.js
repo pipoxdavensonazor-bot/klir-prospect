@@ -60,14 +60,15 @@ var KlirSources = window.KlirSources || {};
   }
   async function search(params, maxN) {
     const city = (params.city && params.city.city) || "";
-    const ind = window.KlirData ? window.KlirData.INDUSTRIES[params.industry] : null;
+    const sector = params.industry && params.industry !== "all" ? params.industry : "";
+    const ind = window.KlirData && sector ? window.KlirData.INDUSTRIES[sector] : null;
     const kw = ind ? ind.domains[0] : "entreprise";
     const q = encodeURIComponent(kw + " " + city);
     const out = [];
     const pages = Math.min(3, Math.ceil((maxN || 40) / 20));
     for (let p = 1; p <= pages; p++) {
       const j = await get(API + "?q=" + q + "&per_page=20&page=" + p);
-      for (const d of (j.results || [])) out.push(mapDoc(d, params.industry, city));
+      for (const d of (j.results || [])) out.push(mapDoc(d, sector, city));
       if (!j.results || j.results.length < 20) break;
     }
     return out.slice(0, maxN || 40);
