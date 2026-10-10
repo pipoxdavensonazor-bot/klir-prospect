@@ -9,13 +9,13 @@ var INDUSTRIES = {
   "services": {label:"Services professionnels", keywords:["avocat","notaire","consultant","agence","nettoyage","paysagement","déménagement","juridique"], services:["Conseil","Nettoyage","Entretien","Juridique"], domains:["services","conseil","groupe"]}
 };
 var CITIES = {
-  "montréal": {city:"Montréal", province:"QC", country:"Canada", postal:["H2X","H3A","H2W","H4B"], phones:["514","438"]},
-  "laval": {city:"Laval", province:"QC", country:"Canada", postal:["H7N","H7T"], phones:["450"," Laval".trim()]},
-  "québec": {city:"Québec", province:"QC", country:"Canada", postal:["G1K","G1R"], phones:["418","581"]},
-  "toronto": {city:"Toronto", province:"ON", country:"Canada", postal:["M5V","M4B"], phones:["416","647"]},
-  "paris": {city:"Paris", province:"Île-de-France", country:"France", postal:["75001","75011"], phones:["01"]},
-  "lyon": {city:"Lyon", province:"Auvergne-Rhône-Alpes", country:"France", postal:["69001","69002"], phones:["04"]},
-  "default": {city:"Montréal", province:"QC", country:"Canada", postal:["H2X","H3A"], phones:["514","438"]}
+  "montréal": {city:"Montréal", province:"QC", country:"Canada", postal:["H2X","H3A","H2W","H4B"], phones:["514","438"], lat:45.5017, lng:-73.5673},
+  "laval": {city:"Laval", province:"QC", country:"Canada", postal:["H7N","H7T"], phones:["450"," Laval".trim()], lat:45.6066, lng:-73.7124},
+  "québec": {city:"Québec", province:"QC", country:"Canada", postal:["G1K","G1R"], phones:["418","581"], lat:46.8139, lng:-71.208},
+  "toronto": {city:"Toronto", province:"ON", country:"Canada", postal:["M5V","M4B"], phones:["416","647"], lat:43.6532, lng:-79.3832},
+  "paris": {city:"Paris", province:"Île-de-France", country:"France", postal:["75001","75011"], phones:["01"], lat:48.8566, lng:2.3522},
+  "lyon": {city:"Lyon", province:"Auvergne-Rhône-Alpes", country:"France", postal:["69001","69002"], phones:["04"], lat:45.764, lng:4.8357},
+  "default": {city:"Montréal", province:"QC", country:"Canada", postal:["H2X","H3A"], phones:["514","438"], lat:45.5017, lng:-73.5673}
 };
 var NAME_A = ["Nord","Klir","Pro","Expert","Premier","Atelier","Groupe","Alliance","Nova","Élite","Summit","Azur","Vantage","Onyx","Boréal"];
 var NAME_B = {"construction":["Rénovation","Construction","Toiture","Plomberie","Bâtiment"],"restauration":["Bistro"," saveurs".trim(),"Cuisine","Brasserie","Café"],"immobilier":["Courtage","Habitat","Propriétés","Immobilier"],"sante":["Clinique","Santé","Dentaire","Physio"],"technologie":["Web","Digital","Logiciels","Studio","Tech"],"commerce":["Boutique","Auto","Salon","Marché"],"finance":["Comptable","Assurance","Finance","Fiscalité"],"services":["Services","Conseil","Nettoyage","Juridique"]};
