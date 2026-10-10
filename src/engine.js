@@ -21,7 +21,13 @@ function parseQuery(q){
     for(const [k,v] of Object.entries(KlirData.INDUSTRIES)){let s=0;const label=(v.label||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(label&&low.includes(label))s+=3;for(const kw of v.keywords){if(low.includes(kw.normalize("NFD").replace(/[\u0300-\u036f]/g,"")))s++;}if(s>score){score=s;industry=k;}}
     if(!score)industry="all";
   }
-  let cityKey="default"; for(const k of Object.keys(KlirData.CITIES)){if(k!=="default"&&low.includes(k))cityKey=k;}
+  let cityKey="default", cityAt=-1, cityLen=0;
+  for(const k of Object.keys(KlirData.CITIES)){
+    if(k==="default")continue;
+    const folded=k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    const at=folded?low.lastIndexOf(folded):-1;
+    if(at>cityAt||(at===cityAt&&at>=0&&folded.length>cityLen)){cityKey=k;cityAt=at;cityLen=folded.length;}
+  }
   let qty=50; const m=q.match(/(\d{2,4})\s*(entreprises?|prospects?|boites|companies)?/i); if(m)qty=Math.min(500,Math.max(10,parseInt(m[1])));
   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
   return {industry, cityKey, city:KlirData.CITIES[cityKey], quantity:qty, size, raw:q};
