@@ -3,10 +3,24 @@ function normPhone(p){return (p||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"
 function normEmail(e){return (e||"").toLowerCase().trim();}
 function normDomain(d){return (d||"").toLowerCase().replace(/^https?:\/\//,"").replace(/^www\./,"").split("/")[0].trim();}
 function fingerprint(p){return [normStr(p.company_name),normDomain(p.domain||p.website),normPhone(p.phone)].join("|");}
+function industryLabel(key){
+  if(!key||key==="all")return "Tous les secteurs";
+  const row=KlirData.INDUSTRIES[key];
+  return row?row.label:String(key);
+}
+function industryKeys(params){
+  const key=params&&params.industry;
+  if(key&&key!=="all"&&KlirData.INDUSTRIES[key])return [key];
+  return Object.keys(KlirData.INDUSTRIES);
+}
 function parseQuery(q){
   q=(q||""); const low=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  let industry="construction", score=0;
-  for(const [k,v] of Object.entries(KlirData.INDUSTRIES)){let s=0;for(const kw of v.keywords){if(low.includes(kw.normalize("NFD").replace(/[\u0300-\u036f]/g,"")))s++;}if(s>score){score=s;industry=k;}}
+  const allAsked=/tous les (domaines|secteurs|industries)|toutes les (industries|activites)|tous secteurs|multi[- ]secteurs/.test(low);
+  let industry="all", score=0;
+  if(!allAsked){
+    for(const [k,v] of Object.entries(KlirData.INDUSTRIES)){let s=0;const label=(v.label||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(label&&low.includes(label))s+=3;for(const kw of v.keywords){if(low.includes(kw.normalize("NFD").replace(/[\u0300-\u036f]/g,"")))s++;}if(s>score){score=s;industry=k;}}
+    if(!score)industry="all";
+  }
   let cityKey="default"; for(const k of Object.keys(KlirData.CITIES)){if(k!=="default"&&low.includes(k))cityKey=k;}
   let qty=50; const m=q.match(/(\d{2,4})\s*(entreprises?|prospects?|boites|companies)?/i); if(m)qty=Math.min(500,Math.max(10,parseInt(m[1])));
   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
@@ -15,11 +29,13 @@ function parseQuery(q){
 function seededRand(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
 function genProspects(params, qty){
   const rnd=seededRand([...params.raw].reduce((a,c)=>a+c.charCodeAt(0),7)+qty*13);
-  const ind=KlirData.INDUSTRIES[params.industry], city=params.city;
+  const keys=industryKeys(params), city=params.city;
   const out=[]; const suffix=["Inc.","Ltée","& Associés","","Groupe","Services"];
   for(let i=0;i<qty*1.35;i++){
+    const industry=keys[i%keys.length];
+    const ind=KlirData.INDUSTRIES[industry];
     const a=KlirData.NAME_A[Math.floor(rnd()*KlirData.NAME_A.length)];
-    const arr=KlirData.NAME_B[params.industry]||["Services"];
+    const arr=KlirData.NAME_B[industry]||["Services"];
     const b=arr[Math.floor(rnd()*arr.length)];
     let name=`${a} ${b}`; if(rnd()<0.25)name=`${b} ${city.city}`; if(rnd()<0.15)name+=` ${suffix[Math.floor(rnd()*suffix.length)]}`;
     name=name.replace(/\s+/g," ").trim();
@@ -31,7 +47,7 @@ function genProspects(params, qty){
       id:"p_"+Date.now().toString(36)+"_"+i,
       company_name:name, legal_name:name,
       website:hasWeb?`https://www.${dom}`:"", domain:hasWeb?dom:"",
-      industry:ind.label, industry_key:params.industry,
+      industry:ind.label, industry_key:industry,
       description:`${ind.services[Math.floor(rnd()*ind.services.length)]} — ${city.city}.`,
       address:`${Math.floor(rnd()*900+100)} ${KlirData.STREETS[Math.floor(rnd()*KlirData.STREETS.length)]}`,
       city:city.city, province:city.province, country:city.country,
@@ -58,7 +74,7 @@ function dedup(list){
 function scoreProspect(p, params, W){
   W=W||{industry:25,location:15,signals:15,size:10};
   let dq=0; if(p.website)dq+=20; if(p.phone)dq+=20; if(p.public_email)dq+=20; if(p.address)dq+=15; if(p.industry)dq+=15; dq+=10;
-  let rel=30; if(p.industry_key===params.industry)rel+=W.industry; if(normStr(p.city)===normStr(params.city.city))rel+=W.location; rel+=Math.min(W.signals,p.signals.length*4);
+  let rel=30; if(!params.industry||params.industry==="all"||p.industry_key===params.industry)rel+=W.industry; if(normStr(p.city)===normStr(params.city.city))rel+=W.location; rel+=Math.min(W.signals,p.signals.length*4);
   if(params.size&&p.employee_range===params.size)rel+=W.size;
   rel=Math.min(99,rel); dq=Math.min(100,dq);
   const conf=Math.round((dq*0.4+rel*0.6));
@@ -69,7 +85,7 @@ function scoreProspect(p, params, W){
 function icpFit(p, icp){
   if(!icp)return null; let s=0,max=0;
   const chk=(cond,w)=>{max+=w;if(cond)s+=w;};
-  chk(p.industry_key===icp.industry,30); chk(normStr(p.city)===normStr(icp.city||"montreal"),20);
+  chk(!icp.industry||icp.industry==="all"||p.industry_key===icp.industry,30); chk(normStr(p.city)===normStr(icp.city||"montreal"),20);
   chk(!icp.size||p.employee_range===icp.size,15); chk(p.website?true:false,10);
   chk((icp.signals||[]).some(sg=>p.signals.includes(sg)),15); chk(p.public_email?true:false,10);
   return Math.round(s);
@@ -92,9 +108,9 @@ function enrichWaterfall(p, active){
   p.enrichedFrom=prov;
   return {filled, chain};
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL};
+window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
 function aiAnalysis(p, params){
-  const fit=p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
+  const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL};
+window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
