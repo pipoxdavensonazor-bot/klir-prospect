@@ -98,12 +98,11 @@ var WATERFALL=["directory","registre","maps","web"];
 function enrichWaterfall(p, active){
   const chain=WATERFALL.filter(k=>active[k]); const filled=[]; const prov=p.enrichedFrom||{};
   const tryFill=(field,val,src)=>{if(!p[field]&&val){p[field]=val;filled.push(field);prov[field]=src;}};
-  const rnd=()=>window.KlirSecurity.random();
   for(const src of chain){
-    if(src==="registre"){tryFill("legal_name",p.company_name+" "+(p.province==="QC"?"Inc.":"SARL"),src);}
-    if(src==="maps"){tryFill("address",p.address||100+Math.floor(rnd()*800)+" rue Sainte-Catherine O",src);tryFill("phone",p.phone||"514-555-0100",src);}
-    if(src==="web"){tryFill("website",p.website||("https://www."+normStr(p.company_name).replace(/ /g,"").slice(0,16)+".ca"),src);tryFill("description",p.description||(p.industry+" — "+p.city+"."),src);if(!p.signals.includes("Présence numérique active")&&rnd()>0.5){p.signals.push("Présence numérique active");filled.push("signals");prov.signals=src;}}
-    if(src==="directory"){tryFill("public_email",p.public_email||("info@"+normDomain(p.website||"entreprise.ca")),src);}
+    if(src==="registre"&&p.legal_name){tryFill("legal_name",p.legal_name,src);}
+    if(src==="maps"&&p.address){tryFill("address",p.address,src);}
+    if(src==="web"&&p.website){tryFill("website",p.website,src);}
+    if(src==="directory"&&p.public_email){tryFill("public_email",p.public_email,src);}
   }
   p.enrichedFrom=prov;
   return {filled, chain};

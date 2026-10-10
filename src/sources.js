@@ -89,6 +89,135 @@ var KlirSources = window.KlirSources || {};
       return { lat: j[0].lat, lng: j[0].lon, label: j[0].display_name };
     } finally { clearTimeout(to); }
   }
-  KlirSources.osm = { lookup: osmLookup };
+  const OSM_FILTERS = {
+    restauration: ['["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]'],
+    sante: ['["amenity"~"^(clinic|doctors|dentist|pharmacy|hospital)$"]'],
+    immobilier: ['["office"="estate_agent"]'],
+    finance: ['["amenity"~"^(bank|bureau_de_change)$"]', '["office"~"^(financial|insurance|accountant|tax_advisor)$"]'],
+    construction: ['["craft"~"^(builder|electrician|plumber|roofer|painter|carpenter)$"]', '["office"="construction_company"]'],
+    technologie: ['["office"~"^(it|telecommunication)$"]', '["shop"~"^(computer|electronics|mobile_phone)$"]'],
+    commerce: ['["shop"]'],
+    services: ['["office"]', '["craft"]'],
+    all: ['["shop"]', '["amenity"]', '["office"]', '["craft"]']
+  };
+  function publishedUrl(value) {
+    const raw = String(value || "").trim();
+    if (!/^https?:\/\//i.test(raw)) return "";
+    try {
+      const url = new URL(raw);
+      if (url.username || url.password) return "";
+      return url.href;
+    } catch (error) {
+      return "";
+    }
+  }
+  function publishedEmail(value) {
+    const raw = String(value || "").trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw) ? raw : "";
+  }
+  function publishedPhone(value) {
+    const raw = String(value || "").trim();
+    return /[0-9]/.test(raw) && raw.length <= 40 ? raw : "";
+  }
+  function industryFromTags(tags, requested) {
+    if (requested && requested !== "all" && window.KlirData && window.KlirData.INDUSTRIES[requested]) return requested;
+    const blob = [tags.amenity, tags.shop, tags.office, tags.craft].filter(Boolean).join(" ");
+    if (/restaurant|cafe|fast_food|bar|pub/.test(blob)) return "restauration";
+    if (/clinic|doctors|dentist|pharmacy|hospital/.test(blob)) return "sante";
+    if (/estate_agent/.test(blob)) return "immobilier";
+    if (/bank|insurance|financial|accountant/.test(blob)) return "finance";
+    if (/builder|electrician|plumber|roofer|painter|carpenter|construction/.test(blob)) return "construction";
+    if (/^it$|telecommunication|computer|electronics/.test(blob)) return "technologie";
+    if (tags.shop) return "commerce";
+    return "services";
+  }
+  function mapOsmElement(element, params) {
+    const tags = element && element.tags ? element.tags : {};
+    const name = String(tags.name || "").trim();
+    if (!name || !element.id) return null;
+    const city = params && params.city ? params.city : {};
+    const key = industryFromTags(tags, params && params.industry);
+    const row = window.KlirData && window.KlirData.INDUSTRIES[key];
+    const website = publishedUrl(tags.website || tags["contact:website"] || tags.url);
+    let domain = "";
+    try { domain = website ? new URL(website).hostname.replace(/^www\./, "") : ""; } catch (error) { domain = ""; }
+    const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+    return {
+      id: "osm_" + (element.type || "node") + "_" + element.id,
+      company_name: name,
+      legal_name: name,
+      website: website,
+      domain: domain,
+      industry: row ? row.label : key,
+      industry_key: key,
+      description: [tags.amenity || tags.shop || tags.office || tags.craft || "", city.city || ""].filter(Boolean).join(" — "),
+      address: street,
+      city: tags["addr:city"] || city.city || "",
+      province: city.province || "",
+      country: city.country || "",
+      postal_code: tags["addr:postcode"] || "",
+      phone: publishedPhone(tags.phone || tags["contact:phone"]),
+      public_email: publishedEmail(tags.email || tags["contact:email"]),
+      social_links: {},
+      employee_range: "",
+      source: "OpenStreetMap",
+      source_url: "https://www.openstreetmap.org/" + (element.type || "node") + "/" + element.id,
+      last_verified: new Date().toISOString().slice(0, 10),
+      signals: ["Source ouverte"]
+    };
+  }
+  function overpassQuery(params, limit) {
+    const city = params && params.city;
+    const lat = Number(city && city.lat);
+    const lng = Number(city && city.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
+    const industry = params.industry && OSM_FILTERS[params.industry] ? params.industry : "all";
+    const radius = industry === "all" ? 1500 : 2200;
+    const around = "(around:" + radius + "," + lat + "," + lng + ")";
+    const body = OSM_FILTERS[industry].map(function (filter) {
+      return "node[\"name\"]" + filter + around + ";";
+    }).join("");
+    return "[out:json][timeout:15];(" + body + ");out tags " + limit + ";";
+  }
+  async function askOverpass(query) {
+    let lastError = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const ctl = new AbortController();
+      const to = setTimeout(function () { ctl.abort(); }, 18000);
+      try {
+        const response = await fetch("https://overpass-api.de/api/interpreter", {
+          method: "POST",
+          signal: ctl.signal,
+          headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "KlirProspect/0.1 (https://klirprospect.klirline.ca)" },
+          body: "data=" + encodeURIComponent(query)
+        });
+        if (response.status === 429 || response.status >= 500) {
+          lastError = new Error("OpenStreetMap est momentanément saturé.");
+        } else if (!response.ok) {
+          throw new Error("OpenStreetMap a répondu " + response.status + ".");
+        } else {
+          return await response.json();
+        }
+      } catch (error) {
+        lastError = error && error.name === "AbortError" ? new Error("OpenStreetMap n'a pas répondu à temps.") : error;
+      } finally {
+        clearTimeout(to);
+      }
+      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+    }
+    throw lastError || new Error("OpenStreetMap est indisponible.");
+  }
+  async function searchPlaces(params, maxN) {
+    const limit = Math.min(40, Math.max(5, maxN || 20));
+    const payload = await askOverpass(overpassQuery(params, limit));
+    const rows = [];
+    for (const element of payload.elements || []) {
+      const row = mapOsmElement(element, params);
+      if (row) rows.push(row);
+      if (rows.length >= limit) break;
+    }
+    return rows;
+  }
+  KlirSources.osm = { lookup: osmLookup, search: searchPlaces, mapElement: mapOsmElement, query: overpassQuery };
   window.KlirSources = KlirSources;
 })();
