@@ -179,11 +179,28 @@ var KlirSources = window.KlirSources || {};
     }).join("");
     return "[out:json][timeout:15];(" + body + ");out tags " + limit + ";";
   }
+  function overpassRetryDelay(response) {
+    const fallback = 8000;
+    const cap = 30000;
+    const header = response && response.headers && response.headers.get ? response.headers.get("Retry-After") : "";
+    if (!header) return fallback;
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(Math.round(seconds * 1000), cap);
+    const when = Date.parse(header);
+    if (!Number.isNaN(when)) return Math.min(Math.max(0, when - Date.now()), cap);
+    return fallback;
+  }
+  function overpassLog(status, attempt, durationMs) {
+    console.info("[overpass] " + JSON.stringify({ status: status, attempt: attempt, durationMs: durationMs }));
+  }
   async function askOverpass(query) {
     let lastError = null;
     for (let attempt = 0; attempt < 2; attempt++) {
+      const started = Date.now();
       const ctl = new AbortController();
       const to = setTimeout(function () { ctl.abort(); }, 18000);
+      let retryable = false;
+      let delay = 8000;
       try {
         const response = await fetch("https://overpass-api.de/api/interpreter", {
           method: "POST",
@@ -191,21 +208,34 @@ var KlirSources = window.KlirSources || {};
           headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "KlirProspect/0.1 (https://klirprospect.klirline.ca)" },
           body: "data=" + encodeURIComponent(query)
         });
+        const durationMs = Date.now() - started;
+        overpassLog(response.status, attempt + 1, durationMs);
         if (response.status === 429 || response.status >= 500) {
-          lastError = new Error("OpenStreetMap est momentanément saturé.");
+          retryable = true;
+          delay = overpassRetryDelay(response);
+          const code = response.status === 429 ? "429" : String(response.status);
+          lastError = new Error("Recherche échouée : OpenStreetMap a répondu " + code + ".");
         } else if (!response.ok) {
-          throw new Error("OpenStreetMap a répondu " + response.status + ".");
+          throw new Error("Recherche échouée : OpenStreetMap a répondu " + response.status + ".");
         } else {
-          return await response.json();
+          try {
+            return await response.json();
+          } catch (parseError) {
+            throw new Error("Recherche échouée : réponse OpenStreetMap invalide.");
+          }
         }
       } catch (error) {
-        lastError = error && error.name === "AbortError" ? new Error("OpenStreetMap n'a pas répondu à temps.") : error;
+        if (error && error.message && error.message.indexOf("Recherche échouée") === 0) throw error;
+        overpassLog(0, attempt + 1, Date.now() - started);
+        lastError = new Error(error && error.name === "AbortError" ? "Recherche échouée : OpenStreetMap n'a pas répondu à temps." : "Recherche échouée : OpenStreetMap est indisponible.");
+        retryable = true;
       } finally {
         clearTimeout(to);
       }
-      await new Promise(function (resolve) { setTimeout(resolve, 1500); });
+      if (!retryable || attempt === 1) break;
+      await new Promise(function (resolve) { setTimeout(resolve, delay); });
     }
-    throw lastError || new Error("OpenStreetMap est indisponible.");
+    throw lastError || new Error("Recherche échouée : OpenStreetMap est indisponible.");
   }
   async function searchPlaces(params, maxN) {
     const limit = Math.min(40, Math.max(5, maxN || 20));
