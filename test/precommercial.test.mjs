@@ -233,7 +233,14 @@ test("le radar compte comme une recherche et une session anonyme n'appelle pas O
   assert.equal(radar.includes("KS.S.usage.searches+=account.searches"), true);
   assert.equal(radar.includes('if(account.debit&&!spendCredits(5,"Scan Radar"))return;'), true);
   assert.ok(radar.indexOf("osmSearchAllowed") < radar.indexOf("KlirSources.osm.search"));
-  assert.ok(search.indexOf("osmSearchAllowed") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(search.indexOf("osmSearchAllowed") < search.indexOf("reserveServerUsage"));
+  assert.ok(search.indexOf("reserveServerUsage") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(search.indexOf("if(!reserved.ok)return") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(radar.indexOf("reserveServerUsage") < radar.indexOf("KlirSources.osm.search"));
+  assert.ok(radar.indexOf("if(!radarReserved.ok)return") < radar.indexOf("KlirSources.osm.search"));
+  assert.equal(app.includes("credBuy"), false);
+  assert.equal(app.includes("data-plan"), false);
+  assert.equal(app.includes("Recharger +100"), false);
   assert.ok(radar.indexOf("Recherche échouée") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.ok(radar.indexOf("Recherche partielle, aucun résultat reçu") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.ok(radar.indexOf("Recherche terminée, aucun résultat") < radar.indexOf('spendCredits(5,"Scan Radar")'));
