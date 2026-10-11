@@ -1,6 +1,17 @@
+import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { build } from "esbuild";
+
+function publishedCommit() {
+  const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
+  if (fromEnv) return String(fromEnv).trim();
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  } catch (error) {
+    return "";
+  }
+}
 
 async function publicSupabaseConfig() {
   let supabaseUrl = process.env.SUPABASE_URL || "";
@@ -81,6 +92,9 @@ for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-51
 await writeFile(join(out.pathname, "build.json"), JSON.stringify({
   reproducible: true,
   files: runtime.length + 9,
-  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey)
+  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
+  commit: publishedCommit(),
+  builtAt: new Date().toISOString(),
+  environment: process.env.KLIR_ENV || (process.env.WORKERS_CI ? "production" : (process.env.CI ? "ci" : "local"))
 }, null, 2) + "\n");
 console.log(`dist créé avec ${runtime.length + 9} fichiers`);

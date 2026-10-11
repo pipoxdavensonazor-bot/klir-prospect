@@ -141,7 +141,11 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
     for (const line of csv.split("\n").slice(1)) assert.equal(/^[=+\-@]/.test(line), false);
     parsed.slice(1).forEach((record, index) => {
       const source = rows[index];
-      assert.equal(record.length, 32);
+      assert.equal(record.length, 36);
+      assert.equal(parsed[0][32], "OSM Ids");
+      assert.equal(parsed[0][33], "Field Sources");
+      assert.equal(parsed[0][34], "Collection Status");
+      assert.equal(parsed[0][35], "Size");
       assert.equal(record[22], source.phone && /^[=+\-@\t]/.test(source.phone) ? "'" + source.phone : source.phone);
       assert.equal(record[23], source.public_email);
       assert.equal(record[24], source.address.replace(/\n/g, " "));

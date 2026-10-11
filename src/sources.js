@@ -166,7 +166,7 @@ var KlirSources = window.KlirSources || {};
       employee_range: "",
       source: "OpenStreetMap",
       source_url: "https://www.openstreetmap.org/" + (element.type || "node") + "/" + element.id,
-      last_verified: new Date().toISOString().slice(0, 10),
+      last_verified: "",
       signals: ["Source ouverte"]
     };
   }

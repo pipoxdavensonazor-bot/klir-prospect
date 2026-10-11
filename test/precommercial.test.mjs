@@ -62,7 +62,7 @@ test("une réponse complète, vide, partielle ou en erreur suit le tarif sans ch
   assert.equal(complete.debit, true);
   assert.equal(complete.searches, 1);
   assert.equal(partial.debit, false);
-  assert.equal(partial.searches, 1);
+  assert.equal(partial.searches, 0);
   for (const kind of ["error", "empty", "partial-empty"]) {
     const outcome = sandbox.searchAccounting(kind);
     assert.equal(outcome.debit, false, kind);
@@ -187,5 +187,38 @@ test("une réponse complète vide et une réponse partielle vide restent des lis
   assert.equal(partialRowsWith.osmCoverage.status, "partial");
   assert.equal(partialRowsWith[0].phone, "");
   assert.equal(partialRowsWith[0].address, "");
+  assert.equal(partialRowsWith[0].last_verified, "");
   assert.equal(Object.hasOwn(partialRowsWith[0], "lat"), false);
+});
+
+test("un reçu de débit ne s'applique qu'une fois et le quota change de mois", async () => {
+  const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+  const slice = app.slice(app.indexOf("function chargeOnce"), app.indexOf("function sectorLabel"));
+  const billing = { pendingDebitKey: "debit_1", alert() { throw new Error("solde"); } };
+  billing.KS = { S: { credits: { balance: 20 }, creditLog: [], creditReceipts: [] }, save() {} };
+  vm.createContext(billing);
+  vm.runInContext(slice, billing);
+  assert.equal(billing.chargeOnce(8, "Recherche"), true);
+  assert.equal(billing.KS.S.credits.balance, 12);
+  assert.equal(billing.chargeOnce(8, "Recherche"), true);
+  assert.equal(billing.KS.S.credits.balance, 12);
+  assert.equal(billing.KS.S.creditLog.length, 1);
+  assert.equal(app.includes("if(searchRunning)return;"), true);
+  const session = new Map();
+  const sandbox = {
+    sessionStorage: { getItem: (key) => session.get(key) ?? null, setItem: (key, value) => session.set(key, String(value)), removeItem: (key) => session.delete(key), clear: () => session.clear() },
+    structuredClone, Blob, crypto: webcrypto, console, Date, URL, Intl, setTimeout, clearTimeout, Promise
+  };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(await readFile(new URL("../src/security.js", import.meta.url), "utf8"), sandbox);
+  vm.runInContext(await readFile(new URL("../src/store.js", import.meta.url), "utf8"), sandbox);
+  const kept = sandbox.KlirStore.blankState();
+  kept.usage.searches = 4;
+  sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-10-11T16:00:00.000Z"));
+  assert.equal(kept.usage.searches, 4);
+  assert.equal(kept.usagePeriod, "2026-10");
+  sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-11-11T16:00:00.000Z"));
+  assert.equal(kept.usage.searches, 0);
+  assert.equal(kept.usagePeriod, "2026-11");
 });
