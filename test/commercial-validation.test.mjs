@@ -240,7 +240,8 @@ test("la recherche et les crédits restent ordonnés quand la couverture OSM cha
   assert.ok(search.indexOf("Recherche échouée") < search.indexOf("spendCredits(searchCost"));
   assert.ok(search.indexOf("Recherche partielle, aucun résultat reçu") < search.indexOf("spendCredits(searchCost"));
   assert.ok(search.indexOf("Recherche terminée, aucun résultat") < search.indexOf("spendCredits(searchCost"));
-  assert.equal(search.includes('if(!partial&&!spendCredits(searchCost,"Recherche"))return;'), true);
+  assert.equal(search.includes('if(account.debit&&!spendCredits(searchCost,"Recherche"))return;'), true);
+  assert.equal(search.includes("searchAccounting(accountKind)"), true);
   assert.equal(search.includes("5+Math.ceil(_costQ/10)"), true);
   assert.equal(search.includes("selExplicit=false"), true);
   const exporters = app.slice(app.indexOf("function exportRows"), app.indexOf("function createCamp"));

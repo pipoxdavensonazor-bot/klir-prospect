@@ -211,15 +211,53 @@ var KlirSources = window.KlirSources || {};
     if (remark) return { status: "partial", remark: remark };
     return { status: "complete", remark: "" };
   }
-  function businessKey(row) {
-    const name = String(row && row.company_name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").replace(/\b(inc|ltée|ltee|sarl|sas|llc|corp)\b/g, "").trim().replace(/\s+/g, " ");
-    const place = String(row && row.city || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-    return name ? name + "|" + place : "";
+  function publishedToken(kind, value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (kind === "phone") return raw.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+    if (kind === "email") return raw.toLowerCase();
+    if (kind === "domain") return raw.toLowerCase().replace(/^www\./, "");
+    return raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
   }
-  function absorbPublished(keep, extra) {
-    ["phone", "public_email", "website", "domain", "address", "postal_code", "city"].forEach(function (field) {
-      if (!keep[field] && extra[field]) keep[field] = extra[field];
+  function publishedName(row) {
+    return publishedToken("text", row && row.company_name).replace(/\b(inc|ltee|sarl|sas|llc|corp)\b/g, "").replace(/\s+/g, " ").trim();
+  }
+  function identityPairs(row) {
+    return [
+      publishedToken("phone", row && row.phone),
+      publishedToken("email", row && row.public_email),
+      publishedToken("domain", row && (row.domain || row.website)),
+      publishedToken("text", row && row.address)
+    ];
+  }
+  function publishedConflict(a, b) {
+    const left = identityPairs(a);
+    const right = identityPairs(b);
+    return left.some(function (value, index) { return value && right[index] && value !== right[index]; });
+  }
+  function samePublishedBusiness(a, b) {
+    const name = publishedName(a);
+    if (!name || name !== publishedName(b) || publishedConflict(a, b)) return false;
+    const left = identityPairs(a);
+    const right = identityPairs(b);
+    return left.some(function (value, index) { return value && value === right[index]; });
+  }
+  function rememberPublished(row, idKey) {
+    row.osm_ids = row.osm_ids || [];
+    if (idKey && row.osm_ids.indexOf(idKey) < 0) row.osm_ids.push(idKey);
+    row.field_sources = row.field_sources || {};
+    ["phone", "public_email", "website", "domain", "address", "postal_code"].forEach(function (field) {
+      if (row[field] && !row.field_sources[field]) row.field_sources[field] = idKey;
     });
+  }
+  function absorbPublished(keep, extra, idKey) {
+    ["phone", "public_email", "website", "domain", "address", "postal_code"].forEach(function (field) {
+      if (!keep[field] && extra[field]) {
+        keep[field] = extra[field];
+        keep.field_sources[field] = idKey;
+      }
+    });
+    rememberPublished(keep, idKey);
   }
   function overpassRetryDelay(response) {
     const fallback = 8000;
@@ -288,21 +326,25 @@ var KlirSources = window.KlirSources || {};
     coverage.areaRequested = area.requested;
     coverage.areaFallback = area.requested === "montreal_island" && area.used !== "montreal_island";
     const rows = [];
-    const seenId = new Set();
-    const byBusiness = new Map();
+    const byOsmId = new Map();
     for (const element of payload.elements || []) {
       if (!element || element.id == null) continue;
       const idKey = (element.type || "node") + "/" + element.id;
-      if (seenId.has(idKey)) continue;
-      seenId.add(idKey);
       const row = mapOsmElement(element, params);
       if (!row) continue;
-      const key = businessKey(row);
-      if (key && byBusiness.has(key)) {
-        absorbPublished(byBusiness.get(key), row);
+      rememberPublished(row, idKey);
+      const prior = byOsmId.get(idKey);
+      if (prior) {
+        absorbPublished(prior, row, idKey);
         continue;
       }
-      if (key) byBusiness.set(key, row);
+      const twin = rows.find(function (existing) { return samePublishedBusiness(existing, row); });
+      if (twin) {
+        absorbPublished(twin, row, idKey);
+        byOsmId.set(idKey, twin);
+        continue;
+      }
+      byOsmId.set(idKey, row);
       rows.push(row);
       if (rows.length >= limit) break;
     }

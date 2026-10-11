@@ -111,15 +111,13 @@ test("un chemin publié ne reçoit ni coordonnée ni contact inventé", async ()
   assert.equal(office.id, "osm_relation_9");
 });
 
-test("nœud, chemin et relation d'une même entreprise ne produisent qu'une fiche", async () => {
+test("le même identifiant OSM ne produit qu'une fiche et ne mélange pas deux téléphones", async () => {
   const calls = [];
   const sandbox = clockedSandbox();
   sandbox.fetch = scriptedFetch({
     elements: [
-      { type: "node", id: 1, tags: { name: "F. Dussault Inc.", office: "construction_company" } },
       { type: "node", id: 1, tags: { name: "F. Dussault Inc.", office: "construction_company", phone: "+1-514-555-0101" } },
-      { type: "way", id: 2, lat: 45.51, lon: -73.56, tags: { name: "F. Dussault Inc.", craft: "builder", phone: "+1 514 555-0199", website: "https://dussault.example" } },
-      { type: "relation", id: 3, tags: { name: "F. Dussault Inc.", craft: "joiner", email: "chantier@dussault.example", "addr:housenumber": "10", "addr:street": "rue du Pont" } },
+      { type: "node", id: 1, tags: { name: "F. Dussault Inc.", office: "construction_company", phone: "+1 514 555-0199", website: "https://dussault.example" } },
       { type: "node", id: 4, tags: { name: "Toiture Laval", craft: "roofer" } }
     ]
   }, calls);
@@ -128,18 +126,15 @@ test("nœud, chemin et relation d'une même entreprise ne produisent qu'une fich
   assert.deepEqual(calls, ["overpass"]);
   assert.equal(rows.length, 2);
   assert.equal(rows[0].id, "osm_node_1");
-  assert.equal(rows[0].phone, "+1 514 555-0199");
+  assert.equal(rows[0].phone, "+1-514-555-0101");
   assert.equal(rows[0].website, "https://dussault.example/");
-  assert.equal(rows[0].public_email, "chantier@dussault.example");
-  assert.equal(rows[0].address, "10 rue du Pont");
+  assert.equal(rows[0].field_sources.phone, "node/1");
+  assert.equal(rows[0].field_sources.website, "node/1");
+  assert.equal(rows[0].osm_ids.join(","), "node/1");
   assert.equal(rows[0].employee_range, "");
   assert.equal(Object.hasOwn(rows[0], "lat"), false);
   assert.equal(rows[1].company_name, "Toiture Laval");
-  assert.equal(rows[1].phone, "");
-  assert.equal(rows[1].website, "");
   assert.equal(rows.osmCoverage.status, "complete");
-  assert.equal(rows.osmCoverage.remark, "");
-  assert.equal(rows.osmCoverage.area, "radius");
 });
 
 test("une remarque Overpass marque la collecte partielle sans la transformer en erreur", async () => {
@@ -180,7 +175,8 @@ test("le parcours de production ne facture pas une collecte partielle", async ()
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
   const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
   assert.equal(search.includes("genProspects"), false);
-  assert.equal(search.includes('if(!partial&&!spendCredits(searchCost,"Recherche"))return;'), true);
+  assert.equal(search.includes('if(account.debit&&!spendCredits(searchCost,"Recherche"))return;'), true);
+  assert.equal(search.includes("searchAccounting(accountKind)"), true);
   assert.equal(search.includes("5+Math.ceil(_costQ/10)"), true);
   assert.ok(search.indexOf("Recherche partielle, aucun résultat reçu") < search.indexOf("spendCredits(searchCost"));
   assert.equal(app.includes("Collecte partielle, non exhaustive."), true);

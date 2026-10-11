@@ -69,11 +69,50 @@ function genProspects(params, qty){
   }
   return out;
 }
+function identityPairs(p){
+  return [normPhone(p.phone),normEmail(p.public_email),normDomain(p.domain||p.website),normStr(p.address)];
+}
+function identitiesConflict(a,b){
+  const left=identityPairs(a), right=identityPairs(b);
+  return left.some((value,index)=>value&&right[index]&&value!==right[index]);
+}
+function identitiesCorroborate(a,b){
+  if(normStr(a.company_name)!==normStr(b.company_name)||identitiesConflict(a,b))return false;
+  const left=identityPairs(a), right=identityPairs(b);
+  return left.some((value,index)=>value&&value===right[index]);
+}
 function dedup(list){
   const seen=new Map(), unique=[], dups=[];
-  for(const p of list){const f=fingerprint(p); if(seen.has(f)){dups.push({kept:seen.get(f), dup:p});} else {seen.set(f,p); unique.push(p);}}
-  const byNameCity=new Map(); for(const p of unique){ const k=normStr(p.company_name)+"|"+normStr(p.city); if(byNameCity.has(k)){ dups.push({kept:byNameCity.get(k),dup:p}); } else byNameCity.set(k,p); } const byEmail=new Map(); for(const p of unique){ if(!p.public_email) continue; const e=normEmail(p.public_email); if(byEmail.has(e)){ dups.push({kept:byEmail.get(e),dup:p,level:"exact"}); } else byEmail.set(e,p); } const byPhone=new Map();
-  for(const p of unique){if(!p.phone)continue;const n=normPhone(p.phone);if(byPhone.has(n)){dups.push({kept:byPhone.get(n),dup:p});}else byPhone.set(n,p);}
+  for(const p of list){
+    const phone=normPhone(p.phone), domain=normDomain(p.domain||p.website);
+    const f=fingerprint(p);
+    if((phone||domain)&&seen.has(f)){dups.push({kept:seen.get(f),dup:p});continue;}
+    if(phone||domain)seen.set(f,p);
+    unique.push(p);
+  }
+  const byNameCity=new Map();
+  for(const p of unique){
+    const k=normStr(p.company_name)+"|"+normStr(p.city);
+    const group=byNameCity.get(k)||[];
+    const twin=group.find(prev=>identitiesCorroborate(prev,p));
+    if(twin)dups.push({kept:twin,dup:p});
+    else group.push(p);
+    byNameCity.set(k,group);
+  }
+  const byEmail=new Map();
+  for(const p of unique){
+    if(!p.public_email)continue;
+    const e=normEmail(p.public_email);
+    if(byEmail.has(e)){const kept=byEmail.get(e);if(!identitiesConflict(kept,p))dups.push({kept,dup:p,level:"exact"});}
+    else byEmail.set(e,p);
+  }
+  const byPhone=new Map();
+  for(const p of unique){
+    if(!p.phone)continue;
+    const n=normPhone(p.phone);
+    if(byPhone.has(n)){const kept=byPhone.get(n);if(!identitiesConflict(kept,p))dups.push({kept,dup:p});}
+    else byPhone.set(n,p);
+  }
   const dupIds=new Set(dups.map(d=>d.dup.id));
   return {unique:unique.filter(p=>!dupIds.has(p.id)), dups};
 }
@@ -113,9 +152,9 @@ function enrichWaterfall(p, active){
   p.enrichedFrom=prov;
   return {filled, chain};
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
 function aiAnalysis(p, params){
   const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
