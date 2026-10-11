@@ -232,29 +232,28 @@ test("le radar compte comme une recherche et une session anonyme n'appelle pas O
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
   assert.equal(radar.includes("KS.S.usage.searches+=account.searches"), true);
   assert.equal(radar.includes('if(account.debit&&!spendCredits(5,"Scan Radar"))return;'), true);
-  assert.ok(radar.indexOf("pilotSearchAllowed") < radar.indexOf("KlirSources.osm.search"));
-  assert.ok(search.indexOf("pilotSearchAllowed") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(radar.indexOf("osmSearchAllowed") < radar.indexOf("KlirSources.osm.search"));
+  assert.ok(search.indexOf("osmSearchAllowed") < search.indexOf("KlirSources.osm.search"));
   assert.ok(radar.indexOf("Recherche échouée") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.ok(radar.indexOf("Recherche partielle, aucun résultat reçu") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.ok(radar.indexOf("Recherche terminée, aucun résultat") < radar.indexOf('spendCredits(5,"Scan Radar")'));
-  const gate = app.slice(app.indexOf("function pilotEmails"), app.indexOf("function searchAccounting"));
+  assert.equal(app.includes("pilotEmails"), false);
+  assert.equal(app.includes("KLIR_PILOT_EMAILS"), false);
+  assert.equal(app.includes("pilotSearchAllowed"), false);
+  const gate = app.slice(app.indexOf("function osmSearchAllowed"), app.indexOf("function searchAccounting"));
   const host = {
     authState: { user: null },
-    KS: { S: { demo: true } },
-    window: { __KLIR_CONFIG__: { pilotEmails: ["Invite@Example.com"] } }
+    KS: { S: { demo: true } }
   };
-  host.window.window = host.window;
   vm.createContext(host);
   vm.runInContext(gate, host);
-  assert.equal(host.pilotSearchAllowed(), false);
+  assert.equal(host.osmSearchAllowed(), false);
   host.authState.user = { email: "autre@example.com" };
   host.KS.S.demo = false;
-  assert.equal(host.pilotSearchAllowed(), false);
-  host.authState.user = { email: "Invite@Example.com" };
-  assert.equal(host.pilotSearchAllowed(), true);
+  assert.equal(host.osmSearchAllowed(), true);
   host.KS.S.demo = true;
-  assert.equal(host.pilotSearchAllowed(), false);
-  host.window.__KLIR_CONFIG__.pilotEmails = [];
+  assert.equal(host.osmSearchAllowed(), false);
+  host.authState.user = null;
   host.KS.S.demo = false;
-  assert.equal(host.pilotSearchAllowed(), false);
+  assert.equal(host.osmSearchAllowed(), false);
 });
