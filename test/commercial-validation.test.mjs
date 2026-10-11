@@ -231,19 +231,23 @@ test("un secteur demandé n'est pas présenté comme une découverte et l'histor
   assert.equal(sandbox.OppEngine.version, "opportunity_engine_v1");
 });
 
-test("la recherche, les crédits et la requête OpenStreetMap restent inchangés", async () => {
+test("la recherche et les crédits restent ordonnés quand la couverture OSM change", async () => {
   const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
   const sources = await readFile(new URL("../src/sources.js", import.meta.url), "utf8");
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
   assert.equal(search.includes("KlirSources.osm.search"), true);
   assert.equal(search.includes("genProspects"), false);
   assert.ok(search.indexOf("Recherche échouée") < search.indexOf("spendCredits(searchCost"));
+  assert.ok(search.indexOf("Recherche partielle, aucun résultat reçu") < search.indexOf("spendCredits(searchCost"));
   assert.ok(search.indexOf("Recherche terminée, aucun résultat") < search.indexOf("spendCredits(searchCost"));
+  assert.equal(search.includes('if(!partial&&!spendCredits(searchCost,"Recherche"))return;'), true);
+  assert.equal(search.includes("5+Math.ceil(_costQ/10)"), true);
   assert.equal(search.includes("selExplicit=false"), true);
   const exporters = app.slice(app.indexOf("function exportRows"), app.indexOf("function createCamp"));
   assert.equal(exporters.includes("spendCredits"), false);
-  assert.equal(sources.includes('["craft"~"^(builder|electrician|plumber|roofer|painter|carpenter)$"]'), true);
   assert.equal(sources.includes('["office"="construction_company"]'), true);
   assert.equal(sources.includes("(around:\" + radius + \",\" + lat + \",\" + lng + \")"), true);
   assert.equal(sources.includes("last_verified: new Date()"), true);
+  assert.equal(sources.includes('["shop"="trade"]'), false);
+  assert.equal(sources.includes('["office"="company"]'), false);
 });

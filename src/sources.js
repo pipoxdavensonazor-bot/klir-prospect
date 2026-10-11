@@ -89,12 +89,16 @@ var KlirSources = window.KlirSources || {};
       return { lat: j[0].lat, lng: j[0].lon, label: j[0].display_name };
     } finally { clearTimeout(to); }
   }
+  const CONSTRUCTION_BASE_CRAFTS = ["builder", "electrician", "plumber", "roofer", "painter", "carpenter"];
+  const CONSTRUCTION_RENOVATION_CRAFTS = ["plasterer", "tiler", "glazier", "window_construction", "insulation", "parquet_layer", "joiner", "stonemason", "scaffolder", "hvac", "floorer"];
+  const CONSTRUCTION_CRAFTS = CONSTRUCTION_BASE_CRAFTS.concat(CONSTRUCTION_RENOVATION_CRAFTS);
+  const MONTREAL_ISLAND_BOUNDS = { south: 45.4102, west: -73.9744, north: 45.7058, east: -73.4742 };
   const OSM_FILTERS = {
     restauration: ['["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]'],
     sante: ['["amenity"~"^(clinic|doctors|dentist|pharmacy|hospital)$"]'],
     immobilier: ['["office"="estate_agent"]'],
     finance: ['["amenity"~"^(bank|bureau_de_change)$"]', '["office"~"^(financial|insurance|accountant|tax_advisor)$"]'],
-    construction: ['["craft"~"^(builder|electrician|plumber|roofer|painter|carpenter)$"]', '["office"="construction_company"]'],
+    construction: ['["craft"~"^(' + CONSTRUCTION_CRAFTS.join("|") + ')$"]', '["office"="construction_company"]'],
     technologie: ['["office"~"^(it|telecommunication)$"]', '["shop"~"^(computer|electronics|mobile_phone)$"]'],
     commerce: ['["shop"]'],
     services: ['["office"]', '["craft"]'],
@@ -126,7 +130,7 @@ var KlirSources = window.KlirSources || {};
     if (/clinic|doctors|dentist|pharmacy|hospital/.test(blob)) return "sante";
     if (/estate_agent/.test(blob)) return "immobilier";
     if (/bank|insurance|financial|accountant/.test(blob)) return "finance";
-    if (/builder|electrician|plumber|roofer|painter|carpenter|construction/.test(blob)) return "construction";
+    if (CONSTRUCTION_CRAFTS.indexOf(String(tags.craft || "")) >= 0 || String(tags.office || "") === "construction_company") return "construction";
     if (/^it$|telecommunication|computer|electronics/.test(blob)) return "technologie";
     if (tags.shop) return "commerce";
     return "services";
@@ -166,18 +170,56 @@ var KlirSources = window.KlirSources || {};
       signals: ["Source ouverte"]
     };
   }
+  function foldedCity(params) {
+    const name = params && params.city ? String(params.city.city || "") : "";
+    return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function resolveArea(params) {
+    const requested = params && params.area === "montreal_island" ? "montreal_island" : "radius";
+    if (requested === "montreal_island" && foldedCity(params) === "montreal") {
+      return { requested: requested, used: "montreal_island", bounds: MONTREAL_ISLAND_BOUNDS };
+    }
+    return { requested: requested, used: "radius", bounds: null };
+  }
   function overpassQuery(params, limit) {
     const city = params && params.city;
     const lat = Number(city && city.lat);
     const lng = Number(city && city.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
     const industry = params.industry && OSM_FILTERS[params.industry] ? params.industry : "all";
-    const radius = industry === "all" ? 1500 : 2200;
-    const around = "(around:" + radius + "," + lat + "," + lng + ")";
+    const area = resolveArea(params);
+    let clause;
+    if (area.used === "montreal_island") {
+      const bounds = area.bounds;
+      clause = "(" + bounds.south + "," + bounds.west + "," + bounds.north + "," + bounds.east + ")";
+    } else {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
+      const radius = industry === "all" ? 1500 : 2200;
+      const around = "(around:" + radius + "," + lat + "," + lng + ")";
+      clause = around;
+    }
+    const types = industry === "construction" ? ["node", "way", "relation"] : ["node"];
     const body = OSM_FILTERS[industry].map(function (filter) {
-      return "node[\"name\"]" + filter + around + ";";
+      return types.map(function (type) {
+        return type + "[\"name\"]" + filter + clause + ";";
+      }).join("");
     }).join("");
     return "[out:json][timeout:15];(" + body + ");out tags " + limit + ";";
+  }
+  function overpassCoverage(payload) {
+    const raw = payload && payload.remark;
+    const remark = raw == null ? "" : String(raw).trim().slice(0, 500);
+    if (remark) return { status: "partial", remark: remark };
+    return { status: "complete", remark: "" };
+  }
+  function businessKey(row) {
+    const name = String(row && row.company_name || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").replace(/\b(inc|ltée|ltee|sarl|sas|llc|corp)\b/g, "").trim().replace(/\s+/g, " ");
+    const place = String(row && row.city || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    return name ? name + "|" + place : "";
+  }
+  function absorbPublished(keep, extra) {
+    ["phone", "public_email", "website", "domain", "address", "postal_code", "city"].forEach(function (field) {
+      if (!keep[field] && extra[field]) keep[field] = extra[field];
+    });
   }
   function overpassRetryDelay(response) {
     const fallback = 8000;
@@ -240,14 +282,41 @@ var KlirSources = window.KlirSources || {};
   async function searchPlaces(params, maxN) {
     const limit = Math.min(40, Math.max(5, maxN || 20));
     const payload = await askOverpass(overpassQuery(params, limit));
+    const area = resolveArea(params);
+    const coverage = overpassCoverage(payload);
+    coverage.area = area.used;
+    coverage.areaRequested = area.requested;
+    coverage.areaFallback = area.requested === "montreal_island" && area.used !== "montreal_island";
     const rows = [];
+    const seenId = new Set();
+    const byBusiness = new Map();
     for (const element of payload.elements || []) {
+      if (!element || element.id == null) continue;
+      const idKey = (element.type || "node") + "/" + element.id;
+      if (seenId.has(idKey)) continue;
+      seenId.add(idKey);
       const row = mapOsmElement(element, params);
-      if (row) rows.push(row);
+      if (!row) continue;
+      const key = businessKey(row);
+      if (key && byBusiness.has(key)) {
+        absorbPublished(byBusiness.get(key), row);
+        continue;
+      }
+      if (key) byBusiness.set(key, row);
+      rows.push(row);
       if (rows.length >= limit) break;
     }
+    rows.osmCoverage = coverage;
     return rows;
   }
-  KlirSources.osm = { lookup: osmLookup, search: searchPlaces, mapElement: mapOsmElement, query: overpassQuery };
+  KlirSources.osm = {
+    lookup: osmLookup,
+    search: searchPlaces,
+    mapElement: mapOsmElement,
+    query: overpassQuery,
+    constructionCrafts: CONSTRUCTION_CRAFTS,
+    renovationCrafts: CONSTRUCTION_RENOVATION_CRAFTS,
+    areas: { montreal_island: MONTREAL_ISLAND_BOUNDS }
+  };
   window.KlirSources = KlirSources;
 })();
