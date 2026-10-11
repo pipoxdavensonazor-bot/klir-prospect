@@ -32,10 +32,14 @@
     return value;
   }
 
-  function csvCell(value) {
+  function sheetText(value) {
     var raw = String(value == null ? "" : value).replace(/\r?\n/g, " ");
     if (/^[=+\-@\t\r]/.test(raw)) raw = "'" + raw;
-    return '"' + raw.replace(/"/g, '""') + '"';
+    return raw;
+  }
+
+  function csvCell(value) {
+    return '"' + sheetText(value).replace(/"/g, '""') + '"';
   }
 
   function random() {
@@ -64,6 +68,7 @@
     text: text,
     cleanState: cleanState,
     csvCell: csvCell,
+    sheetText: sheetText,
     random: random,
     domain: domain,
     maxImportBytes: 1024 * 1024

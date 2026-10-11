@@ -6,3 +6,7 @@ command = "npm run build"
 
 [assets]
 directory = "./dist"
+
+# Requis par `npx wrangler preview` sur les branches autres que la production.
+# Table de premier niveau : un champ sous [assets] n'est pas reconnu.
+[previews]

@@ -1,25 +1,50 @@
+import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { build } from "esbuild";
+import { allowsPublicConfig, decideSupabase, resolveEnvironment } from "./release-identity.mjs";
 
-async function publicSupabaseConfig() {
-  let supabaseUrl = process.env.SUPABASE_URL || "";
-  let supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || "";
-  if (!supabaseUrl || !supabasePublishableKey) {
-    try {
-      const response = await fetch("https://klirprospect.klirline.ca/config.js", {
-        headers: { Accept: "application/javascript", "User-Agent": "Mozilla/5.0 KlirProspect-build" }
-      });
-      if (!response.ok) throw new Error("http " + response.status);
-      const text = await response.text();
-      const match = text.match(/window\.__KLIR_CONFIG__=(\{.*?\});/);
-      if (!match) throw new Error("format");
-      const parsed = JSON.parse(match[1]);
-      supabaseUrl = supabaseUrl || parsed.supabaseUrl || "";
-      supabasePublishableKey = supabasePublishableKey || parsed.supabasePublishableKey || "";
-    } catch (error) {
-      if (process.env.CI) throw new Error("Configuration publique Supabase introuvable pour le build.");
+function publishedCommit() {
+  const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
+  if (fromEnv) return String(fromEnv).trim();
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  } catch (error) {
+    return "";
+  }
+}
+
+async function publicSupabaseConfig(environment) {
+  const decision = decideSupabase(process.env, environment);
+  if (!decision.fetchPublic) {
+    if (allowsPublicConfig(environment) && decision.supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(decision.supabaseUrl)) {
+      throw new Error("SUPABASE_URL invalide.");
     }
+    if (allowsPublicConfig(environment) && process.env.CI && (!decision.supabaseUrl || !decision.supabasePublishableKey || /service_role/i.test(decision.supabasePublishableKey))) {
+      throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
+    }
+    return decision;
+  }
+  if (!allowsPublicConfig(environment)) {
+    throw new Error("Une prévisualisation ne copie pas la configuration du site public.");
+  }
+  let supabaseUrl = decision.supabaseUrl;
+  let supabasePublishableKey = decision.supabasePublishableKey;
+  let supabaseSource = "absent";
+  try {
+    const response = await fetch("https://klirprospect.klirline.ca/config.js", {
+      headers: { Accept: "application/javascript", "User-Agent": "Mozilla/5.0 KlirProspect-build" }
+    });
+    if (!response.ok) throw new Error("http " + response.status);
+    const text = await response.text();
+    const match = text.match(/window\.__KLIR_CONFIG__=(\{.*?\});/);
+    if (!match) throw new Error("format");
+    const parsed = JSON.parse(match[1]);
+    supabaseUrl = supabaseUrl || parsed.supabaseUrl || "";
+    supabasePublishableKey = supabasePublishableKey || parsed.supabasePublishableKey || "";
+    supabaseSource = "public-site";
+  } catch (error) {
+    if (process.env.CI) throw new Error("Configuration publique Supabase introuvable pour le build.");
   }
   if (supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
     throw new Error("SUPABASE_URL invalide.");
@@ -27,7 +52,13 @@ async function publicSupabaseConfig() {
   if (process.env.CI && (!supabaseUrl || !supabasePublishableKey || /service_role/i.test(supabasePublishableKey))) {
     throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
   }
-  return { supabaseUrl, supabasePublishableKey };
+  return {
+    supabaseUrl,
+    supabasePublishableKey,
+    supabaseSource,
+    supabaseHost: /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl) ? supabaseUrl.slice("https://".length) : "",
+    fetchPublic: false
+  };
 }
 
 const out = new URL("../dist/", import.meta.url);
@@ -45,12 +76,14 @@ await cp(new URL("../src/icons", import.meta.url), new URL("icons", out), { recu
 for (const file of runtime) {
   await cp(new URL("../src/" + file, import.meta.url), new URL(file, out));
 }
-const published = await publicSupabaseConfig();
+const environment = resolveEnvironment(process.env);
+const published = await publicSupabaseConfig(environment);
 const supabaseUrl = published.supabaseUrl;
 const supabasePublishableKey = published.supabasePublishableKey;
 await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.stringify({
   supabaseUrl,
-  supabasePublishableKey
+  supabasePublishableKey,
+  environment
 }).replace(/</g, "\\u003c")};\n`);
 await build({
   entryPoints: [new URL("../src/auth.js", import.meta.url).pathname],
@@ -81,6 +114,12 @@ for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-51
 await writeFile(join(out.pathname, "build.json"), JSON.stringify({
   reproducible: true,
   files: runtime.length + 9,
-  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey)
+  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
+  supabaseSource: published.supabaseSource,
+  supabaseHost: published.supabaseHost || "",
+  commit: publishedCommit(),
+  builtAt: new Date().toISOString(),
+  environment
 }, null, 2) + "\n");
 console.log(`dist créé avec ${runtime.length + 9} fichiers`);
+console.log(`build-identity environment=${environment} supabase=${published.supabaseSource}`);

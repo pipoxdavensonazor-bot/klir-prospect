@@ -22,13 +22,30 @@ var DEF = {
   credits: { balance: 200 }, apiKey: null, webai: null
 };
 function blankState(){ return structuredClone(DEF); }
+function torontoPeriod(date){
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit" }).formatToParts(date || new Date());
+  const year = parts.find(function (part) { return part.type === "year"; }).value;
+  const month = parts.find(function (part) { return part.type === "month"; }).value;
+  return year + "-" + month;
+}
+function rollUsageMonth(state, now){
+  const period = torontoPeriod(now || new Date());
+  if (!state.usage) state.usage = { searches: 0, prospects: 0, ai: 0, exports: 0 };
+  if (!state.usagePeriod) { state.usagePeriod = period; return state; }
+  if (state.usagePeriod !== period) {
+    state.usagePeriod = period;
+    state.usage = { searches: 0, prospects: 0, ai: 0, exports: 0 };
+  }
+  return state;
+}
 function normalizeState(value){
   var cleaned = window.KlirSecurity ? window.KlirSecurity.cleanState(value || {}) : (value || {});
   var s = Object.assign(blankState(), cleaned);
-  for (const key of ["notifications","audit","optout","approvals","creditLog","opps","watch","customLists","deals","manualContacts","searches","prospects","crm","campaigns","activities","aiLog"]) {
+  for (const key of ["notifications","audit","optout","approvals","creditLog","creditReceipts","opps","watch","customLists","deals","manualContacts","searches","prospects","crm","campaigns","activities","aiLog"]) {
     if (!Array.isArray(s[key])) s[key] = [];
   }
   s.usage = Object.assign({ searches: 0, prospects: 0, ai: 0, exports: 0 }, s.usage || {});
+  rollUsageMonth(s);
   s.integrations = structuredClone(DEF.integrations);
   s.apiKey = null;
   s.plan = "Free";
@@ -235,7 +252,7 @@ async function aiText(prompt, fallback){
 window.KlirStore = {
   get S(){ return _S; }, set S(value){ _S = normalizeState(value); },
   save: save, addActivity: addActivity, notify: notify, audit: audit, uid: uid,
-  aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState,
+  aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState, rollUsageMonth: rollUsageMonth, torontoPeriod: torontoPeriod,
   startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
   stashDemoState: stashDemoState, peekDemoStash: peekDemoStash, takeDemoStash: takeDemoStash,
   flushCloudPersist: flushCloudPersist, pendingOutbox: pendingOutbox, cloudSyncState: cloudSyncState, removeSearch: removeSearch,
