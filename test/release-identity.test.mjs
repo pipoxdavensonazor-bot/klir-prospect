@@ -67,4 +67,5 @@ test("le build ne copie le site public que hors prévisualisation", async () => 
   assert.equal(build.includes("allowsPublicConfig"), true);
   assert.equal(build.includes("WORKERS_CI ? \"production\""), false);
   assert.equal(build.includes("pilotEmails"), false);
+  assert.equal(build.includes("supabasePublishableKey,\n  environment"), true);
 });

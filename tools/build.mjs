@@ -82,7 +82,8 @@ const supabaseUrl = published.supabaseUrl;
 const supabasePublishableKey = published.supabasePublishableKey;
 await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.stringify({
   supabaseUrl,
-  supabasePublishableKey
+  supabasePublishableKey,
+  environment
 }).replace(/</g, "\\u003c")};\n`);
 await build({
   entryPoints: [new URL("../src/auth.js", import.meta.url).pathname],
