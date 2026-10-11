@@ -1,6 +1,24 @@
+import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { build } from "esbuild";
+
+function pilotEmails() {
+  return String(process.env.KLIR_PILOT_EMAILS || "")
+    .split(/[,;\s]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item));
+}
+
+function publishedCommit() {
+  const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
+  if (fromEnv) return String(fromEnv).trim();
+  try {
+    return execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+  } catch (error) {
+    return "";
+  }
+}
 
 async function publicSupabaseConfig() {
   let supabaseUrl = process.env.SUPABASE_URL || "";
@@ -50,7 +68,8 @@ const supabaseUrl = published.supabaseUrl;
 const supabasePublishableKey = published.supabasePublishableKey;
 await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.stringify({
   supabaseUrl,
-  supabasePublishableKey
+  supabasePublishableKey,
+  pilotEmails: pilotEmails()
 }).replace(/</g, "\\u003c")};\n`);
 await build({
   entryPoints: [new URL("../src/auth.js", import.meta.url).pathname],
@@ -81,6 +100,9 @@ for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-51
 await writeFile(join(out.pathname, "build.json"), JSON.stringify({
   reproducible: true,
   files: runtime.length + 9,
-  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey)
+  supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
+  commit: publishedCommit(),
+  builtAt: new Date().toISOString(),
+  environment: process.env.KLIR_ENV || (process.env.WORKERS_CI ? "production" : (process.env.CI ? "ci" : "local"))
 }, null, 2) + "\n");
 console.log(`dist créé avec ${runtime.length + 9} fichiers`);
