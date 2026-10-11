@@ -218,7 +218,43 @@ test("un reçu de débit ne s'applique qu'une fois et le quota change de mois", 
   sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-10-11T16:00:00.000Z"));
   assert.equal(kept.usage.searches, 4);
   assert.equal(kept.usagePeriod, "2026-10");
-  sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-11-11T16:00:00.000Z"));
+  sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-11-01T03:30:00.000Z"));
+  assert.equal(kept.usage.searches, 4);
+  assert.equal(kept.usagePeriod, "2026-10");
+  sandbox.KlirStore.rollUsageMonth(kept, new Date("2026-11-01T06:30:00.000Z"));
   assert.equal(kept.usage.searches, 0);
   assert.equal(kept.usagePeriod, "2026-11");
+});
+
+test("le radar compte comme une recherche et une session anonyme n'appelle pas OpenStreetMap", async () => {
+  const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+  const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
+  const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
+  assert.equal(radar.includes("KS.S.usage.searches+=account.searches"), true);
+  assert.equal(radar.includes('if(account.debit&&!spendCredits(5,"Scan Radar"))return;'), true);
+  assert.ok(radar.indexOf("pilotSearchAllowed") < radar.indexOf("KlirSources.osm.search"));
+  assert.ok(search.indexOf("pilotSearchAllowed") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(radar.indexOf("Recherche échouée") < radar.indexOf('spendCredits(5,"Scan Radar")'));
+  assert.ok(radar.indexOf("Recherche partielle, aucun résultat reçu") < radar.indexOf('spendCredits(5,"Scan Radar")'));
+  assert.ok(radar.indexOf("Recherche terminée, aucun résultat") < radar.indexOf('spendCredits(5,"Scan Radar")'));
+  const gate = app.slice(app.indexOf("function pilotEmails"), app.indexOf("function searchAccounting"));
+  const host = {
+    authState: { user: null },
+    KS: { S: { demo: true } },
+    window: { __KLIR_CONFIG__: { pilotEmails: ["Invite@Example.com"] } }
+  };
+  host.window.window = host.window;
+  vm.createContext(host);
+  vm.runInContext(gate, host);
+  assert.equal(host.pilotSearchAllowed(), false);
+  host.authState.user = { email: "autre@example.com" };
+  host.KS.S.demo = false;
+  assert.equal(host.pilotSearchAllowed(), false);
+  host.authState.user = { email: "Invite@Example.com" };
+  assert.equal(host.pilotSearchAllowed(), true);
+  host.KS.S.demo = true;
+  assert.equal(host.pilotSearchAllowed(), false);
+  host.window.__KLIR_CONFIG__.pilotEmails = [];
+  host.KS.S.demo = false;
+  assert.equal(host.pilotSearchAllowed(), false);
 });

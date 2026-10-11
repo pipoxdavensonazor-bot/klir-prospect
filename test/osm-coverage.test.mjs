@@ -180,7 +180,9 @@ test("le parcours de production ne facture pas une collecte partielle", async ()
   assert.equal(search.includes("5+Math.ceil(_costQ/10)"), true);
   assert.ok(search.indexOf("Recherche partielle, aucun résultat reçu") < search.indexOf("spendCredits(searchCost"));
   assert.equal(app.includes("Collecte partielle, non exhaustive."), true);
-  assert.equal(radar.includes('if(!radarPartial&&!spendCredits(5,"Scan Radar"))return;'), true);
+  assert.equal(radar.includes('if(account.debit&&!spendCredits(5,"Scan Radar"))return;'), true);
+  assert.equal(radar.includes("searchAccounting(radarPartial?\"partial\":\"complete\")"), true);
+  assert.equal(radar.includes("KS.S.usage.searches+=account.searches"), true);
   assert.ok(radar.indexOf("Recherche partielle, aucun résultat reçu") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.equal(radar.includes("Aucun crédit n'a été débité."), true);
   assert.equal(app.includes('id="aArea"'), true);

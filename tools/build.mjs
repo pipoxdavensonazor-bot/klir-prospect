@@ -3,6 +3,13 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { build } from "esbuild";
 
+function pilotEmails() {
+  return String(process.env.KLIR_PILOT_EMAILS || "")
+    .split(/[,;\s]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter((item) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item));
+}
+
 function publishedCommit() {
   const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
   if (fromEnv) return String(fromEnv).trim();
@@ -61,7 +68,8 @@ const supabaseUrl = published.supabaseUrl;
 const supabasePublishableKey = published.supabasePublishableKey;
 await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.stringify({
   supabaseUrl,
-  supabasePublishableKey
+  supabasePublishableKey,
+  pilotEmails: pilotEmails()
 }).replace(/</g, "\\u003c")};\n`);
 await build({
   entryPoints: [new URL("../src/auth.js", import.meta.url).pathname],
