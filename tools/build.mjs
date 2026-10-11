@@ -17,10 +17,10 @@ function publishedCommit() {
 async function publicSupabaseConfig(environment) {
   const decision = decideSupabase(process.env, environment);
   if (!decision.fetchPublic) {
-    if (environment !== "preview" && decision.supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(decision.supabaseUrl)) {
+    if (allowsPublicConfig(environment) && decision.supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(decision.supabaseUrl)) {
       throw new Error("SUPABASE_URL invalide.");
     }
-    if (environment !== "preview" && process.env.CI && (!decision.supabaseUrl || !decision.supabasePublishableKey || /service_role/i.test(decision.supabasePublishableKey))) {
+    if (allowsPublicConfig(environment) && process.env.CI && (!decision.supabaseUrl || !decision.supabasePublishableKey || /service_role/i.test(decision.supabasePublishableKey))) {
       throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
     }
     return decision;
