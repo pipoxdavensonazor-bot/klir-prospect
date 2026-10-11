@@ -15,7 +15,9 @@ Configuration Cloudflare Pages :
 
 `wrangler.toml` pointe également sur `dist`. Les en-têtes de sécurité sont fournis par `dist/_headers`.
 
-La CI GitHub valide et archive le build, sans étape de déploiement. Le Worker Cloudflare `klir-prospect` est publié par Workers Builds, qui ne construit que `main` puis exécute `npx wrangler deploy`. Une pull request vers une autre branche ne change pas le site public.
+La CI GitHub valide et archive le build, sans étape de déploiement. Workers Builds, sur une branche autre que la production, exécute `npx wrangler preview`. Cette commande exige le bloc `previews` de `wrangler.toml`. Le build `46aa8ce` a créé `dist`, puis s'est arrêté uniquement parce que ce bloc manquait. La publication de production reste `npx wrangler deploy` sur `main`, après une approbation séparée. Une prévisualisation ne remplace pas le site public.
+
+`KLIR_PILOT_EMAILS` est une liste d'adresses séparées par des virgules, inscrite dans `dist/config.js` au moment de la compilation. Sans cette variable, la liste est vide et l'application refuse toute recherche OpenStreetMap, y compris la démonstration. Cette barrière empêche le bouton anonyme d'interroger OpenStreetMap. Elle ne remplace pas un contrôle serveur : le navigateur connaît encore l'adresse du service. Les crédits affichés dans la session ne constituent pas un paiement.
 
 `dist/build.json` indique le commit, l'environnement et la date de compilation. La page `#/version` les affiche.
 
