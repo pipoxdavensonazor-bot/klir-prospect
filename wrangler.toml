@@ -1,6 +1,10 @@
 name = "klir-prospect"
 compatibility_date = "2026-10-01"
 
+# Requis par `npx wrangler preview`. Les assets et la compatibilité restent ici.
+previews = { }
+
+# Le tableau Cloudflare n'a pas de commande de build. Wrangler produit dist avant l'envoi.
 [build]
 command = "npm run build"
 
