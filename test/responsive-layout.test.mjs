@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
@@ -260,6 +260,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
     `--user-data-dir=${userDataDir}`
   ], { stdio: ["ignore", "ignore", "pipe"] });
   let debugPort = 0;
+  let cdp;
   try {
     debugPort = await new Promise((resolve, reject) => {
       let buffer = "";
@@ -277,7 +278,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       });
     });
     const version = await (await fetch(`http://127.0.0.1:${debugPort}/json/version`)).json();
-    const cdp = connect(version.webSocketDebuggerUrl);
+    cdp = connect(version.webSocketDebuggerUrl);
     await cdp.ready;
     const page = await openSession(cdp, origin);
     const shots = await mkdtemp(join(tmpdir(), "klir-shots-"));
@@ -355,14 +356,36 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
     }
     assert.deepEqual(cdp.runtimeErrors, [], "erreurs JavaScript pendant la navigation");
     console.log(`captures: ${shots}`);
-    cdp.close();
   } finally {
-    child.kill("SIGKILL");
-    await new Promise((resolve) => {
-      if (child.exitCode !== null || child.signalCode) resolve();
-      else child.once("exit", resolve);
-    });
-    server.close();
-    await rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 40 }).catch(() => {});
+    let browserClosed = false;
+    if (cdp) {
+      let closeTimer;
+      try {
+        await Promise.race([
+          cdp.send("Browser.close"),
+          new Promise((_, reject) => { closeTimer = setTimeout(() => reject(new Error("Fermeture Chrome expirée")), 5000); })
+        ]);
+        browserClosed = true;
+      } catch {} finally { clearTimeout(closeTimer); cdp.close(); }
+    }
+    try {
+      if (process.platform === "win32" && child.exitCode === null && !child.signalCode) {
+        const stopped = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { timeout: 10000, encoding: "utf8" });
+        if (stopped.status !== 0 && !browserClosed) throw stopped.error || new Error(stopped.stderr || "Échec de fermeture Chrome");
+      } else if (!browserClosed && child.exitCode === null && !child.signalCode) {
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("Le navigateur de test ne s'est pas arrêté.")), 10000);
+          child.once("exit", () => { clearTimeout(timer); resolve(); });
+          child.kill("SIGKILL");
+        });
+      }
+    } finally {
+      server.closeAllConnections();
+      server.close();
+      // Chrome may close before Windows releases the inherited stderr handle.
+      child.stderr?.destroy();
+      child.unref();
+      await rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 40 }).catch(() => {});
+    }
   }
 });

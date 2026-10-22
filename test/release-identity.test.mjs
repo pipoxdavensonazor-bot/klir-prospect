@@ -82,6 +82,10 @@ test("une prévisualisation n'emprunte pas la base publique ni celle de producti
   const unlabeled = decideSupabase({ WORKERS_CI: "1", CI: "true" }, "inconnu");
   assert.equal(unlabeled.fetchPublic, false);
   assert.equal(unlabeled.supabaseSource, "absent");
+  const ci = decideSupabase({ CI: "true", KLIR_ENV: "ci" }, "ci");
+  assert.equal(ci.fetchPublic, false);
+  assert.equal(ci.supabaseUrl, "");
+  assert.equal(ci.supabasePublishableKey, "");
 });
 
 test("le build ne copie le site public que hors prévisualisation", async () => {

@@ -15,14 +15,18 @@ Le guide public `#/guide` explique la première recherche, les limites de la sou
 | Export | Tests de sélection, accents, neutralisation des formules et attribution/licence OSM dans CSV et Excel | Export après recherche réelle et contrôle du fichier reçu |
 | Téléphone et bureau | Test Chrome de navigation sur 360, 390, 412, 430, 768, 1280 et 1440 px | Refaire la recette sur la prévisualisation publiée |
 | Clés navigateur | Le build refuse les clés privées modernes et les JWT service_role avant config.js | Configurer uniquement les clés publiques sur les builds appropriés |
-| Cloudflare | wrangler.toml rétabli : klir-prospect, sortie dist, prévisualisations | Rétablir la liaison Git et configurer Supabase au build |
+| Cloudflare | Prévisualisation de codex/pilot-readiness publiée ; commit e24a570 et environnement preview confirmés sur #/version | Configurer la base de test puis exécuter la recette réelle |
 | Commercialisation | Achat fermé | Offre, mentions, confidentialité, support, facturation et validation des pilotes |
 
 Le build Cloudflare `b8081d32-df97-430b-b46c-145106ba5ddd` consulté le 22 octobre relance encore `03ed079`. Il échoue pendant l'installation, car la configuration publique Supabase ne peut pas être récupérée. **Réessayer ce build ne teste pas le code corrigé.** Ne pas déclarer la synchronisation Cloudflare réussie sur cette base.
 
+La branche de cette livraison déclenche bien ses propres builds : `5909ca3b-6ac9-4c0c-9f62-ccaccb9324a2` a publié `e24a570` sur `https://codex-pilot-readiness.klirprospect.klirline.ca/`. La page `#/version` confirme `preview` et « base non configurée ». Accueil, guide, démonstration et devis ont été parcourus : 30 restaurants à Laval donnent un maximum de 30 et 8 crédits ; le passage à 20 dans les paramètres avancés affiche 7 crédits, même après fermeture du panneau. Aucun appel réel à OpenStreetMap ni débit distant n'est validé par ce parcours.
+
+Le job GitHub `validate` définit désormais `KLIR_ENV=preview` dès `npm ci`. La validation ne récupère donc plus sa configuration sur le site public. Les environnements de contrôle `ci` n'empruntent pas non plus la configuration de production.
+
 ## Avant la recette distante
 
-1. Confirmer l'accès GitHub demandé par l'installation Cloudflare, sans élargir ses permissions.
+1. Vérifier que le nouveau commit est servi par la prévisualisation. Le build de branche est opérationnel ; une confirmation GitHub reste affichée pour gérer l'installation, mais n'a pas été nécessaire pour publier cette branche.
 2. Utiliser une branche de prévisualisation et le projet de test `pwakjxjjxswdjsapsbxn`. Ne pas connecter les essais à la production.
 3. Définir `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` sur le build de prévisualisation. Les clés privées restent hors du build statique.
 4. Vérifier les URL de redirection Auth et l'origine autorisée de `delete-account` pour cette prévisualisation. Conserver Cloudflare Access sur le pilote.

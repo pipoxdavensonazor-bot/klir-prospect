@@ -24,7 +24,7 @@ Base de travail : `bf72b5f97d39535f7c05e8da2f3989993830988a` sur `main`.
 Commande : `KLIR_ENV=preview npm run check`.
 
 - Syntaxe des scripts, tests et build : succès.
-- Dernière exécution du 22 octobre 2026 : 81 tests réussis, un test navigateur ignoré, aucun échec. Syntaxe et build preview réussis.
+- Dernière exécution du 22 octobre 2026 : 82 tests réussis, aucun ignoré ni en échec. `npm ci` puis `npm run check` réussissent avec `CI=true`, `KLIR_ENV=preview` et Chrome local, sans variables Supabase. Syntaxe et build preview réussis.
 - Les 9 nouveaux tests exécutent notamment `runSearch` avec une source et un
   registre simulés : devis avancé, réservation et quantité OSM concordants,
   relance sauvegardée, plafond, solde insuffisant, partiel, vide, erreur et double clic.
@@ -38,10 +38,8 @@ Le contrôle visuel a été exécuté avec Chrome local sur sept formats de 360 
 inscription, démonstration et menu mobile. Il ne valide pas le site distant.
 La recette complète et les blocages Cloudflare sont suivis dans
 [pilot-validation.md](pilot-validation.md).
-Les assertions supplémentaires de journal JavaScript et les nouvelles captures du
-guide n'ont pas pu être exécutées : le service d'approbation a atteint sa limite
-d'utilisation. Le contrôle précédent du guide et de sa navigation sur sept formats
-avait réussi ; ce résultat ne remplace pas la dernière vérification en attente.
+Les assertions de journal JavaScript et les captures du guide passent également.
+Le test ferme Chrome par son protocole de contrôle et libère ses flux sous Windows.
 
 ## À valider avant un pilote payant
 

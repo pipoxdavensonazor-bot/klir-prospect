@@ -1,7 +1,7 @@
 export const KNOWN_PRODUCTION_SUPABASE_URL = "https://cbklwmjudobqwbkbxqgy.supabase.co";
 const SUPABASE_URL_PATTERN = /^https:\/\/[a-z0-9-]+\.supabase\.co$/;
 const NAMED_ENVIRONMENTS = new Set(["production", "preview", "ci", "local"]);
-const PUBLIC_CONFIG_ENVIRONMENTS = new Set(["production", "ci", "local"]);
+const PUBLIC_CONFIG_ENVIRONMENTS = new Set(["production", "local"]);
 
 // This classifies build inputs; authorization remains enforced by Supabase RLS.
 export function isPublicSupabaseKey(value) {
