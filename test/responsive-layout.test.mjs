@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import test from "node:test";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const chromeCandidates = [
   process.env.CHROME_PATH,
@@ -29,7 +30,7 @@ const VIEWS = [
 ];
 
 function startServer() {
-  const root = normalize(new URL("../src/", import.meta.url).pathname);
+  const root = normalize(fileURLToPath(new URL("../src/", import.meta.url)));
   const types = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",

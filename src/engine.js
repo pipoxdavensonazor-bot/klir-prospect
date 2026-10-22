@@ -13,6 +13,20 @@ function industryKeys(params){
   if(key&&key!=="all"&&KlirData.INDUSTRIES[key])return [key];
   return Object.keys(KlirData.INDUSTRIES);
 }
+const SEARCH_LIMITS=Object.freeze({min:10,max:40,defaultQuantity:40});
+function normalizeSearchParams(params,overrides={}){
+  const next={...params,...overrides};
+  const quantity=Number(next.quantity);
+  next.quantity=Number.isFinite(quantity)&&quantity>0
+    ?Math.min(SEARCH_LIMITS.max,Math.max(SEARCH_LIMITS.min,Math.floor(quantity)))
+    :SEARCH_LIMITS.defaultQuantity;
+  if(!KlirData.INDUSTRIES[next.industry])next.industry="all";
+  if(!Object.hasOwn(KlirData.CITIES,next.cityKey))next.cityKey="default";
+  next.city=KlirData.CITIES[next.cityKey];
+  next.area=next.area==="montreal_island"&&next.cityKey==="montréal"?"montreal_island":"radius";
+  next.size=["1–10","11–50","51–200","201–500","500+"].includes(next.size)?next.size:null;
+  return next;
+}
 function parseQuery(q){
   q=(q||""); const low=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const allAsked=/tous les (domaines|secteurs|industries)|toutes les (industries|activites)|tous secteurs|multi[- ]secteurs/.test(low);
@@ -28,9 +42,13 @@ function parseQuery(q){
     const at=folded?low.lastIndexOf(folded):-1;
     if(at>cityAt||(at===cityAt&&at>=0&&folded.length>cityLen)){cityKey=k;cityAt=at;cityLen=folded.length;}
   }
-  let qty=50; const m=q.match(/(\d{2,4})\s*(entreprises?|prospects?|boites|companies)?/i); if(m)qty=Math.min(500,Math.max(10,parseInt(m[1])));
+  let qty=SEARCH_LIMITS.defaultQuantity;
+  // A quantity must describe prospects, not a year or a company-size range.
+  const m=low.match(/(?:^|[^\d–-])(\d+)\s*(?:entreprises?|prospects?|boites?|companies|restaurants?|cliniques?|artisans?)\b/)
+    ||low.match(/^\s*(\d+)(?!\d|\s*[–-]\s*\d)(?:\s|$)/);
+  if(m)qty=Number(m[1]);
   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
-  return {industry, cityKey, city:KlirData.CITIES[cityKey], quantity:qty, size, raw:q};
+  return normalizeSearchParams({industry,cityKey,quantity:qty,size,raw:q});
 }
 function seededRand(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
 function genProspects(params, qty){
@@ -152,9 +170,9 @@ function enrichWaterfall(p, active){
   p.enrichedFrom=prov;
   return {filled, chain};
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
 function aiAnalysis(p, params){
   const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
 }
-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};

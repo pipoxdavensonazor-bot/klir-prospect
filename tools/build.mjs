@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { allowsPublicConfig, decideSupabase, resolveEnvironment } from "./release-identity.mjs";
 
@@ -86,8 +86,8 @@ await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.string
   environment
 }).replace(/</g, "\\u003c")};\n`);
 await build({
-  entryPoints: [new URL("../src/auth.js", import.meta.url).pathname],
-  outfile: new URL("auth.js", out).pathname,
+  entryPoints: [fileURLToPath(new URL("../src/auth.js", import.meta.url))],
+  outfile: fileURLToPath(new URL("auth.js", out)),
   bundle: true,
   format: "iife",
   platform: "browser",
@@ -111,7 +111,7 @@ if (!html.includes('rel="manifest" href="manifest.webmanifest"')) {
 for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"]) {
   await readFile(new URL(file, out));
 }
-await writeFile(join(out.pathname, "build.json"), JSON.stringify({
+await writeFile(new URL("build.json", out), JSON.stringify({
   reproducible: true,
   files: runtime.length + 9,
   supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),

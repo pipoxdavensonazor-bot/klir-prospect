@@ -1,21 +1,12 @@
-name = "paynfc-agg"
-main = "worker.js"
-compatibility_date = "2024-11-01"
-workers_dev = true
+name = "klir-prospect"
+compatibility_date = "2026-10-01"
 
-# Si vous avez PLUSIEURS comptes Cloudflare, décommentez et collez votre Account ID
-# (tableau de bord Cloudflare, ou via `npx wrangler whoami`) :
-# account_id = "VOTRE_ACCOUNT_ID"
+[build]
+command = "npm run build"
 
-# Secrets : NE RIEN mettre ici en clair.
-# Après le 1er déploiement, exécutez (voir DEPLOY.md) :
-#   npx wrangler secret put ADMIN_KEY          # obligatoire (back-office)
-#   npx wrangler secret put MERCHANT_KEYS      # recommandé, ex : cle-boutique-1,cle-boutique-2
-#   npx wrangler secret put AGG_WEBHOOK_SECRET # recommandé (webhooks agrégateur)
+[assets]
+directory = "./dist"
 
-# Persistance réelle (recommandé en production, sinon mémoire volatile) :
-# 1. npx wrangler kv namespace create PAYNFC_KV
-# 2. Collez l'id ci-dessous et redéployez :
-# [[kv_namespaces]]
-# binding = "PAYNFC_KV"
-# id = "PASTE_KV_NAMESPACE_ID"
+# Requis par `npx wrangler preview` sur les branches autres que la production.
+# Table de premier niveau : un champ sous [assets] n'est pas reconnu.
+[previews]
