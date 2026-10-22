@@ -1,10 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { decideSupabase, resolveEnvironment } from "../tools/release-identity.mjs";
+import { decideSupabase, isPublicSupabaseKey, resolveEnvironment } from "../tools/release-identity.mjs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const production = "https://cbklwmjudobqwbkbxqgy.supabase.co";
 const previewBranch = "cursor/prospect-main-review-c23c";
+
+test("seules les clés publiques entrent dans la configuration navigateur", () => {
+  const legacy = role => ["e30", Buffer.from(JSON.stringify({ role })).toString("base64url"), "signature"].join(".");
+  assert.equal(isPublicSupabaseKey("sb_publishable_example"), true);
+  assert.equal(isPublicSupabaseKey(legacy("anon")), true);
+  for (const key of ["sb_secret_example", legacy("service_role"), legacy("authenticated"), "service_role_secret", "invalid", "", "e30.invalid.signature"]) {
+    assert.equal(isPublicSupabaseKey(key), false);
+  }
+});
+
+test("le build refuse une clé privée avant d'écrire config.js, même hors CI", async () => {
+  const root = new URL("../", import.meta.url);
+  const result = spawnSync(process.execPath, ["tools/build.mjs"], {
+    cwd: fileURLToPath(root), encoding: "utf8",
+    env: { ...process.env, CI: "", KLIR_ENV: "local", SUPABASE_URL: production, SUPABASE_PUBLISHABLE_KEY: "sb_secret_do_not_publish" }
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Clé Supabase refusée/);
+  assert.equal(result.stderr.includes("sb_secret_do_not_publish"), false);
+  await assert.rejects(readFile(new URL("dist/config.js", root)), { code: "ENOENT" });
+});
 
 test("l'environnement ne déduit pas la production de WORKERS_CI seul", () => {
   assert.equal(resolveEnvironment({ KLIR_ENV: "preview", WORKERS_CI: "1", WORKERS_CI_BRANCH: "main" }), "preview");

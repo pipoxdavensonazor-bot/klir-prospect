@@ -3,6 +3,19 @@ const SUPABASE_URL_PATTERN = /^https:\/\/[a-z0-9-]+\.supabase\.co$/;
 const NAMED_ENVIRONMENTS = new Set(["production", "preview", "ci", "local"]);
 const PUBLIC_CONFIG_ENVIRONMENTS = new Set(["production", "ci", "local"]);
 
+// This classifies build inputs; authorization remains enforced by Supabase RLS.
+export function isPublicSupabaseKey(value) {
+  const key = String(value || "").trim();
+  if (/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) return true;
+  const parts = key.split(".");
+  if (parts.length !== 3 || !parts.every(part => /^[A-Za-z0-9_-]+$/.test(part))) return false;
+  try {
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")).role === "anon";
+  } catch {
+    return false;
+  }
+}
+
 export function allowsPublicConfig(environment) {
   return PUBLIC_CONFIG_ENVIRONMENTS.has(environment);
 }
@@ -51,7 +64,7 @@ export function decideSupabase(env = {}, environment = resolveEnvironment(env)) 
   if (!allowsPublicConfig(environment)) {
     if (!supabaseUrl || !supabasePublishableKey) return blank("absent");
     if (blocked) return blank("production-blocked");
-    if (!SUPABASE_URL_PATTERN.test(supabaseUrl) || /service_role/i.test(supabasePublishableKey)) return blank("absent");
+    if (!SUPABASE_URL_PATTERN.test(supabaseUrl) || !isPublicSupabaseKey(supabasePublishableKey)) return blank("absent");
     return {
       supabaseUrl,
       supabasePublishableKey,

@@ -76,12 +76,17 @@ function connect(browserWs) {
   let nextId = 0;
   const pending = new Map();
   const waits = [];
+  const runtimeErrors = [];
   const ready = new Promise((resolve, reject) => {
     ws.addEventListener("open", () => resolve());
     ws.addEventListener("error", () => reject(new Error("WebSocket Chrome refusé")));
   });
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
+    if (message.method === "Runtime.exceptionThrown") runtimeErrors.push(message.params.exceptionDetails.text);
+    if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
+      runtimeErrors.push(message.params.args.map(arg => arg.value || arg.description || "").join(" "));
+    }
     if (message.id && pending.has(message.id)) {
       const { resolve, reject } = pending.get(message.id);
       pending.delete(message.id);
@@ -109,7 +114,7 @@ function connect(browserWs) {
       waits.push({ method, sessionId, resolve });
     });
   }
-  return { ready, send, waitFor, close: () => ws.close() };
+  return { ready, send, waitFor, runtimeErrors, close: () => ws.close() };
 }
 
 async function openSession(cdp, url) {
@@ -117,23 +122,6 @@ async function openSession(cdp, url) {
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
   await cdp.send("Page.enable", {}, sessionId);
   await cdp.send("Runtime.enable", {}, sessionId);
-  await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
-    source: `(() => {
-      const orig = window.addEventListener;
-      window.addEventListener = function(type, fn, options) {
-        if (type !== "hashchange") return orig.call(this, type, fn, options);
-        let skipNext = false;
-        const wrapped = function(event) {
-          if (skipNext) { skipNext = false; return; }
-          const before = location.hash;
-          const result = fn.call(this, event);
-          if (location.hash !== before) skipNext = true;
-          return result;
-        };
-        return orig.call(this, type, wrapped, options);
-      };
-    })();`
-  }, sessionId);
   return {
     sessionId,
     async emulate(view) {
@@ -181,7 +169,7 @@ const PROBE = `(() => {
       hit: hit === link || (hit && link.contains(hit))
     };
   });
-  const heading = document.querySelector(".auth h2");
+  const heading = document.querySelector(".auth h2, main h1");
   const frame = document.querySelector(".land, .auth, .lay");
   const frameRect = frame ? frame.getBoundingClientRect() : null;
   const menu = document.getElementById("menuBtn");
@@ -296,6 +284,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
     for (const view of VIEWS) {
       await page.emulate(view);
       await page.goto(`${origin}?vue=${view.name}`);
+      assert.equal(await page.eval(`document.title`), "Klir Prospect — Prospection assistée");
       let probe = await page.eval(`document.querySelector(".land-actions a") ? ${PROBE} : null`);
       assert.ok(probe, `${view.name}: accueil absent`);
       assertNav(view, probe);
@@ -307,6 +296,16 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       })()`);
       assert.equal(focus.style, "solid", `${view.name}: focus invisible`);
       assert.ok(focus.width >= 3, `${view.name}: contour de focus trop fin`);
+
+      await page.eval(`document.querySelector('a[href="#/guide"]').click()`);
+      probe = await page.eval(PROBE);
+      assert.equal(probe.hash, "#/guide");
+      assert.equal(probe.heading, "Première recherche et premier prospect enregistré");
+      assertContained(view, probe, "guide");
+      if (view.name === "iphone-390" || view.name === "desktop-1280") {
+        await page.screenshot(join(shots, `${view.name}-guide.png`));
+      }
+      await page.eval(`location.hash = "#/landing"`);
 
       await page.eval(`document.querySelector('.land-actions a[href="#/login"]').click()`);
       probe = await page.eval(PROBE);
@@ -354,6 +353,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
         await page.screenshot(join(shots, `${view.name}-dashboard.png`));
       }
     }
+    assert.deepEqual(cdp.runtimeErrors, [], "erreurs JavaScript pendant la navigation");
     console.log(`captures: ${shots}`);
     cdp.close();
   } finally {

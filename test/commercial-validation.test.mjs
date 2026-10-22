@@ -141,7 +141,9 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
     for (const line of csv.split("\n").slice(1)) assert.equal(/^[=+\-@]/.test(line), false);
     parsed.slice(1).forEach((record, index) => {
       const source = rows[index];
-      assert.equal(record.length, 36);
+      assert.equal(record.length, 39);
+      assert.deepEqual(parsed[0].slice(36), ["Attribution", "License", "License URL"]);
+      assert.deepEqual(record.slice(36), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
       assert.equal(parsed[0][32], "OSM Ids");
       assert.equal(parsed[0][33], "Field Sources");
       assert.equal(parsed[0][34], "Collection Status");
@@ -160,6 +162,8 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
     const html = sandbox.exportXlsText(rows);
     assert.equal(html.split("<tr>").length - 1, count + 1);
     assert.equal(html.includes("Collected At"), true);
+    assert.equal(html.includes("© les contributeurs OpenStreetMap"), true);
+    assert.equal(html.includes("https://opendatacommons.org/licenses/odbl/1-0/"), true);
     assert.equal(html.includes("Address"), true);
     assert.equal(html.includes("<script"), false);
     assert.equal(html.includes("'=HYPERLINK"), count > 0);
