@@ -62,7 +62,7 @@ test("une prévisualisation n'emprunte pas la base publique ni celle de producti
 });
 
 test("le build ne copie le site public que hors prévisualisation", async () => {
-  const build = await readFile(new URL("../tools/build.mjs", import.meta.url), "utf8");
+  const build = (await readFile(new URL("../tools/build.mjs", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
   assert.equal(build.includes("if (!decision.fetchPublic)"), true);
   assert.equal(build.includes("allowsPublicConfig"), true);
   assert.equal(build.includes("WORKERS_CI ? \"production\""), false);
