@@ -292,3 +292,5 @@ a.cta, .big {
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+#runBtn:disabled{opacity:.6;cursor:not-allowed}

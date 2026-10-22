@@ -347,6 +347,11 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
         assert.equal(probe.side.position, "sticky");
         assert.ok(probe.side.left >= -1 && probe.side.width >= 200);
       }
+      await page.eval(`location.hash = "#/prospecting/new"`);
+      const demoSearch = await page.eval(`({disabled: document.getElementById("runBtn").disabled, notice: document.getElementById("searchAccessNotice").textContent})`);
+      assert.equal(demoSearch.disabled, true, `${view.name}: la démo ne doit pas lancer de recherche réelle`);
+      assert.match(demoSearch.notice, /compte du pilote/);
+      await page.eval(`location.hash = "#/dashboard"`);
       if (view.name === "iphone-390" || view.name === "android-360" || view.name === "desktop-1280" || view.name === "laptop-1440") {
         await page.eval(`location.hash = "#/landing"`);
         await page.screenshot(join(shots, `${view.name}-landing.png`));
