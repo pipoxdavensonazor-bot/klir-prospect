@@ -144,7 +144,7 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
       assert.equal(record.length, 39);
       assert.deepEqual(parsed[0].slice(36), ["Attribution", "License", "License URL"]);
       assert.deepEqual(record.slice(36), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
-      assert.equal(parsed[0][32], "OSM Ids");
+      assert.equal(parsed[0][32], "Source Ids");
       assert.equal(parsed[0][33], "Field Sources");
       assert.equal(parsed[0][34], "Collection Status");
       assert.equal(parsed[0][35], "Size");

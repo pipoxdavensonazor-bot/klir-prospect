@@ -249,13 +249,29 @@ async function readCreditAccount() {
   try {
     const supabase = await requireClient();
     if (!currentUser) return { ok: false, message: "Session requise." };
-    const result = await supabase.rpc("read_credit_account");
+    const result = await supabase.rpc(overturePreview() ? "overture_account" : "read_credit_account");
     if (result.error) return { ok: false, message: usageMessage(result.error) };
     const row = result.data || {};
     return { ok: true, balance: row.balance, searches: row.searches_used, period: row.usage_period };
   } catch (error) {
     return { ok: false, message: usageMessage(error) };
   }
+}
+
+function overturePreview() {
+  return config.environment === "preview" && config.supabaseUrl === "https://pwakjxjjxswdjsapsbxn.supabase.co";
+}
+
+async function searchOverture(request) {
+  if (!overturePreview() || !currentUser) throw new Error("Recherche Overture réservée au pilote connecté.");
+  const supabase = await requireClient();
+  const reserved = await supabase.rpc("overture_begin", {
+    p_receipt: request.receipt, p_city: request.city, p_sector: request.sector, p_quantity: request.quantity
+  });
+  if (reserved.error) throw new Error(usageMessage(reserved.error));
+  const result = await supabase.rpc("overture_execute", { p_receipt: request.receipt }).abortSignal(AbortSignal.timeout(10000));
+  if (result.error) throw new Error("Réponse serveur indisponible. Réessayez la même recherche : le reçu est conservé pour éviter un double débit. Une réservation non terminée expire après 60 secondes.");
+  return result.data;
 }
 
 async function reserveUsage(request) {
@@ -336,6 +352,8 @@ window.KlirAuth = {
   resyncWorkspace,
   deleteAccount,
   readCreditAccount,
+  overturePreview,
+  searchOverture,
   reserveUsage,
   settleUsage,
   completeCallback,

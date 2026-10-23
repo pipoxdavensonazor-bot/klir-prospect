@@ -70,7 +70,7 @@ async function publicSupabaseConfig(environment) {
 const out = new URL("../dist/", import.meta.url);
 const runtime = [
   "security.js", "data.js", "engine.js", "store.js", "webintel.js",
-  "opportunity.js", "sources.js", "webai.js", "projects.js", "app.js", "styles.css"
+  "opportunity.js", "sources.js", "overture.js", "webai.js", "projects.js", "app.js", "styles.css"
 ];
 
 await rm(out, { recursive: true, force: true });
