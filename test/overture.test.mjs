@@ -20,6 +20,7 @@ test('catalogue privé, recherche bornée et règlement serveur idempotent', asy
     await db.exec("insert into private.overture_places select release,city,'f7d4ae7d-7c80-45d2-bdcd-3722a8be2cc6',lat,lon,sectors,'bad',original from private.overture_places");
     await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
     await db.exec('set role authenticated');
+    await assert.rejects(db.query('insert into public.workspace_states(user_id,payload) values($1,$2)',[other,{}]),/workspace_owner_mismatch/);
     const rpc=async(name,params=[]) => (await db.query(`select public.${name}(${params.map((_,i)=>'$'+(i+1)).join(',')}) as value`,params)).rows[0].value;
     const receipt=n=>'debit_'+n.toString(16).padStart(24,'0');
     await assert.rejects(rpc('overture_begin',[receipt(1),'montreal','construction',41]),/perimetre_invalide/);

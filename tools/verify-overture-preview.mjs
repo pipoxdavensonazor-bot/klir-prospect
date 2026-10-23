@@ -9,10 +9,10 @@ assert.equal(cfg.url,'https://pwakjxjjxswdjsapsbxn.supabase.co');
 const accountFile=new URL('.overture-qa-accounts.json',dir);
 const reportFile=new URL('overture-benchmark/hosted-tests.json',dir);
 const adminHeaders={apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
-async function call(path,body,token,method='POST'){
+async function call(path,body,token,method='POST',extraHeaders={}){
   const headers=token?{apikey:cfg.publishable,Authorization:'Bearer '+token,'Content-Type':'application/json'}:adminHeaders;
   const start=performance.now();
-  const response=await fetch(cfg.url+path,{method,headers,body:body==null?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
+  const response=await fetch(cfg.url+path,{method,headers:{...headers,...extraHeaders},body:body==null?undefined:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
   const data=await response.json().catch(()=>null);
   return {status:response.status,ok:response.ok,data,ms:performance.now()-start};
 }
@@ -32,6 +32,58 @@ if(process.argv[2]==='setup'){
   }
   const enabled=await rpc('overture_admin',{p_action:'enable'});assert.equal(enabled.ok,true,JSON.stringify(enabled.data));
   console.log(JSON.stringify({testProject:'pwakjxjjxswdjsapsbxn',qaAccounts:accounts.length,metrics:enabled.data}));
+}else if(process.argv[2]==='coverage'){
+  const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+  const tokens=await Promise.all(accounts.map(login));
+  const observations=[];
+  await rpc('overture_admin',{p_action:'clear_cache'});
+  for(const phase of ['cold','warm','warm-repeat']){
+    // Only disposable QA ledgers; production/user ledgers are never reset.
+    for(const account of accounts){
+      const reset=await call('/rest/v1/credit_accounts?user_id=eq.'+account.id,{balance:200,searches_used:0},null,'PATCH');assert.ok(reset.ok);
+    }
+    const cases=['montreal','laval','quebec'].flatMap(city=>['restauration','construction','sante'].map(sector=>({city,sector})));
+    const wave=await Promise.all(cases.map(async(c,index)=>{
+      const token=tokens[index%2],id=receipt(),started=performance.now();
+      const begin=await rpc('overture_begin',{p_receipt:id,p_city:c.city,p_sector:c.sector,p_quantity:40},token);assert.ok(begin.ok,JSON.stringify(begin.data));
+      const run=await rpc('overture_execute',{p_receipt:id},token);assert.ok(run.ok,JSON.stringify(run.data));
+      const r=run.data;assert.equal(r.state,'complete');assert.ok(r.features.length<=40);
+      assert.ok(!r.features.some(row=>['f7d4ae7d-7c80-45d2-bdcd-3722a8be2cc6','438d9378-8f63-494e-95d4-d91c2569d69a'].includes(row.feature.id)));
+      return {...c,phase,state:r.state,count:r.features.length,cache_hit:r.cache_hit,server_ms:r.server_ms,execute_http_ms:run.ms,total_api_ms:performance.now()-started,
+        response_json_bytes:Buffer.byteLength(JSON.stringify(r)),review_flagged:r.features.filter(x=>x.review).length,
+        websites:r.features.filter(x=>x.feature.properties.websites?.length).length,phones:r.features.filter(x=>x.feature.properties.phones?.length).length,emails:r.features.filter(x=>x.feature.properties.emails?.length).length};
+    }));
+    observations.push(...wave);console.log(phase,JSON.stringify(wave));
+  }
+  const metrics=await rpc('overture_admin',{p_action:'metrics'});
+  await writeFile(new URL('overture-benchmark/hosted-coverage.json',dir),JSON.stringify({recordedAt:new Date().toISOString(),simultaneous:9,observations,metrics:metrics.data,
+    limits:'Three waves, nine concurrent API searches each. QA account balances/quotas reset only between these disposable benchmark waves. Cold means application cache cleared, not PostgreSQL/OS cache. Server_ms includes lock waits. response_json_bytes is serialized response size, not wire/egress bytes. No robust p95 or long-duration load claim.'},null,2));
+}else if(process.argv[2]==='workspace'){
+  const accounts=JSON.parse(await readFile(accountFile,'utf8'));
+  const tokens=await Promise.all(accounts.map(login));
+  const own=await Promise.all(tokens.map(t=>call('/rest/v1/workspace_states?select=user_id,payload',null,t,'GET')));
+  assert.ok(own.every((r,i)=>r.ok&&r.data.length===1&&r.data[0].user_id===accounts[i].id));
+  const payloads=own.map(r=>r.data[0].payload);
+  assert.equal(payloads[0].crm.length,1);assert.equal(payloads[1].crm.length,1);
+  assert.ok(payloads[0].crm[0].nextAction.includes('Contrôle A'));
+  assert.ok(payloads[1].crm[0].nextAction.includes('Contrôle B'));
+  assert.ok(payloads[0].crm[0].log.some(n=>n.t.includes('TEST QA A')));
+  assert.ok(payloads[1].crm[0].log.some(n=>n.t.includes('TEST QA B')));
+  const cross=await call('/rest/v1/workspace_states?select=payload&user_id=eq.'+accounts[1].id,null,tokens[0],'GET');
+  assert.deepEqual(cross.data,[]);
+  const spoof=await call('/rest/v1/workspace_states?on_conflict=user_id',{user_id:accounts[1].id,schema_version:1,payload:payloads[1]},tokens[0],'POST',{Prefer:'resolution=merge-duplicates,return=representation'});assert.equal(spoof.status,403);
+  const originalChecks=[];
+  for(const [i,payload] of payloads.entries()){
+    const prospect=payload.prospects.find(p=>p.id===payload.crm[0].prospectId);
+    const original=JSON.parse(Buffer.from(prospect.overture_payload_b64,'base64').toString('utf8'));
+    const city=i===0?'montreal':'laval';
+    const snapshot=JSON.parse(await readFile(new URL('overture-benchmark/'+city+'.geojson',dir),'utf8'));
+    assert.deepEqual(original,snapshot.features.find(f=>f.id===prospect.overture_id));
+    originalChecks.push({account:i,id:prospect.overture_id,exactOriginalAfterCloudSave:true});
+  }
+  const report=JSON.parse(await readFile(reportFile,'utf8'));
+  report.results.push({name:'workspace_direct_isolation_and_cloud_persistence',passed:true,ownRows:own.map(r=>r.data.length),crmCounts:payloads.map(p=>p.crm.length),searchCounts:payloads.map(p=>p.searches.length),otherWorkspaceRead:cross.data.length,spoofedWrite:spoof.status,originalChecks});
+  await writeFile(reportFile,JSON.stringify(report,null,2));console.log(JSON.stringify(report.results.at(-1)));
 }else if(process.argv[2]==='expiry'){
   const accounts=JSON.parse(await readFile(accountFile,'utf8'));
   const pending=JSON.parse(await readFile(new URL('.overture-expiry-case.json',dir),'utf8'));

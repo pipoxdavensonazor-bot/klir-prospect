@@ -106,7 +106,7 @@ function attachOpp(p, params){var dq = p.dq || 0;var conf = (p.conf != null ? p.
   return p;}
 function ensureOpp(p){if(p && p.overture_id)return attachOpp(p,{});if (!p || p.opp_version === OPP_V) return p;try {var s = (window.KlirStore && window.KlirStore.S.searches || []).find(x => x.id === p.searchId);attachOpp(p, (s && s.params) || {});} catch (e) {}return p;}
 function topServiceLabel(p){if (!p.opp_top_service) return "—";var s = OPP_SERVICES[p.opp_top_service];return (s ? s.label : p.opp_top_service) + " " + (p.opp_top_service_score || 0);}
-function leadBadge(pid){try {var p = window.KlirStore.S.prospects.find(x => x.id === pid);if (!p || p.opp_score == null) return "";} catch (e) {return "";}return "🔥" + p.opp_score;}
+function leadBadge(pid){try {var p = window.KlirStore.S.prospects.find(x => x.id === pid);if (!p || p.overture_id || p.opp_score == null) return "";} catch (e) {return "";}return "🔥" + p.opp_score;}
 function parseOpp(q){q = String(q || "").toLowerCase();var f = {};
   if (/klirbuild/.test(q)) f.service = "KLIRBUILD";else if (/klirpromo/.test(q)) f.service = "KLIRPROMO";else if (/klir\s*ia/.test(q)) f.service = "KLIRIA";else if (/klirpay/.test(q)) f.service = "KLIRPAY";else if (/klirmarket/.test(q)) f.service = "KLIRMARKET";else if (/klirline/.test(q)) f.service = "KLIRLINE";
   if (/potentiel|opportunit|priorit|class|best|meilleur|top/.test(q)) f.sort = "opp";

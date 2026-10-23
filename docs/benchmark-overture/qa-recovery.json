@@ -1,0 +1,7 @@
+{
+  "reason": "Pre-fix forged-owner upsert redirected to caller own QA row; no modification of other account. Fixture A restored using original server result and documented UI note/action. Strict owner guard now rejects this request.",
+  "receipt": "debit_054d682f9bd48bc8c017d07d",
+  "searchId": "ov_debit_054d682f9bd48bc8c017d07d",
+  "prospects": 10,
+  "crm": 1
+}
