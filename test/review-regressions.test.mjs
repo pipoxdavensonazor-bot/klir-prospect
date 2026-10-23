@@ -19,6 +19,23 @@ test('une fiche sans site publié ne devient pas une preuve de besoin de créati
   assert.doesNotMatch(html, /Le domaine semble enregistré/);
 });
 
+test('un site actif sans courriel ou signaux demande une analyse, jamais REBUILD', async () => {
+  const sandbox = { KlirStore: { S: {} }, addEventListener() {} };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(await readFile(new URL('../src/webai.js', import.meta.url), 'utf8'), sandbox);
+  for (const fields of [
+    { public_email: '', signals: ['Information publiée'], website_https: true },
+    { public_email: 'contact@example.org', signals: [], website_https: true },
+    { public_email: '', signals: [], website_https: false },
+    { public_email: '', signals: [], webAudit: { overall: 10, limited: true } },
+    { public_email: '', signals: [], webAudit: { overall: 10 } }
+  ]) {
+    assert.equal(sandbox.WebAI.recommend({ domain_name: 'example.org', website_status: 'ACTIVE', ...fields }).action, 'ANALYZE');
+  }
+  assert.equal(sandbox.WebAI.recommend({ domain_name: 'example.org', website_status: 'ACTIVE', webAudit: { overall: 10, limited: false } }).action, 'REBUILD');
+});
+
 test('le tableau CRM respecte une valeur zéro et les valeurs saisies sans deal', async () => {
   const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
   const sandbox = { KS: { S: { crm: [{ id: 'qa', company_name: 'TEST QA', stage: 'New', value: 0 }], deals: [] } } };
