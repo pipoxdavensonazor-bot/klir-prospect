@@ -1,0 +1,15 @@
+{
+  "csv_downloaded": true,
+  "columns": 48,
+  "rows": 2,
+  "review_in_separate_columns": true,
+  "review_evidence_retained": true,
+  "note_action_date_after_reload": true,
+  "original_id_release_retained": true,
+  "source_revision": "trial-restaurants-v2",
+  "console_errors_warnings": 0,
+  "viewport": "1265x716 desktop",
+  "manual_phone": "pending Android Chrome; not claimed complete",
+  "flow": "Laval restaurants 10 → annotated candidate → CRM → note/action/date → reload → downloaded CSV",
+  "participants_observed": 0
+}
