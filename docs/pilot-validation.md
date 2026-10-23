@@ -15,7 +15,7 @@ Le guide public `#/guide` explique la première recherche, les limites de la sou
 | Export | Tests de sélection, accents, neutralisation des formules et attribution/licence OSM dans CSV et Excel | Export après recherche réelle et contrôle du fichier reçu |
 | Téléphone et bureau | Test Chrome de navigation sur 360, 390, 412, 430, 768, 1280 et 1440 px | Refaire la recette sur la prévisualisation publiée |
 | Clés navigateur | Le build refuse les clés privées modernes et les JWT service_role avant config.js | Configurer uniquement les clés publiques sur les builds appropriés |
-| Cloudflare | Prévisualisation de codex/pilot-readiness publiée ; commit e24a570 et environnement preview confirmés sur #/version | Configurer la base de test puis exécuter la recette réelle |
+| Cloudflare | Prévisualisation de codex/pilot-readiness publiée ; commit fb36980 et environnement preview confirmés sur #/version | Configurer la base de test puis exécuter la recette réelle |
 | Commercialisation | Achat fermé | Offre, mentions, confidentialité, support, facturation et validation des pilotes |
 
 La revue a reproduit un dépassement du quota dans l'ancien schéma : onze réservations ouvertes pouvaient être confirmées. La migration `20261022130000_enforce_reserved_search_quota.sql` corrige les nouvelles réservations et protège la confirmation des anciennes réservations excédentaires. Deux tests de régression passent localement ; cette migration doit être appliquée à la base de test, puis vérifiée avant toute publication de production. Les réservations restées ouvertes doivent être réconciliées ; elles occupent une place tant qu'elles ne sont pas confirmées ou libérées.
@@ -29,9 +29,9 @@ Le job GitHub `validate` définit désormais `KLIR_ENV=preview` dès `npm ci`. L
 ## Avant la recette distante
 
 1. Vérifier que le nouveau commit est servi par la prévisualisation. Le build de branche est opérationnel ; une confirmation GitHub reste affichée pour gérer l'installation, mais n'a pas été nécessaire pour publier cette branche.
-2. Utiliser une branche de prévisualisation et le projet de test `pwakjxjjxswdjsapsbxn`. Ne pas connecter les essais à la production.
+2. Utiliser une branche de prévisualisation et une base de test distincte. La référence historique `pwakjxjjxswdjsapsbxn` est inaccessible au compte connecté ; son propriétaire doit confirmer son accès ou désigner un autre projet de test. Ne pas utiliser les projets Core visibles ni connecter les essais à la production.
 3. Définir `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` sur le build de prévisualisation. Les clés privées restent hors du build statique.
-4. Vérifier les URL de redirection Auth et l'origine autorisée de `delete-account` pour cette prévisualisation. Conserver Cloudflare Access sur le pilote.
+4. Vérifier les URL de redirection Auth et l'origine autorisée de `delete-account` pour cette prévisualisation. Vérifier la restriction du pilote, notamment Cloudflare Access si retenu ; elle n’est pas actuellement prouvée. Tester toutes les adresses publiques et alternatives, et les accès directs aux services.
 5. Vérifier `#/version` : commit testé, environnement preview et hôte de la base de test. Garder la référence de la version de production précédente pour un retour arrière.
 
 ## Trois recherches réelles
@@ -75,3 +75,7 @@ Pour chaque démonstration, relever : première recherche terminée, fiches jug�
 **Pilote payant** : recette distante terminée, comptes isolés, règles et contacts publiés, offre approuvée, facturation et support prêts.
 
 **Abonnement public** : pilotes concluants, paiement/échec/renouvellement/annulation testés et droits attribués côté serveur ; surveillance, restauration et procédure d'incident opérationnelles.
+
+## Dernière preuve publiée
+
+Le commit fb3698019659f59dc7faeaf46f65c37975db3797 passe la CI GitHub (run 39872470078) et le build Cloudflare 7608bd9a-7c2b-4581-960f-c0053bf0a3e2. La page Version confirme ce commit, preview et base non configurée. Les 84 tests locaux passent, sans échec ni test ignoré. Le contrôle Supabase Preview est ignoré car aucune branche Supabase n’est associée.
