@@ -141,9 +141,9 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
     for (const line of csv.split("\n").slice(1)) assert.equal(/^[=+\-@]/.test(line), false);
     parsed.slice(1).forEach((record, index) => {
       const source = rows[index];
-      assert.equal(record.length, 39);
-      assert.deepEqual(parsed[0].slice(36), ["Attribution", "License", "License URL"]);
-      assert.deepEqual(record.slice(36), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
+      assert.equal(record.length, 42);
+      assert.deepEqual(parsed[0].slice(36,39), ["Attribution", "License", "License URL"]);
+      assert.deepEqual(record.slice(36,39), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
       assert.equal(parsed[0][32], "Source Ids");
       assert.equal(parsed[0][33], "Field Sources");
       assert.equal(parsed[0][34], "Collection Status");
@@ -259,4 +259,14 @@ test("la recherche et les crédits restent ordonnés quand la couverture OSM cha
   assert.equal(sources.includes("last_verified: new Date()"), true);
   assert.equal(sources.includes('["shop"="trade"]'), false);
   assert.equal(sources.includes('["office"="company"]'), false);
+});
+
+
+test("les réserves Overture restent lisibles dans les exports et le CRM", async () => {
+ const {sandbox}=await loadHelpers();sandbox.esc=String;
+ const p={...fiche(2),overture_id:'raw-id',overture_release:'2026-10-21.0',source:'Overture Maps',review:{status:'review',reason:'Identité ambiguë, ne pas fusionner',evidence:['https://example.org']}};
+ const csv=parseCsv(sandbox.exportCrmCsvText([{prospectId:p.id,stage:'New',value:0,nextAction:'Revue documentaire',log:[{t:'Note : conserver la réserve'}]}],[p]));
+ assert.equal(csv[0].length,48);assert.match(csv[1][39],/À revoir/);assert.equal(csv[1][40],p.review.reason);assert.match(csv[1][41],/inconnus/);
+ assert.match(csv[1][33],/example.org/);assert.match(csv[1][47],/conserver la réserve/);
+ assert.match(sandbox.reviewNotice(p),/Identité ambiguë/);assert.match(sandbox.reviewNotice({...p,review:null}),/Non vérifiée/);
 });

@@ -12,7 +12,7 @@
       address:a.freeform||"",city:a.locality||"",province:a.region||"",country:a.country||"",postal_code:a.postcode||"",
       geo:{lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0]},
       source:"Overture Maps",source_url:"https://docs.overturemaps.org/attribution/",overture_id:f.id,
-      overture_release:result.release,overture_version:p.version,source_provenance:p.sources||[],
+      overture_revision:result.revision||"legacy",overture_release:result.release,overture_version:p.version,source_provenance:p.sources||[],
       source_licenses:[...new Set((p.sources||[]).map(s=>s.license).filter(Boolean))],
       overture_payload_b64:btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(f)))),review:row.review||null,signals:[],employee_range:null,
       website_status:"UNKNOWN",collected_at:result.catalogue_at,last_verified:"",collection_status:result.state,

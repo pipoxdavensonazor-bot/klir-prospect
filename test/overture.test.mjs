@@ -52,5 +52,33 @@ test('catalogue privé, recherche bornée et règlement serveur idempotent', asy
     assert.equal((await db.query('select * from public.overture_operations')).rows.length,0);
     await assert.rejects(rpc('overture_execute',[receipt(1)]),/recu_invalide/);
     await assert.rejects(rpc('overture_admin',['enable',{}]),/permission denied/);
+    await assert.rejects(rpc('overture_activate',['baseline-test']),/permission denied/);
+    await db.exec('reset role; update private.overture_settings set enabled=true,expected_count=2');
+    assert.equal((await rpc('overture_snapshot',['baseline-test'])).rows,2);
+    await db.exec("update private.overture_settings set trial_segment=true,revision='restaurants-v2'; update private.overture_places set original=jsonb_set(original,'{properties,basic_category}',to_jsonb('restaurant'::text))");
+    await rpc('overture_snapshot',['restaurants-v2']);
+    await rpc('overture_activate',['baseline-test']);
+    assert.equal((await db.query('select trial_segment from private.overture_settings')).rows[0].trial_segment,false);
+    await rpc('overture_activate',['restaurants-v2']);
+    const target=async p=>(await db.query('select private.overture_target($1) as value',[{properties:p}])).rows[0].value;
+    assert.equal(await target({basic_category:'pub'}),'exclude');
+    assert.equal(await target({basic_category:'hospital'}),'exclude');
+    assert.equal(await target({}),'review');
+    assert.equal(await target({basic_category:'cafe'}),'include');
+    assert.equal(await target({basic_category:'restaurant',operating_status:'permanently_closed'}),'exclude');
+    assert.equal(await target({basic_category:'steakhouse',taxonomy:{hierarchy:['restaurant','steakhouse']}}),'include');
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uid]);
+    await db.exec('set role authenticated');
+    assert.equal((await rpc('overture_execute',[receipt(1)])).features.length,1); // old result survives rollback
+    await assert.rejects(rpc('overture_begin',[receipt(6),'montreal','sante',10]),/segment_essai/);
+    await rpc('overture_begin',[receipt(6),'montreal','restauration',10]);
+    await db.exec("reset role; update private.overture_settings set revision='next-policy'; set role authenticated");
+    assert.equal((await rpc('overture_execute',[receipt(6)])).charged,0); // switch while reserved refunds
+    await db.exec("reset role; insert into private.overture_cache values('old','[]',now()-interval '2 days'); update public.overture_operations set created_at=now()-interval '91 days' where receipt='"+receipt(1)+"'");
+    const maintenance=await rpc('overture_maintain');assert.equal(maintenance.cache_removed,1);assert.equal(maintenance.results_compacted,1);
+    await db.exec('set role authenticated');
+    const compact=await rpc('overture_execute',[receipt(1)]);assert.equal(compact.recovery_expired,true);assert.equal(compact.charged,9);
+    assert.equal((await rpc('overture_account')).balance,191);
+
   } finally { await db.close(); }
 });

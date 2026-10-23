@@ -38,9 +38,10 @@ test('un site actif sans courriel ou signaux demande une analyse, jamais REBUILD
 
 test('le tableau CRM respecte une valeur zéro et les valeurs saisies sans deal', async () => {
   const app = await readFile(new URL('../src/app.js', import.meta.url), 'utf8');
-  const sandbox = { KS: { S: { crm: [{ id: 'qa', company_name: 'TEST QA', stage: 'New', value: 0 }], deals: [] } } };
+  const sandbox = { KS: { S: { crm: [{ id: 'qa', company_name: 'TEST QA', stage: 'New', value: 0 }], deals: [], prospects: [] } }, esc: String };
   sandbox.window = {};
   vm.createContext(sandbox);
+  vm.runInContext(app.slice(app.indexOf('function reviewLabel'), app.indexOf('function sourceDateLabel')), sandbox);
   vm.runInContext(app.slice(app.indexOf('function vCrmLeads'), app.indexOf('function vCrmCompanies')), sandbox);
   assert.doesNotMatch(sandbox.vCrmLeads(), /2[\s, ]?500/);
   assert.match(sandbox.vCrmLeads(), /\$0 potentiel/);
