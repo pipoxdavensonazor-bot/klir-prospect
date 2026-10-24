@@ -1,5 +1,15 @@
 # Déploiement
 
+## État vérifié le 22 octobre 2026
+
+La CI GitHub de la revue #21 définit `KLIR_ENV=preview` dès l'installation ; `npm ci` et `npm run check` réussissent sans configuration de production. Le commit `1678c43` passe 84 tests, aucun ignoré. La prévisualisation Cloudflare est `https://codex-pilot-readiness.klirprospect.klirline.ca/` ; vérifier son commit sur `#/version` après chaque build.
+
+La base de test documentée `pwakjxjjxswdjsapsbxn` n'est pas accessible depuis le compte Supabase connecté. Aucun état distant de migrations ou de données n'est validé ici. La migration de quota `20261022130000_enforce_reserved_search_quota` est ajoutée et testée localement, mais n'est pas appliquée à distance. La recette avec deux comptes et trois recherches réelles reste bloquée. L'achat reste fermé.
+
+Les notes ci-dessous proviennent des livraisons antérieures. Leurs mentions de migrations déjà appliquées ou de comptes absents doivent être revérifiées dans le projet distant avant toute décision de production.
+
+## Procédure et notes opérationnelles
+
 Ce dépôt ne doit jamais publier sa racine. La seule sortie déployable est `dist/`.
 
 ```bash

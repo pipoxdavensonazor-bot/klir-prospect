@@ -1,0 +1,139 @@
+{
+  "relations": [
+    {
+      "table": "overture_places",
+      "schema": "private",
+      "heap_bytes": 134987776,
+      "index_bytes": 10682368,
+      "total_bytes": 145793024,
+      "estimated_dead_rows": 111
+    },
+    {
+      "table": "overture_snapshot_places",
+      "schema": "private",
+      "heap_bytes": 91963392,
+      "index_bytes": 5980160,
+      "total_bytes": 98017280,
+      "estimated_dead_rows": 0
+    },
+    {
+      "table": "overture_operations",
+      "schema": "public",
+      "heap_bytes": 16384,
+      "index_bytes": 32768,
+      "total_bytes": 819200,
+      "estimated_dead_rows": 6
+    },
+    {
+      "table": "workspace_states",
+      "schema": "public",
+      "heap_bytes": 16384,
+      "index_bytes": 16384,
+      "total_bytes": 385024,
+      "estimated_dead_rows": 27
+    },
+    {
+      "table": "overture_snapshots",
+      "schema": "private",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 188416,
+      "estimated_dead_rows": 1
+    },
+    {
+      "table": "overture_cache",
+      "schema": "private",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 90112,
+      "estimated_dead_rows": 17
+    },
+    {
+      "table": "overture_review",
+      "schema": "private",
+      "heap_bytes": 24576,
+      "index_bytes": 16384,
+      "total_bytes": 73728,
+      "estimated_dead_rows": 38
+    },
+    {
+      "table": "profiles",
+      "schema": "public",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 65536,
+      "estimated_dead_rows": 48
+    },
+    {
+      "table": "usage_holds",
+      "schema": "public",
+      "heap_bytes": 8192,
+      "index_bytes": 32768,
+      "total_bytes": 49152,
+      "estimated_dead_rows": 54
+    },
+    {
+      "table": "credit_receipts",
+      "schema": "public",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768,
+      "estimated_dead_rows": 0
+    },
+    {
+      "table": "overture_trial_evidence",
+      "schema": "private",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768,
+      "estimated_dead_rows": 0
+    },
+    {
+      "table": "credit_accounts",
+      "schema": "public",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768,
+      "estimated_dead_rows": 18
+    },
+    {
+      "table": "overture_qa_restore",
+      "schema": "private",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768,
+      "estimated_dead_rows": 0
+    },
+    {
+      "table": "overture_settings",
+      "schema": "private",
+      "heap_bytes": 8192,
+      "index_bytes": 16384,
+      "total_bytes": 32768,
+      "estimated_dead_rows": 10
+    }
+  ],
+  "snapshots": [
+    {
+      "revision": "trial-regional-v1",
+      "row_count": 25127,
+      "created_at": "2026-10-23T04:43:29.133354+00:00"
+    },
+    {
+      "revision": "trial-restaurants-v2",
+      "row_count": 25127,
+      "created_at": "2026-10-23T04:43:29.133354+00:00"
+    }
+  ],
+  "recorded_at": "2026-10-24T00:37:18.911097+00:00",
+  "database_bytes": 257365683,
+  "old_result_rows": 0,
+  "workspace_count": 3,
+  "catalogue_revision": "trial-restaurants-v2",
+  "expired_cache_rows": 0,
+  "max_workspace_bytes": 83850,
+  "expired_cache_logical_bytes": 0,
+  "delta_from_previous_bytes": 81920,
+  "physical_reclaimable_bytes": "not measured: pgstattuple_approx unavailable",
+  "deletions_performed": false
+}

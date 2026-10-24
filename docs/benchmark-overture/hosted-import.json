@@ -1,0 +1,54 @@
+{
+  "release": "2026-10-21.0",
+  "cities": [
+    {
+      "city": "montreal",
+      "rows": 19072,
+      "inserted": 19072,
+      "seconds": 42.378961300011724
+    },
+    {
+      "city": "laval",
+      "rows": 1252,
+      "inserted": 1252,
+      "seconds": 2.966674700001022
+    },
+    {
+      "city": "quebec",
+      "rows": 4803,
+      "inserted": 4803,
+      "seconds": 10.77288750000298
+    }
+  ],
+  "before": {
+    "rows": 0,
+    "settings": {
+      "enabled": false,
+      "release": "2026-10-21.0",
+      "complete": false,
+      "singleton": true,
+      "imported_at": null,
+      "expected_count": 25127
+    },
+    "cache_bytes": 16384,
+    "database_bytes": 11908787,
+    "catalogue_bytes": 49152,
+    "operations_bytes": 24576
+  },
+  "after": {
+    "rows": 25127,
+    "settings": {
+      "enabled": false,
+      "release": "2026-10-21.0",
+      "complete": true,
+      "singleton": true,
+      "imported_at": "2026-10-23T03:05:02.741545+00:00",
+      "expected_count": 25127
+    },
+    "cache_bytes": 16384,
+    "database_bytes": 62060211,
+    "catalogue_bytes": 50176000,
+    "operations_bytes": 24576
+  },
+  "total_seconds": 62.53230670001358
+}

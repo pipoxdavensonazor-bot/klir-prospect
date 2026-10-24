@@ -292,3 +292,8 @@ a.cta, .big {
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+#runBtn:disabled{opacity:.6;cursor:not-allowed}
+
+.trialReview{border-left:3px solid #e4b952;padding:6px 9px;white-space:normal;min-width:160px;max-width:360px;overflow-wrap:anywhere}
+button:disabled,select:disabled,input:disabled{opacity:.6;cursor:not-allowed}

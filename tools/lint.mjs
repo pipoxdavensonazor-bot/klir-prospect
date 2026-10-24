@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const files = [
   "security.js", "data.js", "engine.js", "store.js", "auth-policy.js", "auth.js", "webintel.js",
-  "opportunity.js", "sources.js", "webai.js", "projects.js", "app.js"
+  "opportunity.js", "sources.js", "overture.js", "webai.js", "projects.js", "app.js"
 ];
 
 for (const file of files) {

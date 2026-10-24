@@ -24,19 +24,26 @@ Base de travail : `bf72b5f97d39535f7c05e8da2f3989993830988a` sur `main`.
 Commande : `KLIR_ENV=preview npm run check`.
 
 - Syntaxe des scripts, tests et build : succès.
-- 80 tests : 79 réussis, 1 ignoré, aucun échec.
+- Dernière exécution du 22 octobre 2026 : 84 tests réussis, aucun ignoré ni en échec. `npm ci` puis `npm run check` réussissent avec `CI=true`, `KLIR_ENV=preview` et Chrome local, sans variables Supabase. Syntaxe et build preview réussis.
 - Les 9 nouveaux tests exécutent notamment `runSearch` avec une source et un
   registre simulés : devis avancé, réservation et quantité OSM concordants,
   relance sauvegardée, plafond, solde insuffisant, partiel, vide, erreur et double clic.
 - La suite existante couvre aussi les exports, les sessions et les migrations/RLS
   dans une base PGlite locale. Cela ne vérifie pas la configuration du projet distant.
+- Le quota réserve désormais une place pour chaque recherche ouverte : la onzième
+  réservation est refusée, une libération rend une place et une ancienne réservation
+  excédentaire ne peut pas dépasser dix confirmations. La migration ajoutée
+  `20261022130000_enforce_reserved_search_quota` n'est pas encore appliquée à distance.
 - Le build de prévisualisation termine avec `environment=preview` et `supabase=absent` :
   il n'est connecté à aucune base réelle.
 
-Le contrôle visuel responsive existant est ignoré faute de binaire Chrome. Le
-téléchargement du navigateur Playwright a échoué (archive invalide) et le navigateur
-distant interdit le protocole `file:` pour la copie locale. Aucun succès visuel
-sur cette livraison n'est donc déclaré.
+Le contrôle visuel a été exécuté avec Chrome local sur sept formats de 360 à
+1440 px, via un serveur de test local. Il couvre accueil, guide, connexion,
+inscription, démonstration et menu mobile. Il ne valide pas le site distant.
+La recette complète et les blocages Cloudflare sont suivis dans
+[pilot-validation.md](pilot-validation.md).
+Les assertions de journal JavaScript et les captures du guide passent également.
+Le test ferme Chrome par son protocole de contrôle et libère ses flux sous Windows.
 
 ## À valider avant un pilote payant
 

@@ -1,0 +1,275 @@
+{
+  "recordedAt": "2026-10-23T03:06:20.230Z",
+  "results": [
+    {
+      "name": "double_begin_concurrent_execute_and_retry",
+      "passed": true,
+      "charged": 9,
+      "searches": 1,
+      "counts": [
+        40,
+        40,
+        40
+      ]
+    },
+    {
+      "name": "direct_isolation_and_forgery",
+      "passed": true,
+      "crossReceipt": 400,
+      "privateCatalogue": 404,
+      "forgedUpdate": 403,
+      "legacyClientLedger": 403,
+      "forgedCostOutcome": 404
+    },
+    {
+      "name": "interrupted_before_execution",
+      "receipt": "debit_407fef2027e9b9ae9ac87773",
+      "reservationExpiresAfterSeconds": 60,
+      "settlement": "pending real expiry observation"
+    },
+    {
+      "name": "parallel_searches",
+      "passed": true,
+      "simultaneous": 4,
+      "observations": [
+        {
+          "temperature": "cold",
+          "account": 0,
+          "city": "montreal",
+          "begin_ms": 107.45479999999998,
+          "execute_http_ms": 105.28670000000011,
+          "server_ms": 61.154,
+          "cache_hit": false,
+          "end_to_end_api_ms": 213.16969999999992,
+          "count": 40
+        },
+        {
+          "temperature": "cold",
+          "account": 0,
+          "city": "laval",
+          "begin_ms": 106.37089999999989,
+          "execute_http_ms": 114.6284999999998,
+          "server_ms": 63.637,
+          "cache_hit": false,
+          "end_to_end_api_ms": 221.76839999999993,
+          "count": 40
+        },
+        {
+          "temperature": "cold",
+          "account": 1,
+          "city": "montreal",
+          "begin_ms": 208.94489999999996,
+          "execute_http_ms": 102.98419999999987,
+          "server_ms": 1.754,
+          "cache_hit": true,
+          "end_to_end_api_ms": 312.31179999999995,
+          "count": 40
+        },
+        {
+          "temperature": "cold",
+          "account": 1,
+          "city": "laval",
+          "begin_ms": 207.6597999999999,
+          "execute_http_ms": 102.72209999999995,
+          "server_ms": 3.288,
+          "cache_hit": true,
+          "end_to_end_api_ms": 310.78009999999995,
+          "count": 40
+        },
+        {
+          "temperature": "warm",
+          "account": 0,
+          "city": "montreal",
+          "begin_ms": 201.6329999999998,
+          "execute_http_ms": 205.98529999999982,
+          "server_ms": 1.665,
+          "cache_hit": true,
+          "end_to_end_api_ms": 407.9490999999998,
+          "count": 40
+        },
+        {
+          "temperature": "warm",
+          "account": 0,
+          "city": "laval",
+          "begin_ms": 200.45449999999983,
+          "execute_http_ms": 102.78110000000015,
+          "server_ms": 1.722,
+          "cache_hit": true,
+          "end_to_end_api_ms": 303.67400000000043,
+          "count": 40
+        },
+        {
+          "temperature": "warm",
+          "account": 1,
+          "city": "montreal",
+          "begin_ms": 200.90679999999975,
+          "execute_http_ms": 204.71540000000005,
+          "server_ms": 1.864,
+          "cache_hit": true,
+          "end_to_end_api_ms": 405.9778000000001,
+          "count": 40
+        },
+        {
+          "temperature": "warm",
+          "account": 1,
+          "city": "laval",
+          "begin_ms": 200.12329999999974,
+          "execute_http_ms": 103.30749999999989,
+          "server_ms": 1.648,
+          "cache_hit": true,
+          "end_to_end_api_ms": 303.6759000000002,
+          "count": 40
+        },
+        {
+          "temperature": "warm-repeat",
+          "account": 0,
+          "city": "montreal",
+          "begin_ms": 205.73919999999998,
+          "execute_http_ms": 116.33529999999973,
+          "server_ms": 3.041,
+          "cache_hit": true,
+          "end_to_end_api_ms": 322.57090000000017,
+          "count": 40
+        },
+        {
+          "temperature": "warm-repeat",
+          "account": 0,
+          "city": "laval",
+          "begin_ms": 206.16730000000007,
+          "execute_http_ms": 113.80390000000034,
+          "server_ms": 1.597,
+          "cache_hit": true,
+          "end_to_end_api_ms": 320.5467999999996,
+          "count": 40
+        },
+        {
+          "temperature": "warm-repeat",
+          "account": 1,
+          "city": "montreal",
+          "begin_ms": 203.7163999999998,
+          "execute_http_ms": 110.63490000000002,
+          "server_ms": 1.589,
+          "cache_hit": true,
+          "end_to_end_api_ms": 314.89549999999963,
+          "count": 40
+        },
+        {
+          "temperature": "warm-repeat",
+          "account": 1,
+          "city": "laval",
+          "begin_ms": 204.26480000000038,
+          "execute_http_ms": 112.78460000000041,
+          "server_ms": 1.601,
+          "cache_hit": true,
+          "end_to_end_api_ms": 317.5604000000003,
+          "count": 40
+        }
+      ]
+    },
+    {
+      "name": "actual_expiry_refund",
+      "passed": true,
+      "elapsedSeconds": 122.884,
+      "before": 128,
+      "after": 137,
+      "reason": "reservation_expired"
+    },
+    {
+      "name": "controlled_hosted_partial",
+      "passed": true,
+      "charged": 0,
+      "balance": 146,
+      "features": 0
+    },
+    {
+      "name": "controlled_hosted_error",
+      "passed": true,
+      "charged": 0,
+      "balance": 146,
+      "features": 0
+    },
+    {
+      "name": "controlled_hosted_valid_empty",
+      "passed": true,
+      "charged": 0,
+      "balance": 146,
+      "features": 0
+    },
+    {
+      "name": "workspace_direct_isolation_and_cloud_persistence",
+      "passed": true,
+      "ownRows": [
+        1,
+        1
+      ],
+      "crmCounts": [
+        1,
+        1
+      ],
+      "searchCounts": [
+        1,
+        1
+      ],
+      "otherWorkspaceRead": 0,
+      "spoofedWrite": 409,
+      "originalChecks": [
+        {
+          "account": 0,
+          "id": "43bec1d0-961b-452a-9bda-b137bfced6b5",
+          "exactOriginalAfterCloudSave": true
+        },
+        {
+          "account": 1,
+          "id": "b48fb7c5-31e5-4b05-99ac-b846af668980",
+          "exactOriginalAfterCloudSave": true
+        }
+      ]
+    },
+    {
+      "name": "workspace_direct_isolation_and_cloud_persistence",
+      "passed": true,
+      "ownRows": [
+        1,
+        1
+      ],
+      "crmCounts": [
+        1,
+        1
+      ],
+      "searchCounts": [
+        1,
+        1
+      ],
+      "otherWorkspaceRead": 0,
+      "spoofedWrite": 403,
+      "originalChecks": [
+        {
+          "account": 0,
+          "id": "43bec1d0-961b-452a-9bda-b137bfced6b5",
+          "exactOriginalAfterCloudSave": true
+        },
+        {
+          "account": 1,
+          "id": "b48fb7c5-31e5-4b05-99ac-b846af668980",
+          "exactOriginalAfterCloudSave": true
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "rows": 25127,
+    "settings": {
+      "enabled": true,
+      "release": "2026-10-21.0",
+      "complete": true,
+      "singleton": true,
+      "imported_at": "2026-10-23T03:05:02.741545+00:00",
+      "expected_count": 25127
+    },
+    "cache_bytes": 114688,
+    "database_bytes": 62486195,
+    "catalogue_bytes": 50216960,
+    "operations_bytes": 294912
+  },
+  "limits": "API timing only, not browser user time. Cold means application cache cleared; Postgres/OS caches uncontrolled. No p95."
+}
