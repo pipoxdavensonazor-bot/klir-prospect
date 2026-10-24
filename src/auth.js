@@ -181,11 +181,11 @@ async function writeWorkspace(payload) {
     if(revisionUser!==currentUser.id){revisionUser=currentUser.id;ownRevision=null;acknowledgedRevisions=new Set();}
     let expected=Number.isSafeInteger(payload._workspaceRevision)?payload._workspaceRevision:0;
     if(ownRevision!==null&&acknowledgedRevisions.has(expected))expected=ownRevision;
-    const clean=workspaceForMigration(window.KlirSecurity.cleanState(payload||{}));delete clean._workspaceRevision;
+    const clean=workspaceForMigration(window.KlirSecurity.cleanState(payload||{}));delete clean._workspaceRevision;delete clean._savedAt;
     if(new Blob([JSON.stringify(clean)]).size>2097152)return {error:{code:"WORKSPACE_TOO_LARGE",message:"Espace de compte supérieur à 2 Mo : copie locale conservée. Téléchargez la sauvegarde locale avant de fermer cet onglet ; aucune limite n’a été augmentée."}};
     const result=await supabase.rpc("workspace_save",{p_expected_revision:expected,p_payload:clean});
     if(result.error){
-      if(result.error.code==="40001")result.error={...result.error,code:"WORKSPACE_CONFLICT",message:"Conflit : une autre session a enregistré cet espace. Votre copie locale est conservée. Téléchargez-la et comparez les notes/actions avant toute reprise ; aucun écrasement automatique."};
+      if(["PT409","40001"].includes(result.error.code))result.error={...result.error,code:"WORKSPACE_CONFLICT",message:"Conflit : une autre session a enregistré cet espace. Votre copie locale est conservée. Téléchargez-la et comparez les notes/actions avant toute reprise ; aucun écrasement automatique."};
       else if(result.error.message?.includes("payload_too_large"))result.error={...result.error,code:"WORKSPACE_TOO_LARGE",message:"Limite serveur de 2 Mo atteinte. Copie locale conservée : téléchargez-la avant de fermer cet onglet. Aucune donnée du compte remplacée."};
       return result;
     }
