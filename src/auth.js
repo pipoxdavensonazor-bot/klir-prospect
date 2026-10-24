@@ -166,14 +166,33 @@ async function updateProfile(name) {
 async function loadWorkspace() {
   const supabase = await requireClient();
   if (!currentUser) throw new Error("Session requise.");
-  return supabase.from("workspace_states").select("schema_version, payload, updated_at").eq("user_id", currentUser.id).maybeSingle();
+  const result=await supabase.from("workspace_states").select(overturePreview()?"schema_version, payload, updated_at, revision":"schema_version, payload, updated_at").eq("user_id", currentUser.id).maybeSingle();
+  if(overturePreview()&&result.data)result.data.payload={...result.data.payload,_workspaceRevision:Number(result.data.revision)};
+  return result;
 }
 
 let workspaceQueue = Promise.resolve();
+let revisionUser="", ownRevision=null, acknowledgedRevisions=new Set();
 
 async function writeWorkspace(payload) {
   const supabase = await requireClient();
   if (!currentUser) throw new Error("Session requise.");
+  if(overturePreview()){
+    if(revisionUser!==currentUser.id){revisionUser=currentUser.id;ownRevision=null;acknowledgedRevisions=new Set();}
+    let expected=Number.isSafeInteger(payload._workspaceRevision)?payload._workspaceRevision:0;
+    if(ownRevision!==null&&acknowledgedRevisions.has(expected))expected=ownRevision;
+    const clean=workspaceForMigration(window.KlirSecurity.cleanState(payload||{}));delete clean._workspaceRevision;
+    if(new Blob([JSON.stringify(clean)]).size>2097152)return {error:{code:"WORKSPACE_TOO_LARGE",message:"Espace de compte supérieur à 2 Mo : copie locale conservée. Téléchargez la sauvegarde locale avant de fermer cet onglet ; aucune limite n’a été augmentée."}};
+    const result=await supabase.rpc("workspace_save",{p_expected_revision:expected,p_payload:clean});
+    if(result.error){
+      if(result.error.code==="40001")result.error={...result.error,code:"WORKSPACE_CONFLICT",message:"Conflit : une autre session a enregistré cet espace. Votre copie locale est conservée. Téléchargez-la et comparez les notes/actions avant toute reprise ; aucun écrasement automatique."};
+      else if(result.error.message?.includes("payload_too_large"))result.error={...result.error,code:"WORKSPACE_TOO_LARGE",message:"Limite serveur de 2 Mo atteinte. Copie locale conservée : téléchargez-la avant de fermer cet onglet. Aucune donnée du compte remplacée."};
+      return result;
+    }
+    acknowledgedRevisions.add(expected);acknowledgedRevisions.add(Number(result.data.revision));ownRevision=Number(result.data.revision);
+    if(window.KlirStore&&window.KlirStore.ackWorkspaceRevision)window.KlirStore.ackWorkspaceRevision(ownRevision);
+    return result;
+  }
   const existing = await supabase.from("workspace_states").select("payload").eq("user_id", currentUser.id).maybeSingle();
   if (existing.error) return existing;
   const cleanPayload = workspaceForMigration(window.KlirSecurity.cleanState(payload || {}));
@@ -345,6 +364,7 @@ window.KlirAuth = {
   loadWorkspace,
   migrateDemo,
   persistWorkspace,
+  workspaceRecovery: payload=>workspaceForMigration(window.KlirSecurity.cleanState(payload)),
   accountSessionPlan,
   combineWorkspace,
   describeSearch,

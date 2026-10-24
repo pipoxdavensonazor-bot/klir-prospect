@@ -111,7 +111,7 @@ test("une taille absente reste Non renseigné", async () => {
 });
 
 test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralisent les formules", async () => {
-  const { sandbox } = await loadHelpers();
+  const { sandbox, app } = await loadHelpers();
   const displayed = Array.from({ length: 30 }, (_, i) => fiche(i));
   const extra = fiche(99);
   extra.searchId = "s2";
@@ -159,20 +159,13 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
       if (source.company_name.startsWith("=")) assert.equal(record[0].startsWith("'="), true);
       else assert.equal(record[0], source.company_name);
     });
-    const html = sandbox.exportXlsText(rows);
-    assert.equal(html.split("<tr>").length - 1, count + 1);
-    assert.equal(html.includes("Collected At"), true);
-    assert.equal(html.includes("© les contributeurs OpenStreetMap"), true);
-    assert.equal(html.includes("https://opendatacommons.org/licenses/odbl/1-0/"), true);
-    assert.equal(html.includes("Address"), true);
-    assert.equal(html.includes("<script"), false);
-    assert.equal(html.includes("'=HYPERLINK"), count > 0);
-    assert.equal(html.includes("construction_fit"), false);
+    assert.equal(app.includes("klir-prospects.xls"),false);
+    assert.equal(app.includes('id="xlsBtn"'),false);
   }
 });
 
 test("un secteur demandé n'est pas présenté comme une découverte et l'historique reste intact", async () => {
-  const { sandbox } = await loadHelpers();
+  const { sandbox, app } = await loadHelpers();
   const fresh = {
     id: "n1",
     company_name: "Atelier",
@@ -269,4 +262,10 @@ test("les réserves Overture restent lisibles dans les exports et le CRM", async
  assert.equal(csv[0].length,48);assert.match(csv[1][39],/À revoir/);assert.equal(csv[1][40],p.review.reason);assert.match(csv[1][41],/inconnus/);
  assert.match(csv[1][33],/example.org/);assert.match(csv[1][47],/conserver la réserve/);
  assert.match(sandbox.reviewNotice(p),/Identité ambiguë/);assert.match(sandbox.reviewNotice({...p,review:null}),/Non vérifiée/);
+});
+
+test("le CSV conserve un téléphone avec zéro initial comme texte",async()=>{
+ const {sandbox}=await loadHelpers();const row={...fiche(1),phone:'0012345678'};
+ assert.equal(parseCsv(sandbox.exportCsvText([row]))[1][22],"'0012345678");
+ assert.equal(row.phone,'0012345678');
 });

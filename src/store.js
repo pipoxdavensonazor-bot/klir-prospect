@@ -72,11 +72,11 @@ function save(){
   _S._savedAt = Date.now();
   try {
     var payload = JSON.stringify(_S);
-    if (new Blob([payload]).size > 2 * 1024 * 1024) throw new Error("quota-session");
+
     sessionStorage.setItem(LS, payload);
   } catch (error) {
     console.error("Sauvegarde de session impossible", error);
-    notify("Sauvegarde impossible : exportez ou réduisez les données.");
+    notify("Stockage local indisponible : les changements restent en mémoire. Téléchargez une sauvegarde avant de fermer cet onglet.");
   }
   scheduleCloudPersist();
 }
@@ -105,7 +105,8 @@ function noteCloudFailure(seq, snapshot, message) {
   cloudStatus = "error";
   cloudError = message || "Enregistrement impossible.";
   writeOutbox(snapshot);
-  notify("Enregistrement du compte impossible. La recherche reste sur cet appareil et sera réessayée.");
+  notify(cloudError+" Les changements restent dans cet onglet. Téléchargez la sauvegarde locale avant de le fermer.");
+  if(typeof window.dispatchEvent==="function"&&typeof Event!=="undefined")window.dispatchEvent(new Event("klir-sync-error"));
 }
 function noteCloudSuccess(seq) {
   if (seq !== cloudSeq) return;
@@ -118,7 +119,7 @@ function sendCloud(seq, snapshot, attempt) {
   Promise.resolve(window.KlirAuth.persistWorkspace(snapshot)).then(function (result) {
     if (seq !== cloudSeq) return;
     if (result && result.error) {
-      if (attempt < 2) {
+      if (attempt < 2 && !["WORKSPACE_CONFLICT","WORKSPACE_TOO_LARGE"].includes(result.error.code)) {
         cloudTimer = setTimeout(function () { sendCloud(seq, snapshot, attempt + 1); }, 700 * (attempt + 1));
         return;
       }
@@ -173,6 +174,10 @@ function pendingOutbox(userId) {
   var box = readOutbox();
   if (!box || !userId || box.userId !== userId || !box.payload) return null;
   return box.payload;
+}
+function ackWorkspaceRevision(revision){
+  _S._workspaceRevision=revision;
+  try{sessionStorage.setItem(LS,JSON.stringify(_S));}catch(error){/* memory and outbox remain available */}
 }
 function cloudSyncState() {
   return { status: cloudStatus, error: cloudError };
@@ -255,7 +260,7 @@ window.KlirStore = {
   aiText: aiText, LS: LS, LIMITS: LIMITS, blankState: blankState, rollUsageMonth: rollUsageMonth, torontoPeriod: torontoPeriod,
   startDemo: startDemo, setTrustedLive: setTrustedLive, deleteAccount: deleteAccount, logoutUser: logoutUser,
   stashDemoState: stashDemoState, peekDemoStash: peekDemoStash, takeDemoStash: takeDemoStash,
-  flushCloudPersist: flushCloudPersist, pendingOutbox: pendingOutbox, cloudSyncState: cloudSyncState, removeSearch: removeSearch,
+  flushCloudPersist: flushCloudPersist, pendingOutbox: pendingOutbox, ackWorkspaceRevision: ackWorkspaceRevision, cloudSyncState: cloudSyncState, removeSearch: removeSearch,
   setCloudPersistEnabled: setCloudPersistEnabled,
   loginUser: disabledAuth, registerUser: disabledAuth,
   loginWithKvFallback: async function(){ return disabledAuth(); },
