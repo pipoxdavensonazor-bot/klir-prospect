@@ -1,6 +1,6 @@
 # Sauvegarde indépendante et restauration complète — procédure préparée
 
-**État : non exécutée.** Cette livraison prépare les scripts ; elle ne prétend pas avoir créé une sauvegarde indépendante ni restauré Supabase/Auth. Le retour du catalogue déjà mesuré ne couvre pas cette procédure. Ne jamais réinitialiser le projet Test utilisé par le propriétaire, ni utiliser la production comme cible.
+**État : sauvegarde et restauration non exécutées.** [Préparation locale du 24 octobre](restauration-preparation-locale.md) : CLI Supabase, psql et age sont désormais installés ; cible séparée configurée, démarrage bloqué par WSL absent. Les constats d’outils manquants ci-dessous décrivent le précontrôle initial. Le retour du catalogue déjà mesuré ne couvre pas cette procédure. Ne jamais réinitialiser le projet Test utilisé par le propriétaire, ni utiliser la production comme cible.
 
 ## Inventaire à protéger
 

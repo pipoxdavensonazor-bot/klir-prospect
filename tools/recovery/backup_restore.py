@@ -5,7 +5,7 @@ Credentials are read from environment; never echoed. Outputs must stay outside G
 """
 import argparse, hashlib, json, os, shutil, subprocess, tarfile, time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 TEST='pwakjxjjxswdjsapsbxn'
 REPO=Path(__file__).resolve().parents[2]
@@ -27,10 +27,22 @@ def sql(url,statement):
 def source_guard(url):
     u=urlparse(url)
     require(u.scheme in ('postgres','postgresql') and (u.hostname=='db.'+TEST+'.supabase.co' or (u.hostname or '').endswith('.pooler.supabase.com') and (u.username or '')=='postgres.'+TEST),'Only the named Supabase Test source is allowed.')
+    require(u.port in (None,5432),'Use the direct or session pooler port 5432, never transaction pooling.')
+    require(parse_qs(u.query).get('sslmode',[''])[0] in ('require','verify-ca','verify-full'),'Source connection must explicitly require TLS.')
 
 def target_guard(url):
     u=urlparse(url)
     require(u.scheme in ('postgres','postgresql') and u.hostname in ('127.0.0.1','localhost','::1'),'Restore target must be LOCAL, never Test or production.')
+
+def archive_members(archive):
+    members=archive.getmembers()
+    names=[m.name for m in members]
+    require(len(names)==len(set(names)),'Duplicate archive member.')
+    required={'roles.sql','schema.sql','data.sql','auth-hooks.sql','manifest.json'}
+    require(required.issubset(names),'Incomplete recovery archive.')
+    for member in members:
+        require(member.isfile() and Path(member.name).name==member.name and (member.name.endswith('.sql') or member.name=='manifest.json'),'Unsafe archive member.')
+    return members
 
 def fingerprint(url):
     tables=json.loads(sql(url,"select coalesce(jsonb_agg(jsonb_build_array(schemaname,tablename) order by schemaname,tablename),'[]') from pg_tables where schemaname in ('public','private','auth','storage','supabase_migrations')"))
@@ -61,6 +73,7 @@ if args.mode=='backup':
     source=os.environ.get('KLIR_TEST_DB_URL','');source_guard(source)
     require(args.quiet_window_confirmed,'Confirm an agreed quiet write/schema window; never stop or reset the project automatically.')
     recipient=os.environ.get('KLIR_BACKUP_AGE_RECIPIENT','');require(recipient.startswith('age1'),'Set an independently held age public recipient.')
+    run(['age','--encrypt','--armor','--recipient',recipient],stdin='')
     run(['docker','info','--format','{{.ServerVersion}}'])
     before=fingerprint(source)
     require('auth.users' in before and 'auth.identities' in before and 'public.workspace_states' in before,'Source inventory incomplete.')
@@ -68,7 +81,7 @@ if args.mode=='backup':
         run(['supabase','db','dump','--db-url',source,'-f',str(folder/name),*flags])
     data=(folder/'data.sql').read_text(encoding='utf8')
     require(('auth.users' in data or '"auth"."users"' in data) and ('auth.identities' in data or '"auth"."identities"' in data),'Dump lacks Auth tables: archive rejected; do not label complete.')
-    hooks=sql(source,"select coalesce(string_agg('DO $hook$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='||quote_literal(t.tgname)||' AND tgrelid=''auth.users''::regclass) THEN '||pg_get_triggerdef(t.oid)||'; END IF; END $hook$;',E'\\n'),'') from pg_trigger t join pg_proc p on p.oid=t.tgfoid join pg_namespace n on n.oid=p.pronamespace where t.tgrelid='auth.users'::regclass and not t.tgisinternal and n.nspname in ('public','private')")
+    hooks=sql(source,"select coalesce(string_agg('DO $hook$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='||quote_literal(t.tgname)||' AND tgrelid=''auth.users''::regclass) THEN '||pg_get_triggerdef(t.oid)||'; END IF; END $hook$;',chr(10)),'') from pg_trigger t join pg_proc p on p.oid=t.tgfoid join pg_namespace n on n.oid=p.pronamespace where t.tgrelid='auth.users'::regclass and not t.tgisinternal and n.nspname in ('public','private')")
     (folder/'auth-hooks.sql').write_text(hooks,encoding='utf8')
     if any(k.startswith('supabase_migrations.') for k in before):
         for name,flags in [('history-schema.sql',[]),('history-data.sql',['--data-only','--use-copy'])]:
@@ -94,10 +107,10 @@ else:
     require(sql(target,'select count(*) from auth.users')=='0','Local target has user data; refusing restore.')
     tar=folder/'bundle.tar';run(['age','--decrypt','--identity',str(args.identity),'--output',str(tar),str(args.archive)])
     with tarfile.open(tar) as archive:
-        for member in archive.getmembers():
-            require(member.isfile() and Path(member.name).name==member.name and (member.name.endswith('.sql') or member.name=='manifest.json'),'Unsafe archive member.')
+        for member in archive_members(archive):
             (folder/member.name).write_bytes(archive.extractfile(member).read())
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf8'));require(manifest['test_project']==TEST,'Wrong source project.')
+    require({'roles.sql','schema.sql','data.sql','auth-hooks.sql'}.issubset(manifest['sha256']),'Missing mandatory checksums.')
     for name,digest in manifest['sha256'].items():
         require(Path(name).name==name and hashlib.sha256((folder/name).read_bytes()).hexdigest()==digest,'Backup checksum mismatch.')
     command=['psql','-X','--single-transaction','-v','ON_ERROR_STOP=1','--dbname',target,'--file',str(folder/'roles.sql'),'--file',str(folder/'schema.sql'),'--command','SET session_replication_role = replica','--file',str(folder/'data.sql'),'--command','SET session_replication_role = origin','--file',str(folder/'auth-hooks.sql')]
