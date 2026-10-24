@@ -40,9 +40,9 @@ Copier la grille pour U1 à U5. Cellules vides = non mesurées, jamais zéro imp
 
 Rapporter les comptes bruts (ex. 4/5), les échecs et la dépendance à l’accompagnement. Cinq personnes ne donnent ni une précision générale du catalogue ni un taux de conversion commercial. Aucun benchmark général à relancer.
 
-## Contrôle réel Android / Chrome — préalable restant
+## Contrôle réel Android / Chrome — déclaration reçue
 
-Appareil choisi par le propriétaire : Android avec Chrome. **Ce contrôle n’a pas encore été exécuté sur un téléphone réel par l’agent.** Les contrôles automatisés de mise en page mobile ne le remplacent pas.
+Le propriétaire déclare avoir réalisé recherche, export, CRM, note, prochaine action et date avec conservation après reconnexion sur Samsung S24 FE avec Chrome. Ce contrôle humain ne doit pas être attribué à l’agent. Aucune capture Android jointe à cette consigne ; versions/date exacte et vérification exhaustive des boutons/clavier non documentées. Voir [provenance des preuves](android-preuves.md). Les étapes ci-dessous restent le protocole pour les compléments et les futurs contrôles, pas une déclaration d’exécution automatique.
 
 Sur le téléphone : ouvrir le pilote → se connecter à son compte Test → lire les trois cercles et les limites → 10 restaurants à Montréal → lire « à revoir/non vérifiée » avant de cocher → sélectionner une fiche → CRM → note « TEST téléphone — aucun contact » → prochaine action documentaire et date → enregistrer → télécharger CSV → recharger/reconnecter et retrouver la note. Tester menu et clavier virtuel en portrait, puis lecture en paysage. Relever modèle, version Android, version Chrome, réseau, durée et difficultés ; vérifier qu’aucun bouton de paiement ou d’envoi n’est utilisable. Ne transmettre aucun mot de passe dans le compte rendu.
 

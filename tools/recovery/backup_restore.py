@@ -14,8 +14,11 @@ def require(condition,message):
     if not condition: raise RuntimeError(message)
 
 def run(command,*,stdin=None):
-    result=subprocess.run(command,input=stdin,text=True,capture_output=True,timeout=300)
-    require(result.returncode==0,'Tool failed: '+Path(command[0]).name+'; inspect private logs locally, never paste credentials.')
+    try:
+        result=subprocess.run(command,input=stdin,text=True,capture_output=True,timeout=300)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError('Tool timeout: '+Path(command[0]).name+'; connection details withheld.') from None
+    require(result.returncode==0,'Tool failed: '+Path(command[0]).name+'; inspect tool configuration locally; connection details withheld.')
     return result.stdout.strip()
 
 def sql(url,statement):
