@@ -60,3 +60,13 @@ Préparer les outils et l’environnement puis répéter la restauration reste i
 | Cinq séances | Participants, comptes et créneaux non confirmés. Mesurer utilité des candidats, suivi retrouvé, aide, difficultés et intention de réutilisation avant de conclure sur l’offre. Aucun résultat inventé. |
 
 **Verdict : correctifs techniques ciblés livrables en prévisualisation, produit pas déclaré prêt à vendre.** L’achat reste fermé. Aucun prospect contacté, aucune fusion ni production.
+
+## Clôture des contrôles ciblés — 24 octobre 2026
+
+Deux sessions de navigateur du seul compte QA Test ont modifié la même fiche : l’écriture A a été conservée, B a affiché le conflit sans écrasement et a permis le téléchargement effectif de la copie JSON contenant sa note et prochaine action. La copie d’origine du compte QA a ensuite été rétablie par écriture conditionnelle et comparée exactement (révision finale 11). Ce rétablissement de fixture n’est pas une restauration complète Supabase. Aucun compte utilisateur normal modifié.
+
+Téléchargement réel depuis l’historique existant, sans nouvelle recherche : sélection Au Blanc D’Oeuf, CSV de 1 ligne / 42 colonnes. Lecture UTF-8 : accent, téléphone texte, courriel absent vide, annotation de revue, identifiants et licence conservés. Ouverture dans Excel toujours non exécutée. Captures et copies privées restent hors dépôt sous verification/overture-benchmark et ne constituent pas des preuves Android.
+
+Cloudflare a réussi sur f086c5a. La CI de ce commit a rencontré « port Chrome absent » après 15 secondes : 94 tests réussis, 1 échec de démarrage du navigateur. Cela ne remplace pas les 95 tests locaux réussis et ne doit pas être présenté comme une CI verte. La livraison documentaire suivante déclenche un nouveau contrôle ; son statut reste consultable dans la PR. Aucun correctif produit supplémentaire introduit pour masquer cet échec.
+
+Commits de cette étape : 5c91a8e (CSV et concurrence), 2fc7fd6 (HTTP 409 et preuve hébergée), f086c5a (dossier et initialisation de connexion). Fichiers modifiés : client src/app.js, src/auth.js et src/store.js ; migrations de révision et conflit ; tests exports/concurrence/store ; vérificateur hébergé et outils recovery ; guides Android, exploitation, restauration et offre. PR #21 actualisée et conservée en brouillon.
