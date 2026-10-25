@@ -1,5 +1,11 @@
 # Préparation locale de restauration — 24 octobre 2026
 
+## Mise à jour du 25 octobre
+
+Le serveur Docker répond désormais réellement : version **29.8.0**, type **linux**, Docker Desktop. Le blocage WSL décrit ci-dessous est historique. Le premier lancement de la cible a révélé une mauvaise interprétation des arguments lors de la résolution de `supabase` par le PATH ; le lanceur invoque maintenant explicitement le binaire épinglé déjà installé. Les téléchargements des images officielles ont démarré. Le démarrage des services et la restauration ne sont pas déduits de cette réponse Docker : ils restent à contrôler séparément. Aucun accès PostgreSQL Test, support indépendant ou identité age réelle n'est fourni par cette seule étape.
+
+Les neuf images ont ensuite été téléchargées et PostgreSQL local a atteint `healthy`. **La pile a été arrêtée sans suppression des volumes** : malgré l'option de réseau `host_binding_ipv4=127.0.0.1`, Docker inspect a rapporté le port 55432 publié sur `0.0.0.0` et `::`. Le garde-fou du lanceur refuse cette exposition. Aucune requête de vérification des données ni import n'a été exécuté après ce refus. Il reste à imposer des liaisons explicites `127.0.0.1` pour tous les ports publiés (et vérifier leur application réelle) avant toute restauration ; changer uniquement l'URL cliente vers localhost ne suffit pas. Les paramètres PostgreSQL et de stockage indépendant ne sont toujours pas enregistrés dans les emplacements contrôlés. Un assistant de saisie locale chiffrée, conservé hors dépôt, est préparé mais non exécuté avec des secrets réels.
+
 **Outils installés, cible configurée mais non démarrée. Aucune sauvegarde réelle, aucune restauration ni connexion PostgreSQL distante exécutée.** Supabase Test et production inchangés ; achat fermé, PR en brouillon.
 
 ## Réalisé

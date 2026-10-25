@@ -10,6 +10,8 @@ $config = Get-Content -LiteralPath (Join-Path $workdir 'supabase/config.toml') -
 if ($config -notmatch ('project_id = "' + $project + '"') -or $config -notmatch 'port = 55432') { throw 'Unexpected local configuration.' }
 if (Test-Path -LiteralPath (Join-Path $workdir 'supabase/.temp/project-ref')) { throw 'Remote link detected; refusing.' }
 . (Join-Path $taskRoot 'enable-tools.ps1')
+$supabaseCli = Join-Path $taskRoot 'tools/supabase/supabase.exe'
+if (-not (Test-Path -LiteralPath $supabaseCli)) { throw 'Pinned local Supabase CLI absent.' }
 docker info --format '{{.ServerVersion}}' | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Local Docker Linux engine unavailable. No target started.' }
 $found = docker network ls --filter "name=^$network`$" --format '{{.Name}}'
@@ -22,7 +24,7 @@ if ($net.Driver -ne 'bridge' -or $net.Options.'com.docker.network.bridge.host_bi
 foreach ($entry in $net.Containers.PSObject.Properties) {
     if ($entry.Value.Name -notmatch ('_' + [regex]::Escape($project) + '$')) { throw 'Unrelated container on recovery network.' }
 }
-supabase start --workdir $workdir --network-id $network --exclude logflare,vector,edge-runtime *> (Join-Path $taskRoot 'start-private.log')
+& $supabaseCli start --workdir $workdir --network-id $network --exclude logflare,vector,edge-runtime *> (Join-Path $taskRoot 'start-private.log')
 if ($LASTEXITCODE -ne 0) { throw 'Local stack did not start. Inspect private log; no restore attempted.' }
 $ids = @(docker ps --filter "network=$network" --format '{{.ID}}')
 if (-not $ids.Count) { throw 'No local containers running.' }
@@ -31,12 +33,12 @@ foreach ($id in $ids) {
     foreach ($port in $container.NetworkSettings.Ports.PSObject.Properties) {
         foreach ($binding in $port.Value) {
             if ($binding.HostIp -notin @('127.0.0.1','::1')) {
-                supabase stop --workdir $workdir *> (Join-Path $taskRoot 'stop-private.log')
+                & $supabaseCli stop --workdir $workdir *> (Join-Path $taskRoot 'stop-private.log')
                 throw 'Non-loopback port found. Stack stopped preserving volumes; no restore attempted.'
             }
         }
     }
 }
-supabase status --workdir $workdir --output json *> (Join-Path $taskRoot 'status-private.json')
+& $supabaseCli status --workdir $workdir --output json *> (Join-Path $taskRoot 'status-private.json')
 if ($LASTEXITCODE -ne 0) { throw 'Cannot obtain private local status.' }
 Write-Output 'Local stack started and published ports checked. Empty target, schema compatibility and Auth still require verification. No backup or restore executed.'
