@@ -129,6 +129,7 @@ function render(){
   const h=(location.hash||"#/landing").replace("#/","");
   const m=h.match(/([^\/]+)(\/(.+))?/)||[]; const page=m[1], arg=m[3];
   if(window.KlirAuth&&window.KlirAuth.state().pending&&page!=="auth")return nav("/auth/confirm");
+  if(authState.user&&authState.passwordRecovery&&!(window.KlirAuth&&window.KlirAuth.state().pending)&&page!=="reset-password")return nav("/reset-password");
   if(page==="demo"){if(authState.user)return nav("/dashboard");KS.startDemo();return nav("/dashboard");}
   if(["team","api","admin"].includes(page))return nav("/settings");
   if(!window.KlirStore.S.user&&!["landing","login","register","forgot","reset-password","auth","offre","version","guide"].includes(page))return nav("/landing");
