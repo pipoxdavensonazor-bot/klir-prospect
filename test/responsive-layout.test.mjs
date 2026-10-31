@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
@@ -76,12 +76,17 @@ function connect(browserWs) {
   let nextId = 0;
   const pending = new Map();
   const waits = [];
+  const runtimeErrors = [];
   const ready = new Promise((resolve, reject) => {
     ws.addEventListener("open", () => resolve());
     ws.addEventListener("error", () => reject(new Error("WebSocket Chrome refusé")));
   });
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
+    if (message.method === "Runtime.exceptionThrown") runtimeErrors.push(message.params.exceptionDetails.text);
+    if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
+      runtimeErrors.push(message.params.args.map(arg => arg.value || arg.description || "").join(" "));
+    }
     if (message.id && pending.has(message.id)) {
       const { resolve, reject } = pending.get(message.id);
       pending.delete(message.id);
@@ -109,7 +114,7 @@ function connect(browserWs) {
       waits.push({ method, sessionId, resolve });
     });
   }
-  return { ready, send, waitFor, close: () => ws.close() };
+  return { ready, send, waitFor, runtimeErrors, close: () => ws.close() };
 }
 
 async function openSession(cdp, url) {
@@ -117,23 +122,6 @@ async function openSession(cdp, url) {
   const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true });
   await cdp.send("Page.enable", {}, sessionId);
   await cdp.send("Runtime.enable", {}, sessionId);
-  await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
-    source: `(() => {
-      const orig = window.addEventListener;
-      window.addEventListener = function(type, fn, options) {
-        if (type !== "hashchange") return orig.call(this, type, fn, options);
-        let skipNext = false;
-        const wrapped = function(event) {
-          if (skipNext) { skipNext = false; return; }
-          const before = location.hash;
-          const result = fn.call(this, event);
-          if (location.hash !== before) skipNext = true;
-          return result;
-        };
-        return orig.call(this, type, wrapped, options);
-      };
-    })();`
-  }, sessionId);
   return {
     sessionId,
     async emulate(view) {
@@ -181,7 +169,7 @@ const PROBE = `(() => {
       hit: hit === link || (hit && link.contains(hit))
     };
   });
-  const heading = document.querySelector(".auth h2");
+  const heading = document.querySelector(".auth h2, main h1");
   const frame = document.querySelector(".land, .auth, .lay");
   const frameRect = frame ? frame.getBoundingClientRect() : null;
   const menu = document.getElementById("menuBtn");
@@ -272,6 +260,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
     `--user-data-dir=${userDataDir}`
   ], { stdio: ["ignore", "ignore", "pipe"] });
   let debugPort = 0;
+  let cdp;
   try {
     debugPort = await new Promise((resolve, reject) => {
       let buffer = "";
@@ -289,13 +278,14 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       });
     });
     const version = await (await fetch(`http://127.0.0.1:${debugPort}/json/version`)).json();
-    const cdp = connect(version.webSocketDebuggerUrl);
+    cdp = connect(version.webSocketDebuggerUrl);
     await cdp.ready;
     const page = await openSession(cdp, origin);
     const shots = await mkdtemp(join(tmpdir(), "klir-shots-"));
     for (const view of VIEWS) {
       await page.emulate(view);
       await page.goto(`${origin}?vue=${view.name}`);
+      assert.equal(await page.eval(`document.title`), "Klir Prospect — Prospection assistée");
       let probe = await page.eval(`document.querySelector(".land-actions a") ? ${PROBE} : null`);
       assert.ok(probe, `${view.name}: accueil absent`);
       assertNav(view, probe);
@@ -307,6 +297,16 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       })()`);
       assert.equal(focus.style, "solid", `${view.name}: focus invisible`);
       assert.ok(focus.width >= 3, `${view.name}: contour de focus trop fin`);
+
+      await page.eval(`document.querySelector('a[href="#/guide"]').click()`);
+      probe = await page.eval(PROBE);
+      assert.equal(probe.hash, "#/guide");
+      assert.equal(probe.heading, "Première recherche et premier prospect enregistré");
+      assertContained(view, probe, "guide");
+      if (view.name === "iphone-390" || view.name === "desktop-1280") {
+        await page.screenshot(join(shots, `${view.name}-guide.png`));
+      }
+      await page.eval(`location.hash = "#/landing"`);
 
       await page.eval(`document.querySelector('.land-actions a[href="#/login"]').click()`);
       probe = await page.eval(PROBE);
@@ -347,6 +347,11 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
         assert.equal(probe.side.position, "sticky");
         assert.ok(probe.side.left >= -1 && probe.side.width >= 200);
       }
+      await page.eval(`location.hash = "#/prospecting/new"`);
+      const demoSearch = await page.eval(`({disabled: document.getElementById("runBtn").disabled, notice: document.getElementById("searchAccessNotice").textContent})`);
+      assert.equal(demoSearch.disabled, true, `${view.name}: la démo ne doit pas lancer de recherche réelle`);
+      assert.match(demoSearch.notice, /compte du pilote/);
+      await page.eval(`location.hash = "#/dashboard"`);
       if (view.name === "iphone-390" || view.name === "android-360" || view.name === "desktop-1280" || view.name === "laptop-1440") {
         await page.eval(`location.hash = "#/landing"`);
         await page.screenshot(join(shots, `${view.name}-landing.png`));
@@ -354,15 +359,38 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
         await page.screenshot(join(shots, `${view.name}-dashboard.png`));
       }
     }
+    assert.deepEqual(cdp.runtimeErrors, [], "erreurs JavaScript pendant la navigation");
     console.log(`captures: ${shots}`);
-    cdp.close();
   } finally {
-    child.kill("SIGKILL");
-    await new Promise((resolve) => {
-      if (child.exitCode !== null || child.signalCode) resolve();
-      else child.once("exit", resolve);
-    });
-    server.close();
-    await rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 40 }).catch(() => {});
+    let browserClosed = false;
+    if (cdp) {
+      let closeTimer;
+      try {
+        await Promise.race([
+          cdp.send("Browser.close"),
+          new Promise((_, reject) => { closeTimer = setTimeout(() => reject(new Error("Fermeture Chrome expirée")), 5000); })
+        ]);
+        browserClosed = true;
+      } catch {} finally { clearTimeout(closeTimer); cdp.close(); }
+    }
+    try {
+      if (process.platform === "win32" && child.exitCode === null && !child.signalCode) {
+        const stopped = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { timeout: 10000, encoding: "utf8" });
+        if (stopped.status !== 0 && !browserClosed) throw stopped.error || new Error(stopped.stderr || "Échec de fermeture Chrome");
+      } else if (!browserClosed && child.exitCode === null && !child.signalCode) {
+        await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("Le navigateur de test ne s'est pas arrêté.")), 10000);
+          child.once("exit", () => { clearTimeout(timer); resolve(); });
+          child.kill("SIGKILL");
+        });
+      }
+    } finally {
+      server.closeAllConnections();
+      server.close();
+      // Chrome may close before Windows releases the inherited stderr handle.
+      child.stderr?.destroy();
+      child.unref();
+      await rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 40 }).catch(() => {});
+    }
   }
 });

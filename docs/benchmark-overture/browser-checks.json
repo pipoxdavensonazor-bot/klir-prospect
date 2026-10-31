@@ -1,0 +1,14 @@
+{
+  "preview": "https://codex-pilot-readiness.klirprospect.klirline.ca",
+  "accounts": 2,
+  "search_selection_crm_note_nextAction_export": true,
+  "logout_login_both": true,
+  "second_independent_session_both": true,
+  "search_ui_ms": [
+    2632,
+    1992
+  ],
+  "timingMethod": "Wall time around automated click/double-click and waiting for visible results, includes automation overhead, two observations only; no p95",
+  "viewport": "desktop 1265x716",
+  "noMessagesSent": true
+}

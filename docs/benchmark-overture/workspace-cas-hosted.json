@@ -1,0 +1,14 @@
+{
+  "qa_only": true,
+  "two_auth_sessions": true,
+  "one_write_accepted": true,
+  "other_write_rejected": 409,
+  "conflict_sqlstate": "PT409",
+  "winner_note_action_retained": true,
+  "loser_payload_retained_in_test": true,
+  "identical_retry_replayed": true,
+  "oversize_rejected_without_mutation": true,
+  "direct_write_bypass_denied": true,
+  "fixture_restored_exactly": true,
+  "recordedAt": "2026-10-24T00:43:09.844Z"
+}

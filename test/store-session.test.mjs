@@ -156,3 +156,18 @@ test("une session migrée peut quitter le mode démo, puis la déconnexion le r�
   assert.equal(store.S.demo, true);
   assert.equal(store.S.user.email, "demo@local.invalid");
 });
+
+test("conflit : pas de reprise automatique et copie locale récupérable",async()=>{
+ const {store,sandbox}=await loadStore();let calls=0;
+ sandbox.KlirAuth={persistWorkspace:async()=>{calls++;return {error:{code:'WORKSPACE_CONFLICT',message:'Conflit explicite'}};}};
+ store.setTrustedLive(true);store.setCloudPersistEnabled(true);
+ store.S={demo:false,user:{id:'qa',email:'qa@example.invalid'},crm:[{id:'l',nextAction:'Action B',log:[{t:'Note B'}]}],_workspaceRevision:1};store.save();
+ await new Promise(r=>setTimeout(r,650));assert.equal(calls,1);assert.equal(store.cloudSyncState().status,'error');assert.equal(store.pendingOutbox('qa').crm[0].nextAction,'Action B');assert.equal(store.S.crm[0].log[0].t,'Note B');
+});
+
+test("dépassement : état et file locale conservés, limite serveur inchangée",async()=>{
+ const {store,sandbox}=await loadStore();
+ sandbox.KlirAuth={persistWorkspace:async()=>({error:{code:'WORKSPACE_TOO_LARGE',message:'Limite 2 Mo'}})};
+ store.setTrustedLive(true);store.S={demo:false,user:{id:'qa'},prospects:Array.from({length:490},(_,i)=>({id:'p'+i,description:'x'.repeat(4900)}))};
+ store.save();const result=await store.flushCloudPersist();assert.equal(result.error.code,'WORKSPACE_TOO_LARGE');assert.equal(store.S.prospects.length,490);assert.equal(store.pendingOutbox('qa').prospects.length,490);
+});

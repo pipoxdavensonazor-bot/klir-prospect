@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { allowsPublicConfig, decideSupabase, resolveEnvironment } from "./release-identity.mjs";
+import { allowsPublicConfig, decideSupabase, isPublicSupabaseKey, resolveEnvironment } from "./release-identity.mjs";
 
 function publishedCommit() {
   const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
@@ -15,12 +15,15 @@ function publishedCommit() {
 }
 
 async function publicSupabaseConfig(environment) {
+  if (process.env.SUPABASE_PUBLISHABLE_KEY && !isPublicSupabaseKey(process.env.SUPABASE_PUBLISHABLE_KEY)) {
+    throw new Error("Clé Supabase refusée : utilisez une clé publishable publique, jamais une clé privée.");
+  }
   const decision = decideSupabase(process.env, environment);
   if (!decision.fetchPublic) {
     if (allowsPublicConfig(environment) && decision.supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(decision.supabaseUrl)) {
       throw new Error("SUPABASE_URL invalide.");
     }
-    if (allowsPublicConfig(environment) && process.env.CI && (!decision.supabaseUrl || !decision.supabasePublishableKey || /service_role/i.test(decision.supabasePublishableKey))) {
+    if (allowsPublicConfig(environment) && process.env.CI && (!decision.supabaseUrl || !decision.supabasePublishableKey)) {
       throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
     }
     return decision;
@@ -49,7 +52,10 @@ async function publicSupabaseConfig(environment) {
   if (supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
     throw new Error("SUPABASE_URL invalide.");
   }
-  if (process.env.CI && (!supabaseUrl || !supabasePublishableKey || /service_role/i.test(supabasePublishableKey))) {
+  if (supabasePublishableKey && !isPublicSupabaseKey(supabasePublishableKey)) {
+    throw new Error("Configuration publique refusée : la clé Supabase n'est pas une clé publique.");
+  }
+  if (process.env.CI && (!supabaseUrl || !supabasePublishableKey)) {
     throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
   }
   return {
@@ -64,7 +70,7 @@ async function publicSupabaseConfig(environment) {
 const out = new URL("../dist/", import.meta.url);
 const runtime = [
   "security.js", "data.js", "engine.js", "store.js", "webintel.js",
-  "opportunity.js", "sources.js", "webai.js", "projects.js", "app.js", "styles.css"
+  "opportunity.js", "sources.js", "overture.js", "webai.js", "projects.js", "app.js", "styles.css"
 ];
 
 await rm(out, { recursive: true, force: true });

@@ -1,0 +1,26 @@
+[
+  {
+    "account": "a",
+    "rows": 1,
+    "columns": 45,
+    "notes": true,
+    "next_action": true,
+    "follow_up": "2026-10-24",
+    "zero_value": true,
+    "original_source_id": true,
+    "release": "2026-10-21.0",
+    "licenses": "CDLA-Permissive-2.0"
+  },
+  {
+    "account": "b",
+    "rows": 1,
+    "columns": 45,
+    "notes": true,
+    "next_action": true,
+    "follow_up": "2026-10-25",
+    "zero_value": true,
+    "original_source_id": true,
+    "release": "2026-10-21.0",
+    "licenses": "CDLA-Permissive-2.0"
+  }
+]

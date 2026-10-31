@@ -1,0 +1,47 @@
+{
+  "base": {
+    "rows": 25127,
+    "checksum": "fe934ec993cc476484b884b8130e80e7",
+    "revision": "trial-regional-v1"
+  },
+  "next": {
+    "rows": 25127,
+    "checksum": "fe934ec993cc476484b884b8130e80e7",
+    "revision": "trial-restaurants-v2"
+  },
+  "limit": "Controlled indexed catalogue policy update using the same pinned upstream objects, not a newly downloaded upstream release; not a full disaster recovery of Supabase Auth.",
+  "active": {
+    "rows": 25127,
+    "checksum": "fe934ec993cc476484b884b8130e80e7",
+    "revision": "trial-restaurants-v2"
+  },
+  "rollback": {
+    "rows": 25127,
+    "checksum": "fe934ec993cc476484b884b8130e80e7",
+    "revision": "trial-regional-v1"
+  },
+  "recorded_at": "2026-10-23T04:44:08.577747+00:00",
+  "rollback_ms": 10201.689,
+  "snapshot_ms": 2519.894,
+  "test_project": "pwakjxjjxswdjsapsbxn",
+  "activation_ms": 12830.088,
+  "target_counts": {
+    "laval": {
+      "exclude": 4,
+      "include": 94
+    },
+    "quebec": {
+      "exclude": 97,
+      "include": 487
+    },
+    "montreal": {
+      "exclude": 297,
+      "include": 2235
+    }
+  },
+  "database_bytes": 257283763,
+  "snapshot_bytes": 98197504,
+  "upstream_release": "2026-10-21.0",
+  "all_account_tables_unchanged": true,
+  "original_rows_restored_exactly": true
+}
