@@ -10,6 +10,7 @@ import {
   displayName,
   isLiveProfile,
   parseAuthCallback,
+  parseAuthError,
   passwordIssues,
   passwordMessage,
   workspaceForMigration
@@ -38,6 +39,7 @@ let currentUser = null;
 let currentProfile = null;
 let passwordRecovery = false;
 let initialized = false;
+let callbackError = null;
 
 function redirectUrl() {
   return appRedirectUrl(window.location.origin, window.location.pathname);
@@ -56,6 +58,15 @@ function readPending() {
 }
 
 function captureCallback() {
+  callbackError = parseAuthError(window.location.search) || parseAuthError(window.location.hash);
+  if (callbackError) {
+    sessionStorage.removeItem(CALLBACK_KEY);
+    const url = new URL(window.location.href);
+    for (const key of ["error", "error_code", "error_description", "token_hash", "type", "code"]) url.searchParams.delete(key);
+    if (parseAuthError(url.hash)) url.hash = "";
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    return null;
+  }
   const parsed = parseAuthCallback(window.location.search);
   if (parsed) {
     sessionStorage.setItem(CALLBACK_KEY, JSON.stringify(parsed));
@@ -92,6 +103,7 @@ function state() {
     user: currentUser,
     profile: currentProfile,
     passwordRecovery,
+    callbackError,
     pending: readPending(),
     live: isLiveProfile(currentProfile)
   };
@@ -252,6 +264,7 @@ async function completeCallback() {
 }
 
 function dismissCallback() {
+  callbackError = null;
   sessionStorage.removeItem(CALLBACK_KEY);
   return state();
 }
@@ -327,6 +340,7 @@ async function settleUsage(request) {
 }
 
 async function initialize() {
+  const hasAuthCode = new URLSearchParams(window.location.search).has("code");
   captureCallback();
   if (!client) return state();
   if (!initialized) {
@@ -347,6 +361,16 @@ async function initialize() {
         }
       });
     });
+  }
+  const initialization = await client.auth.initialize();
+  if (initialization.error && hasAuthCode && !callbackError) {
+    callbackError = initialization.error.code === "pkce_code_verifier_not_found"
+      ? "Ce lien doit être ouvert dans l’onglet et le navigateur où vous avez demandé la récupération. Revenez à cet onglet ou demandez un nouveau lien."
+      : "Ce lien n’a pas pu être validé. Demandez un nouveau lien ou revenez à la connexion.";
+    const url = new URL(window.location.href);
+    url.searchParams.delete("code");
+    url.searchParams.delete("flow_id");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   }
   return hydrate();
 }

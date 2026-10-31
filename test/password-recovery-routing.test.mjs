@@ -3,12 +3,12 @@ import test from 'node:test';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
 
-async function router({hash='#/landing',recovery=false,user={id:'fixture'},pending=null}={}) {
+async function router({hash='#/landing',recovery=false,user={id:'fixture'},pending=null,callbackError=null}={}) {
   const source=await readFile(new URL('../src/app.js',import.meta.url),'utf8');
   const sandbox={location:{hash},authState:{user,passwordRecovery:recovery},rendered:null};
   sandbox.KS={S:{user}};
-  sandbox.window={KlirStore:sandbox.KS,KlirAuth:{state:()=>({pending})}};
-  for(const [name,label] of [['vLanding','landing'],['vResetPassword','reset'],['vAuthCallback','confirm']])
+  sandbox.window={KlirStore:sandbox.KS,KlirAuth:{state:()=>({pending,callbackError})}};
+  for(const [name,label] of [['vAuthError','error'],['vLanding','landing'],['vResetPassword','reset'],['vAuthCallback','confirm']])
     sandbox[name]=()=>{sandbox.rendered=label;};
   sandbox.vAuth=()=>{sandbox.rendered='login';};
   vm.createContext(sandbox);
@@ -36,4 +36,9 @@ test('une session ordinaire ou absente ne reçoit pas une redirection de récup�
     const app=await router({hash:'#/login',user});app.render();
     assert.equal(app.location.hash,'#/login');assert.equal(app.rendered,'login');
   }
+});
+
+test('un lien refuse presente une reprise sans ouvrir la session de recuperation',async()=>{
+  const app=await router({recovery:true,callbackError:'Lien expire'});app.render();
+  assert.equal(app.rendered,'error');
 });
