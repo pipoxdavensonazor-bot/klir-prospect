@@ -8,7 +8,7 @@ async function router({hash='#/landing',recovery=false,user={id:'fixture'},pendi
   const sandbox={location:{hash},authState:{user,passwordRecovery:recovery},rendered:null};
   sandbox.KS={S:{user}};
   sandbox.window={KlirStore:sandbox.KS,KlirAuth:{state:()=>({pending,callbackError})}};
-  for(const [name,label] of [['vAuthError','error'],['vLanding','landing'],['vResetPassword','reset'],['vAuthCallback','confirm']])
+  for(const [name,label] of [['vRecoverySessionRequired','session-required'],['vAuthError','error'],['vLanding','landing'],['vResetPassword','reset'],['vAuthCallback','confirm']])
     sandbox[name]=()=>{sandbox.rendered=label;};
   sandbox.vAuth=()=>{sandbox.rendered='login';};
   vm.createContext(sandbox);
@@ -22,6 +22,11 @@ test('une session de récupération ouvre le formulaire depuis accueil, connexio
     const app=await router({hash,recovery:true});app.render();
     assert.equal(app.location.hash,'#/reset-password');assert.equal(app.rendered,'reset');
   }
+});
+
+test('le formulaire de changement ne demande aucun secret sans session',async()=>{
+  const app=await router({hash:'#/reset-password',user:null});app.render();
+  assert.equal(app.rendered,'session-required');
 });
 test('un événement de récupération tardif remplace la page de connexion sans boucle',async()=>{
   const app=await router({hash:'#/login'});app.render();assert.equal(app.rendered,'login');

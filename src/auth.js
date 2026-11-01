@@ -363,8 +363,11 @@ async function initialize() {
     });
   }
   const initialization = await client.auth.initialize();
-  if (initialization.error && hasAuthCode && !callbackError) {
-    callbackError = initialization.error.code === "pkce_code_verifier_not_found"
+  // The SDK silently ignores a code when this tab has no PKCE verifier.
+  // Successful SDK exchange removes code from the URL; never exchange it twice.
+  const unprocessedCode = hasAuthCode && new URLSearchParams(window.location.search).has("code");
+  if ((initialization.error || unprocessedCode) && hasAuthCode && !callbackError) {
+    callbackError = unprocessedCode && !initialization.error || initialization.error?.code === "pkce_code_verifier_not_found"
       ? "Ce lien doit être ouvert dans l’onglet et le navigateur où vous avez demandé la récupération. Revenez à cet onglet ou demandez un nouveau lien."
       : "Ce lien n’a pas pu être validé. Demandez un nouveau lien ou revenez à la connexion.";
     const url = new URL(window.location.href);

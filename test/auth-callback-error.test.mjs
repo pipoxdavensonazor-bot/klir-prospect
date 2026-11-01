@@ -46,3 +46,34 @@ test('le retour PKCE sans verificateur est explique et le code retire',async()=>
   assert.doesNotMatch(context.callbackError,/private-fixture/);
   assert.equal(context.cleaned,'/#/landing');
 });
+
+test('un code ignore sans erreur par le SDK ne retombe pas silencieusement sur la connexion',async()=>{
+  const source=await readFile(new URL('../src/auth.js',import.meta.url),'utf8');
+  const context={captureCallback:()=>{},initialized:false,callbackError:null,URL,URLSearchParams,
+    hydrate:async()=>({user:null}),
+    window:{location:new URL('https://fixture.invalid/?code=synthetic-only#/login'),history:{replaceState:(_s,_t,path)=>{context.cleaned=path;}}},
+    client:{auth:{onAuthStateChange:()=>{},initialize:async()=>({error:null})}}};
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('async function initialize()'),source.indexOf('window.KlirAuth =')),context);
+  assert.equal((await context.initialize()).user,null);
+  assert.match(context.callbackError,/onglet/);
+  assert.equal(context.cleaned,'/#/login');
+});
+
+test('un echange reussi conserve PASSWORD_RECOVERY sans erreur ni second echange',async()=>{
+  const source=await readFile(new URL('../src/auth.js',import.meta.url),'utf8');
+  let subscriber;
+  const context={captureCallback:()=>{},initialized:false,callbackError:null,passwordRecovery:false,URL,URLSearchParams,
+    queueMicrotask:()=>{},
+    hydrate:async()=>({user:{id:'fiction'},passwordRecovery:context.passwordRecovery}),
+    window:{location:new URL('https://fixture.invalid/?code=synthetic-only'),history:{replaceState:()=>assert.fail('ne pas retraiter le code consomme')}},
+    client:{auth:{onAuthStateChange:fn=>{subscriber=fn;},initialize:async()=>{
+      context.window.location.search='';subscriber('PASSWORD_RECOVERY');return {error:null};
+    }}}};
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('async function initialize()'),source.indexOf('window.KlirAuth =')),context);
+  const result=await context.initialize();
+  assert.equal(result.passwordRecovery,true);
+  assert.equal(result.user.id,'fiction');
+  assert.equal(context.callbackError,null);
+});
