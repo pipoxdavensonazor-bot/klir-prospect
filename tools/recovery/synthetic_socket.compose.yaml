@@ -1,0 +1,24 @@
+name: klir-recovery-socket-fixture
+services:
+  db:
+    image: public.ecr.aws/supabase/postgres@sha256:c141fd17ac6a76c4323e90b3aee8ff1a23d2e89e547c2b963cfadc309c079cc2
+    pull_policy: never
+    network_mode: none
+    user: postgres
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - >-
+        initdb -D /synthetic/data -A trust --no-locale >/dev/null 2>&1;
+        exec postgres -D /synthetic/data -k /tmp -c listen_addresses=''
+        -c logging_collector=off -c log_statement=none -c log_min_messages=panic
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: none
+    tmpfs:
+      - /synthetic:rw,nosuid,nodev,size=536870912,mode=1777
+      - /tmp:rw,nosuid,nodev,size=67108864,mode=1777
+    mem_limit: 1g
+    pids_limit: 128
+    restart: "no"
