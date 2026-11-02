@@ -30,6 +30,30 @@ test('le fournisseur de récupération simulé ne reçoit que l’adresse et la 
   assert.equal(calls[0][1].redirectTo,'https://fixture.invalid/');
 });
 
+test('un fournisseur simulé accepte une seule utilisation et refuse un lien expiré',async()=>{
+  const source=await readFile(new URL('../src/auth.js',import.meta.url),'utf8');
+  let pending={tokenHash:'fictional-valid',type:'recovery'},hydrations=0;
+  const consumed=new Set();
+  const provider={auth:{verifyOtp:async({token_hash,type})=>{
+    assert.equal(type,'recovery');
+    if(token_hash==='fictional-expired'||consumed.has(token_hash))return {error:{code:'otp_expired'}};
+    consumed.add(token_hash);return {error:null};
+  }}};
+  const context={CALLBACK_KEY:'fixture',passwordRecovery:false,readPending:()=>pending,
+    requireClient:async()=>provider,hydrate:async()=>{hydrations++;},
+    sessionStorage:{removeItem:()=>{pending=null;}}};
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('async function completeCallback()'),source.indexOf('function dismissCallback()')),context);
+  assert.equal((await context.completeCallback()).error,null);
+  assert.equal(context.passwordRecovery,true);assert.equal(hydrations,1);assert.equal(pending,null);
+  pending={tokenHash:'fictional-valid',type:'recovery'};context.passwordRecovery=false;
+  assert.equal((await context.completeCallback()).error.code,'otp_expired');
+  assert.equal(context.passwordRecovery,false);assert.equal(pending,null);
+  pending={tokenHash:'fictional-expired',type:'recovery'};
+  assert.equal((await context.completeCallback()).error.code,'otp_expired');
+  assert.equal(context.passwordRecovery,false);assert.equal(hydrations,1);
+});
+
 test('un refus retire les paramètres et le jeton en attente sans créer de session',async()=>{
   const source=await readFile(new URL('../src/auth.js',import.meta.url),'utf8');
   for(const fragment of [false,true]){
