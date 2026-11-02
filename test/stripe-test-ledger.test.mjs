@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+
+test('registre Stripe fictif : accès restreint, idempotence, expiration et remboursement intégral',async()=>{
+  const db=new PGlite();
+  const user='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', other='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+  const order='11111111-1111-1111-1111-111111111111', otherOrder='22222222-2222-2222-2222-222222222222';
+  try {
+    await db.exec('create schema auth; create table auth.users(id uuid primary key); create role anon; create role authenticated; create role service_role;');
+    await db.exec(await readFile(new URL('../tools/stripe-sandbox/candidate.sql',import.meta.url),'utf8'));
+    await db.query('insert into auth.users values ($1),($2)',[user,other]);
+    await db.query("insert into private.stripe_test_orders(id,user_id,session_id,offer_id,amount_minor,currency,credits,duration_days) values ($1,$2,'cs_test_fixture','offer',4900,'cad',90,30),($3,$4,'cs_test_other','offer',4900,'cad',90,30)",[order,user,otherOrder,other]);
+    await db.exec('set role authenticated');
+    await assert.rejects(db.query('select * from private.stripe_test_orders'),/permission denied/);
+    await assert.rejects(db.query("select private.stripe_test_apply_paid($1,'cs_test_fixture','evt_x')",[order]),/permission denied/);
+    await db.exec('reset role; set role service_role');
+    const pay=async(o,s,e)=>(await db.query('select private.stripe_test_apply_paid($1,$2,$3) as value',[o,s,e])).rows[0].value;
+    assert.equal(await pay(order,'cs_test_fixture','evt_one'),'applied');
+    assert.equal(await pay(order,'cs_test_fixture','evt_one'),'duplicate');
+    assert.equal(await pay(order,'cs_test_fixture','evt_two'),'duplicate');
+    await assert.rejects(pay(otherOrder,'cs_test_other','evt_one'),/event_mismatch/);
+    await assert.rejects(pay(otherOrder,'cs_test_fixture','evt_invalid'),/order_not_found/);
+    await assert.rejects(db.query('select private.stripe_test_refund_full($1,$2,$3)',[order,'evt_partial',1000]),/refund_needs_review/);
+    await db.exec('reset role');
+    const ent=await db.query('select user_id,credits,extract(epoch from (ends_at-starts_at))::integer as seconds,revoked_at from private.stripe_test_entitlements where order_id=$1',[order]);
+    assert.equal(ent.rows.length,1);assert.equal(ent.rows[0].user_id,user);assert.equal(ent.rows[0].credits,90);assert.equal(ent.rows[0].seconds,30*86400);
+    assert.equal(ent.rows[0].revoked_at,null);
+    const active=(await db.query('select starts_at <= now() and ends_at > now() and revoked_at is null as active from private.stripe_test_entitlements where order_id=$1',[order])).rows[0].active;
+    assert.equal(active,true);
+    await db.exec('set role service_role');
+    const refund=async(e)=>(await db.query('select private.stripe_test_refund_full($1,$2,$3) as value',[order,e,4900])).rows[0].value;
+    assert.equal(await refund('evt_refund'),'applied');assert.equal(await refund('evt_refund'),'duplicate');
+    await assert.rejects(pay(order,'cs_test_fixture','evt_after_refund'),/order_not_pending/);
+    await db.exec('reset role');
+    assert.ok((await db.query('select revoked_at from private.stripe_test_entitlements where order_id=$1',[order])).rows[0].revoked_at);
+    assert.equal((await db.query('select count(*)::int as n from private.stripe_test_entitlements')).rows[0].n,1);
+    assert.equal((await db.query("select count(*)::int as n from private.stripe_test_events where event_id='evt_after_refund'")).rows[0].n,0);
+    await db.query("update private.stripe_test_entitlements set starts_at=now()-interval '31 days',ends_at=now()-interval '1 day',revoked_at=null where order_id=$1",[order]);
+    assert.equal((await db.query('select starts_at <= now() and ends_at > now() and revoked_at is null as active from private.stripe_test_entitlements where order_id=$1',[order])).rows[0].active,false);
+  } finally {await db.close();}
+});
