@@ -11,6 +11,7 @@ import {
   isLiveProfile,
   parseAuthCallback,
   parseAuthError,
+  recoveryRequestMessage,
   passwordIssues,
   passwordMessage,
   workspaceForMigration
@@ -385,6 +386,7 @@ window.KlirAuth = {
   resendSignUp,
   signIn,
   sendRecovery,
+  recoveryRequestMessage,
   updatePassword,
   signOut,
   updateProfile,

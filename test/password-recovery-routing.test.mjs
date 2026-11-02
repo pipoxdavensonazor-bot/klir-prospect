@@ -28,6 +28,11 @@ test('le formulaire de changement ne demande aucun secret sans session',async()=
   const app=await router({hash:'#/reset-password',user:null});app.render();
   assert.equal(app.rendered,'session-required');
 });
+
+test('un jeton de récupération en attente reste confirmable depuis la page de mot de passe',async()=>{
+  const app=await router({hash:'#/reset-password',user:null,pending:{type:'recovery'}});app.render();
+  assert.equal(app.location.hash,'#/auth/confirm');assert.equal(app.rendered,'confirm');
+});
 test('un événement de récupération tardif remplace la page de connexion sans boucle',async()=>{
   const app=await router({hash:'#/login'});app.render();assert.equal(app.rendered,'login');
   app.authState.passwordRecovery=true;app.render();app.render();assert.equal(app.rendered,'reset');

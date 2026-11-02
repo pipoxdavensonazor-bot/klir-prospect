@@ -2,12 +2,32 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
-import {parseAuthError,parseAuthCallback} from '../src/auth-policy.js';
+import {parseAuthError,parseAuthCallback,recoveryRequestMessage} from '../src/auth-policy.js';
 
 test('les messages ne reprennent jamais une description ou un code arbitraire',()=>{
   assert.equal(parseAuthError('?other=1'),null);
   assert.match(parseAuthError('?error=access_denied&error_code=otp_expired'),/expiré/);
   assert.doesNotMatch(parseAuthError('?error=secret&error_description=<script>secret</script>'),/secret|script/);
+});
+
+test('la demande de récupération masque les comptes absents et les erreurs brutes',()=>{
+  const success=recoveryRequestMessage(null);
+  for(const code of ['user_not_found','email_not_found','user_not_registered'])
+    assert.equal(recoveryRequestMessage({code,message:'secret@example.invalid'}),success);
+  assert.match(recoveryRequestMessage({status:429,message:'private'}),/Patientez/);
+  assert.doesNotMatch(recoveryRequestMessage({status:500,message:'secret@example.invalid'}),/secret|example/);
+});
+
+test('le fournisseur de récupération simulé ne reçoit que l’adresse et la redirection prévues',async()=>{
+  const source=await readFile(new URL('../src/auth.js',import.meta.url),'utf8');
+  const calls=[];
+  const context={redirectUrl:()=> 'https://fixture.invalid/',requireClient:async()=>({auth:{resetPasswordForEmail:async(...args)=>{calls.push(args);return {error:null};}}})};
+  vm.createContext(context);
+  vm.runInContext(source.slice(source.indexOf('async function sendRecovery('),source.indexOf('async function updatePassword(')),context);
+  assert.equal((await context.sendRecovery(' fictional@example.invalid ')).error,null);
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],'fictional@example.invalid');
+  assert.equal(calls[0][1].redirectTo,'https://fixture.invalid/');
 });
 
 test('un refus retire les paramètres et le jeton en attente sans créer de session',async()=>{
