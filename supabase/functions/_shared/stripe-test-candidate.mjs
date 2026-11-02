@@ -15,7 +15,7 @@ export function createStripeTestWebhook({verifySignature, retrieveSession, findO
     if (!event || event.livemode !== false || !/^evt_[A-Za-z0-9_]+$/.test(event.id || '') || event.account) {
       return {status: 400, outcome: 'invalid_event'};
     }
-    if (['charge.refunded', 'refund.created', 'refund.updated', 'charge.dispute.created'].includes(event.type)) {
+    if (typeof event.type === 'string' && /^(?:charge\.refunded$|charge\.refund\.|charge\.dispute\.|refund\.)/.test(event.type)) {
       // Do not acknowledge financial reversals until reconciliation exists.
       return {status: 503, outcome: 'reconciliation_required'};
     }

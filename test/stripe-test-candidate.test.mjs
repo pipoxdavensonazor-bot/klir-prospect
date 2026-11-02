@@ -42,7 +42,7 @@ test('panne du registre renvoie une erreur permettant une nouvelle tentative',as
 });
 test('remboursements et litiges restent à rapprocher, jamais acquittés silencieusement',async()=>{
   const f=fixture();
-  for(const type of ['charge.refunded','refund.created','refund.updated','charge.dispute.created']){
+  for(const type of ['charge.refunded','charge.refund.updated','refund.created','refund.updated','refund.failed','charge.dispute.created','charge.dispute.closed']){
     f.event.type=type;assert.deepEqual(await invoke(f),{status:503,outcome:'reconciliation_required'});
   }
   assert.equal(f.calls,0);
