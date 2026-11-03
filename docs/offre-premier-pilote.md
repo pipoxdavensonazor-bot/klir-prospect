@@ -2,7 +2,7 @@
 
 Statut : préparation. Ce texte n'est pas une offre envoyée, pas un contrat et pas un avis juridique. L'achat dans l'application reste fermé. Aucune facture n'est émise par ce document.
 
-Klirline Inc. prépare un premier pilote accompagné. Les limites ci-dessous viennent du produit et des brouillons de pilote déjà écrits. Le prix, les taxes, la durée vendue, le remboursement, le support et le contact de confidentialité restent à écrire par Klirline avant qu'un client reçoive ce texte.
+Klirline Inc. prépare un premier pilote accompagné. Les limites ci-dessous viennent du produit et des brouillons de pilote déjà écrits. La section « Proposition de prix » est une proposition à retenir ou à modifier par Klirline. Elle n'est pas encore le prix affiché. Les taxes, le support et le contact de confidentialité restent à écrire avant qu'un client reçoive ce texte.
 
 ## Ce que le client achèterait
 
@@ -24,27 +24,45 @@ La source de ce parcours est le catalogue Overture figé `2026-10-21.0`, prépar
 - Le paiement et l'ouverture du compte sont deux actes séparés. Un paiement, un reçu fourni par le client ou un retour de navigateur ne crée pas l'accès.
 - Le mode d'encaissement préparé pour ce premier pilote est une facture manuelle de Klirline Inc., puis un paiement par le moyen que l'entreprise utilise déjà. Le compte de pilote est ouvert ensuite, à la main, après encaissement constaté. Le montant de 49 $ CA présent dans un essai Stripe non déployé n'est pas le prix de cette offre.
 
+## Proposition de prix
+
+**490 $ CA hors taxes, une fois, pour 30 jours.** Un utilisateur, une entreprise. Facture manuelle. L'accès s'ouvre après encaissement.
+
+Ce prix couvre les deux séances et une liste de travail bornée. Chaque recherche rend au plus 40 fiches publiées. Le téléphone et le courriel restent vides lorsqu'ils sont absents de la source. Le temps des deux séances est compris dans les 490 $.
+
+Inclus :
+
+- 10 recherches complètes avec fiches, dans les trois cercles restaurants et cafés déjà décrits. Une recherche demandée au maximum de 40 fiches consomme 9 crédits internes. Dix recherches couvrent donc le lot de 90 crédits déjà utilisé dans l'essai technique. Une collecte vide, partielle ou en erreur ne compte pas dans les 10.
+- Les notes, la prochaine action et l'export CSV de ces recherches.
+- Deux séances de 45 minutes avec Klirline, pour lancer la première recherche et relire la liste. Les séances se prennent pendant les 30 jours.
+
+Hors de ce prix : une 11e recherche, une autre ville, un autre secteur, un deuxième utilisateur, l'envoi de messages, et toute séance supplémentaire. Chacun de ces ajouts fait l'objet d'une nouvelle facture, avec un montant écrit avant le travail.
+
+Remboursement proposé : Klirline rembourse les 490 $ si aucune recherche complète n'a pu être livrée pour une raison technique avant la fin de la première séance. Dès qu'une recherche complète a été livrée, le pilote est dû. Une séance non utilisée après cette livraison n'est pas remboursée. Le client peut s'arrêter à tout moment. Cette règle est une proposition commerciale, pas une opinion juridique.
+
+Le montant de 49 $ CA de l'essai Stripe reste un essai technique non déployé, sans les deux séances. Il ne devient pas le prix public.
+
 ## Ce qui reste à écrire avant envoi
 
 | Décision | Valeur |
 | --- | --- |
-| Prix | À écrire |
-| Devise | À écrire |
+| Prix | Proposition : 490 $ CA hors taxes, à retenir |
+| Devise | Proposition : dollar canadien |
+| Durée | Proposition : 30 jours |
+| Recherches incluses | Proposition : 10 recherches complètes |
+| Au-delà du inclus | Proposition : nouvelle facture avant tout ajout |
+| Annulation et remboursement | Proposition : remboursement intégral seulement si aucune recherche complète n'est livrée avant la fin de la première séance |
 | Taxes et mention sur la facture | À écrire |
-| Durée du pilote payant | À écrire |
-| Crédits ou recherches inclus | À écrire |
-| Ce qui se passe au-delà du inclus | À écrire |
-| Annulation et remboursement | À écrire |
 | Support : canal, personne, horaire, délai | À écrire |
 | Responsable de la protection des renseignements personnels | À écrire |
 | Adresse et numéros d'entreprise sur la facture | À écrire |
 | Moyen de paiement déjà utilisé par Klirline | À écrire |
 
-## Texte client, encore incomplet
+## Texte client, si la proposition est retenue
 
-Klirline Inc. propose un pilote accompagné de KlirProspect. Le pilote sert à repérer des restaurants et des cafés publiés dans trois cercles de 2,2 km à Montréal, Laval et Québec, puis à en garder une liste avec notes et export CSV. Il ne promet pas une liste exhaustive, un contact joignable, ni un résultat de vente. Aucun message n'est envoyé aux entreprises. Le prix est [prix], pour [durée], taxes [taxes]. Le paiement se fait sur facture. L'accès est ouvert après encaissement. Pour une question ou une demande sur les renseignements personnels : [support et contact]. Annulation et remboursement : [règle].
+Klirline Inc. propose un pilote accompagné de KlirProspect à 490 $ CA hors taxes, pour 30 jours et un utilisateur. Le pilote sert à repérer des restaurants et des cafés publiés dans trois cercles de 2,2 km à Montréal, Laval et Québec, puis à en garder une liste avec notes et export CSV. Il comprend 10 recherches complètes et deux séances de 45 minutes. Il ne promet pas une liste exhaustive, un contact joignable, ni un résultat de vente. Aucun message n'est envoyé aux entreprises. Le paiement se fait sur facture. L'accès est ouvert après encaissement. Klirline rembourse ce montant si aucune recherche complète n'a pu être livrée pour une raison technique avant la fin de la première séance. Pour une question ou une demande sur les renseignements personnels : [support et contact]. Taxes : [mention].
 
-Ce paragraphe ne part pas tant que chaque crochet est remplacé par une valeur écrite par Klirline.
+Ce paragraphe ne part pas tant que les crochets sont remplacés et que Klirline a retenu le montant de 490 $ CA.
 
 ## Données, en bref
 
