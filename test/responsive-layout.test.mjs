@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { extname, join, normalize } from "node:path";
 import test from "node:test";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const chromeCandidates = [
   process.env.CHROME_PATH,
@@ -16,16 +17,20 @@ const chromeCandidates = [
 const chromePath = chromeCandidates.find((path) => existsSync(path));
 
 const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Mobile Safari/537.36";
+const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 const DESKTOP = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 const VIEWS = [
-  { name: "android-390", width: 390, height: 844, scale: 2.75, mobile: true, agent: ANDROID },
+  { name: "android-360", width: 360, height: 800, scale: 3, mobile: true, agent: ANDROID },
+  { name: "iphone-390", width: 390, height: 844, scale: 3, mobile: true, agent: IPHONE },
   { name: "android-412", width: 412, height: 915, scale: 2.625, mobile: true, agent: ANDROID },
+  { name: "iphone-430", width: 430, height: 932, scale: 3, mobile: true, agent: IPHONE },
   { name: "tablet-768", width: 768, height: 1024, scale: 2, mobile: true, agent: ANDROID },
-  { name: "desktop-1280", width: 1280, height: 800, scale: 1, mobile: false, agent: DESKTOP }
+  { name: "desktop-1280", width: 1280, height: 800, scale: 1, mobile: false, agent: DESKTOP },
+  { name: "laptop-1440", width: 1440, height: 900, scale: 1, mobile: false, agent: DESKTOP }
 ];
 
 function startServer() {
-  const root = normalize(new URL("../src/", import.meta.url).pathname);
+  const root = normalize(fileURLToPath(new URL("../src/", import.meta.url)));
   const types = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
@@ -177,6 +182,8 @@ const PROBE = `(() => {
     };
   });
   const heading = document.querySelector(".auth h2");
+  const frame = document.querySelector(".land, .auth, .lay");
+  const frameRect = frame ? frame.getBoundingClientRect() : null;
   const menu = document.getElementById("menuBtn");
   const side = document.querySelector(".side");
   const sideStyle = side ? getComputedStyle(side) : null;
@@ -189,6 +196,13 @@ const PROBE = `(() => {
     bodyFont: parseFloat(getComputedStyle(document.body).fontSize),
     links,
     heading: heading ? heading.textContent : "",
+    frame: frameRect ? {
+      tag: frame.className,
+      left: frameRect.left,
+      right: frameRect.right,
+      top: frameRect.top,
+      width: frameRect.width
+    } : null,
     menu: menu ? getComputedStyle(menu).display : "",
     side: side ? {
       visibility: sideStyle.visibility,
@@ -209,8 +223,21 @@ function assertContained(view, probe, label) {
   assert.ok(probe.bodyFont >= 16, `${view.name} ${label}: texte ${probe.bodyFont}px`);
 }
 
+function assertFrame(view, probe, label) {
+  assert.ok(probe.frame, `${view.name} ${label}: cadre absent`);
+  const rightGap = probe.innerWidth - probe.frame.right;
+  assert.ok(probe.frame.left >= 8, `${view.name} ${label}: bordure gauche ${probe.frame.left}`);
+  assert.ok(rightGap >= 8, `${view.name} ${label}: bordure droite ${rightGap}`);
+  assert.ok(probe.frame.top >= 8, `${view.name} ${label}: bordure haute ${probe.frame.top}`);
+  if (view.width >= 1280 && probe.frame.tag.includes("land")) {
+    assert.ok(probe.frame.width <= 1152 + 2, `${view.name}: l'accueil dépasse 72rem (${probe.frame.width})`);
+    assert.ok(probe.frame.left >= 24, `${view.name}: marge d'ordinateur trop mince`);
+  }
+}
+
 function assertNav(view, probe) {
   assertContained(view, probe, "accueil");
+  assertFrame(view, probe, "accueil");
   assert.deepEqual(probe.links.map((link) => [link.text, link.href]), [
     ["Connexion", "#/login"],
     ["Inscription", "#/register"],
@@ -286,6 +313,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       assert.equal(probe.hash, "#/login");
       assert.equal(probe.heading, "Connexion");
       assertContained(view, probe, "connexion");
+      assertFrame(view, probe, "connexion");
 
       await page.eval(`location.hash = "#/landing"`);
       await page.eval(`document.querySelector('.land-actions a[href="#/register"]').click()`);
@@ -300,6 +328,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
       assert.equal(probe.hash, "#/dashboard", `${view.name}: la démo n’ouvre pas le tableau de bord`);
       assert.ok(probe.side, `${view.name}: coque absente`);
       assertContained(view, probe, "démo");
+      assertFrame(view, probe, "démo");
       if (view.width < 901) {
         assert.notEqual(probe.menu, "none", `${view.name}: le menu mobile est absent`);
         assert.equal(probe.side.visibility, "hidden", `${view.name}: la barre latérale de bureau reste visible`);
@@ -318,7 +347,7 @@ test("Chrome affiche le site de 390 px au bureau sans chevauchement", { skip: ch
         assert.equal(probe.side.position, "sticky");
         assert.ok(probe.side.left >= -1 && probe.side.width >= 200);
       }
-      if (view.name === "android-390" || view.name === "desktop-1280") {
+      if (view.name === "iphone-390" || view.name === "android-360" || view.name === "desktop-1280" || view.name === "laptop-1440") {
         await page.eval(`location.hash = "#/landing"`);
         await page.screenshot(join(shots, `${view.name}-landing.png`));
         await page.eval(`location.hash = "#/demo"`);

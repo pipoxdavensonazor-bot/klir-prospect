@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const files = [
   "security.js", "data.js", "engine.js", "store.js", "auth-policy.js", "auth.js", "webintel.js",
@@ -8,7 +9,7 @@ const files = [
 
 for (const file of files) {
   const path = new URL("../src/" + file, import.meta.url);
-  const result = spawnSync(process.execPath, ["--check", path.pathname], { encoding: "utf8" });
+  const result = spawnSync(process.execPath, ["--check", fileURLToPath(path)], { encoding: "utf8" });
   if (result.status !== 0) throw new Error(result.stderr || `Syntaxe invalide: ${file}`);
 }
 

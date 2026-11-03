@@ -1,0 +1,385 @@
+diff --git a/docs/commercial-readiness.md b/docs/commercial-readiness.md
+new file mode 100644
+index 0000000..5b73eb8
+--- /dev/null
++++ b/docs/commercial-readiness.md
+@@ -0,0 +1,67 @@
++# Préparation du pilote KlirProspect
++
++Cette livraison corrige le parcours de préparation d'une recherche. Elle ne
++constitue ni une autorisation de commercialisation ni une validation de production.
++Base de travail : `bf72b5f97d39535f7c05e8da2f3989993830988a` sur `main`.
++
++## Corrections livrées
++
++- Quantité maximale entre 10 et 40, par défaut 40, conformément à la collecte OSM.
++- Paramètres normalisés communs au formulaire, au devis, à l'appel OSM et à l'historique.
++- Le texte saisi initialise les paramètres avancés. Les modifications avancées
++  actualisent le récapitulatif et le tarif, même si le panneau est ensuite masqué.
++- Une recherche enregistrée est relancée avec ses paramètres sauvegardés. Les
++  anciennes quantités supérieures à 40 sont plafonnées avant réservation des crédits.
++- Une taille absente reste absente. Une emprise de Montréal n'est pas utilisée à Laval.
++- Les nombres désignant une année ou une taille d'entreprise ne sont plus pris
++  automatiquement pour une quantité de prospects.
++- Le tableau de bord de démonstration explique le parcours et l'absence de recherches réelles.
++- Les textes publics précisent le maximum, l'absence de volume garanti et le rôle
++  de préparation des suivis. Aucune donnée de démonstration ni source supplémentaire ajoutée.
++
++## Validation automatisée réellement exécutée
++
++Commande : `KLIR_ENV=preview npm run check`.
++
++- Syntaxe des scripts, tests et build : succès.
++- 80 tests : 79 réussis, 1 ignoré, aucun échec.
++- Les 9 nouveaux tests exécutent notamment `runSearch` avec une source et un
++  registre simulés : devis avancé, réservation et quantité OSM concordants,
++  relance sauvegardée, plafond, solde insuffisant, partiel, vide, erreur et double clic.
++- La suite existante couvre aussi les exports, les sessions et les migrations/RLS
++  dans une base PGlite locale. Cela ne vérifie pas la configuration du projet distant.
++- Le build de prévisualisation termine avec `environment=preview` et `supabase=absent` :
++  il n'est connecté à aucune base réelle.
++
++Le contrôle visuel responsive existant est ignoré faute de binaire Chrome. Le
++téléchargement du navigateur Playwright a échoué (archive invalide) et le navigateur
++distant interdit le protocole `file:` pour la copie locale. Aucun succès visuel
++sur cette livraison n'est donc déclaré.
++
++## À valider avant un pilote payant
++
++1. Sur une prévisualisation isolée avec sa base de test, effectuer trois recherches
++   représentatives. Relever durée, pertinence, doublons, coordonnées publiées,
++   état de collecte et crédits. Ne jamais remplir une donnée manquante par génération.
++2. Parcourir recherche → sélection → dossier/CRM → note → export. Comparer le
++   récapitulatif, l'historique et les colonnes des fichiers exportés.
++3. Vérifier la conservation après déconnexion et sur un autre navigateur. Avec deux
++   comptes de test, vérifier l'interdiction de lire/modifier les données de l'autre.
++4. Rejouer les cas de crédits avec le registre distant de test : complet, vide,
++   partiel, erreur, double clic, solde insuffisant et interruption réseau.
++5. Contrôler le rendu desktop et téléphone, le panneau avancé masqué/affiché,
++   l'évolution du prix et les messages d'erreur. Ne pas confondre test simulé et collecte réelle.
++6. Faire définir par Klirline : prix CAD, durée, prestation incluse, limites,
++   renouvellement/résiliation/remboursement, canal et délai de support, contact de
++   confidentialité, politique de conservation/suppression, moyen de facturation et
++   lien de réservation de démonstration. Ces valeurs ne sont pas inventées dans le code.
++7. Revoir les risques résiduels de `SECURITY.md` et les réglages réels du projet cible.
++   Une migration testée localement ne prouve pas qu'elle est appliquée en production.
++8. Après revue et accord distinct, publier puis vérifier la page `#/version` et
++   les fichiers servis. Aucun déploiement ni changement de base distante n'est inclus ici.
++
++## Critère de lancement
++
++Démonstrations accompagnées quand le parcours réel est reproductible. Pilote
++payant limité seulement après les validations techniques et la définition de
++l'offre. Abonnement public après validation du parcours d'achat, d'accès et de support.
+diff --git a/src/app.js b/src/app.js
+index e196375..948ba38 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -192,8 +192,8 @@ function vLanding(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-
+ <div class="card"><h3>🗂 Gardez une liste de travail</h3><p>Ajoutez les fiches à un pipeline local. Cela ne contacte aucune entreprise.</p></div>
+ <div class="card"><h3>✉️ Préparez, n'envoyez pas</h3><p>Un brouillon de message reste dans l'application. Aucun courriel commercial n'est envoyé.</p></div></section>
+ <section class="card demo"><h3>Pilote de test</h3><p>La démonstration montre l'interface et n'envoie aucune requête. L'accès au pilote de test est limité par Cloudflare Access. Une liste d'adresses dans le navigateur n'est pas un contrôle d'accès. © les contributeurs OpenStreetMap. Aucun nom, téléphone ou courriel n'est inventé.</p></section>
+-<footer>© Klirline — Prospect Intelligence + AI Sales Automation · <a href="#/offre">Offre et données</a> · <a href="#/version">Version</a></footer></div>`;}
+-function vOffre(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-label="Navigation principale"><a class="land-brand" href="#/landing"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"></a><div class="land-actions"><a href="#/login">Connexion</a><a href="#/offre">Offre</a><a href="#/version">Version</a></div></nav><main class="card" style="margin:24px auto;max-width:820px"><h1>Offre, crédits et données</h1><p>KlirProspect repère des entreprises dans les données publiées sur OpenStreetMap. © les contributeurs OpenStreetMap. Les données sont sous licence ODbL. Ce n'est pas un registre officiel d'entreprises et cela ne garantit pas qu'un contact est joignable.</p><h2>Prix d'une recherche</h2><p>Le tarif est 5 + 1 crédit par tranche de 10 résultats demandés (<code>5 + ceil(quantité / 10)</code>). Une demande de 30 entreprises coûte 8 crédits. Ce débit a lieu seulement pour une collecte complète qui contient des fiches.</p><h2>Quota mensuel</h2><p>Seule une collecte complète avec fiches compte comme une recherche du mois. Une erreur technique, une collecte vide et une collecte partielle, avec ou sans fiches, ne débitent pas de crédit et n'augmentent pas le quota. Le mois suit le fuseau America/Toronto. À l'ouverture d'un nouveau mois, les compteurs d'usage repartent à zéro. Le solde de crédits n'est pas rechargé automatiquement.</p><h2>Ce qui reste inconnu</h2><p>Un champ absent reste vide. La taille absente s'affiche « Non renseigné ». La date affichée est la date de collecte, pas une date de vérification. Deux entreprises homonymes restent distinctes tant qu'un téléphone, un courriel, un domaine ou une adresse de rue publiés ne concordent pas.</p><h2>Répétition</h2><p>Un double envoi de la même action de recherche ou de radar ne débite pas une seconde fois. Une nouvelle recherche, même avec le même texte, est une nouvelle action.</p><h2>Pilote</h2><p>Le radar suit la même règle : une collecte complète avec fiches débite 5 crédits et compte comme une recherche du mois. Une collecte partielle, vide ou en erreur ne débite rien et ne compte pas. La démonstration et une session sans compte sont refusées avant l'appel, pour qu'un bouton local n'interroge pas OpenStreetMap. Ce garde-fou n'est pas un contrôle de sécurité. L'accès au pilote de test est limité par Cloudflare Access sur les adresses de prévisualisation. Le solde affiché dans le navigateur n'est pas un paiement.</p><h2>Paiement et support</h2><p>Une recherche ou un radar lancé depuis un compte réserve le montant sur le registre du compte avant d'interroger OpenStreetMap, puis le confirme seulement si la collecte est complète et contient des fiches. Aucun prestataire de paiement n'est branché. Le canal de support et le responsable de la protection des renseignements personnels doivent être publiés par Klirline avant d'accepter un paiement. Cette page n'est pas un avis juridique.</p><p><a href="#/landing">Retour</a></p></main></div>`;}
++<footer>© Klirline — Prospection et préparation des suivis · <a href="#/offre">Offre et données</a> · <a href="#/version">Version</a></footer></div>`;}
++function vOffre(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-label="Navigation principale"><a class="land-brand" href="#/landing"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"></a><div class="land-actions"><a href="#/login">Connexion</a><a href="#/offre">Offre</a><a href="#/version">Version</a></div></nav><main class="card" style="margin:24px auto;max-width:820px"><h1>Offre, crédits et données</h1><p>KlirProspect repère des entreprises dans les données publiées sur OpenStreetMap. © les contributeurs OpenStreetMap. Les données sont sous licence ODbL. Ce n'est pas un registre officiel d'entreprises et cela ne garantit pas qu'un contact est joignable.</p><h2>Prix d'une recherche</h2><p>Le tarif est 5 + 1 crédit par tranche de 10 résultats demandés (<code>5 + ceil(quantité / 10)</code>). La quantité maximale est comprise entre 10 et 40. Une demande de 30 entreprises coûte 8 crédits. Le nombre de fiches reçu dépend des données disponibles. Ce débit a lieu seulement pour une collecte complète qui contient des fiches.</p><h2>Quota mensuel</h2><p>Seule une collecte complète avec fiches compte comme une recherche du mois. Une erreur technique, une collecte vide et une collecte partielle, avec ou sans fiches, ne débitent pas de crédit et n'augmentent pas le quota. Le mois suit le fuseau America/Toronto. À l'ouverture d'un nouveau mois, les compteurs d'usage repartent à zéro. Le solde de crédits n'est pas rechargé automatiquement.</p><h2>Ce qui reste inconnu</h2><p>Un champ absent reste vide. La taille absente s'affiche « Non renseigné ». La date affichée est la date de collecte, pas une date de vérification. Deux entreprises homonymes restent distinctes tant qu'un téléphone, un courriel, un domaine ou une adresse de rue publiés ne concordent pas.</p><h2>Répétition</h2><p>Un double envoi de la même action de recherche ou de radar ne débite pas une seconde fois. Une nouvelle recherche, même avec le même texte, est une nouvelle action.</p><h2>Pilote</h2><p>Le radar suit la même règle : une collecte complète avec fiches débite 5 crédits et compte comme une recherche du mois. Une collecte partielle, vide ou en erreur ne débite rien et ne compte pas. La démonstration et une session sans compte sont refusées avant l'appel, pour qu'un bouton local n'interroge pas OpenStreetMap. Ce garde-fou n'est pas un contrôle de sécurité. L'accès au pilote de test est limité par Cloudflare Access sur les adresses de prévisualisation. Le solde affiché dans le navigateur n'est pas un paiement.</p><h2>Paiement et support</h2><p>Une recherche ou un radar lancé depuis un compte réserve le montant sur le registre du compte avant d'interroger OpenStreetMap, puis le confirme seulement si la collecte est complète et contient des fiches. Aucun prestataire de paiement n'est branché. Le canal de support et le responsable de la protection des renseignements personnels doivent être publiés par Klirline avant d'accepter un paiement. Cette page n'est pas un avis juridique.</p><p><a href="#/landing">Retour</a></p></main></div>`;}
+ function versionSupabaseLabel(info){const source=info&&info.supabaseSource||"absent";const host=info&&info.supabaseHost?String(info.supabaseHost):"";if(source==="env")return host?"base de test ("+host+")":"base de test";if(source==="production-blocked")return "base de production écartée";if(source==="public-site")return host?"base du site public ("+host+")":"base du site public";return "base non configurée";}
+ function vVersion(){App.innerHTML=`<div class="land"><nav class="land-nav" aria-label="Navigation principale"><a class="land-brand" href="#/landing"><img src="icons/logo.png" alt="KLIRProspect" width="960" height="253"></a><div class="land-actions"><a href="#/landing">Accueil</a><a href="#/offre">Offre</a></div></nav><main class="card" style="margin:24px auto;max-width:820px"><h1>Version servie</h1><p id="buildMeta">Lecture de la version…</p><p><a href="#/landing">Retour</a></p></main></div>`;fetch("build.json",{headers:{Accept:"application/json"}}).then(function(response){if(!response.ok)throw new Error("introuvable");return response.json();}).then(function(info){const el=document.getElementById("buildMeta");if(!el)return;el.textContent="Commit "+(info.commit||"inconnu")+" · environnement "+(info.environment||"inconnu")+" · "+versionSupabaseLabel(info)+" · compilé le "+(info.builtAt||"date inconnue")+".";}).catch(function(){const el=document.getElementById("buildMeta");if(el)el.textContent="La version compilée est introuvable. Le site sert peut-être une copie sans build.json.";});}
+ function vAuth(mode){if(!authState.configured){const register=mode==="register";App.innerHTML=`<div class="auth"><div class="card"><h2>${register?"Inscription":"Connexion"}</h2><p>Renseignez SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY au build. Le mode démo reste disponible.</p><p><a class="cta" href="#/demo">Démo</a></p><p>${register?'<a href="#/login">Déjà inscrit ?</a>':'<a href="#/register">Créer un compte</a>'}</p></div></div>`;return;}const register=mode==="register";App.innerHTML=`<div class="auth"><form class="card" id="authForm"><h2>${register?"Créer mon compte":"Connexion"}</h2>${register?'<label>Nom affiché<input id="authName" maxlength="120" autocomplete="name" required></label>':""}<label>E-mail<input id="authEmail" type="email" autocomplete="email" required></label><label>Mot de passe<input id="authPassword" type="password" minlength="12" autocomplete="${register?"new-password":"current-password"}" required></label><button class="cta" type="submit">${register?"S’inscrire":"Se connecter"}</button>${register?'<button type="button" id="resendBtn">Renvoyer l’e-mail de vérification</button>':""}<p id="authMsg" role="status"></p><p>${register?'<a href="#/login">Déjà inscrit ?</a>':'<a href="#/forgot">Mot de passe oublié ?</a> · <a href="#/register">Créer un compte</a>'}</p></form></div>`;const msg=document.getElementById("authMsg");document.getElementById("authForm").onsubmit=async event=>{event.preventDefault();const values={email:document.getElementById("authEmail").value,password:document.getElementById("authPassword").value,displayName:register?document.getElementById("authName").value:""};const result=register?await window.KlirAuth.signUp(values):await window.KlirAuth.signIn(values);if(result.error){msg.textContent=result.error.message;return;}if(register&&!result.data.session){msg.textContent="Vérifiez votre e-mail, puis cliquez sur Confirmer dans l’application.";return;}const next=await window.KlirAuth.initialize();await syncAuthState(next);nav("/dashboard");};const resend=document.getElementById("resendBtn");if(resend)resend.onclick=async()=>{const result=await window.KlirAuth.resendSignUp(document.getElementById("authEmail").value);msg.textContent=result.error?result.error.message:"Si un compte est en attente, un nouvel e-mail a été envoyé.";};}
+@@ -305,7 +305,7 @@ const openOpps=KS.S.opps.filter(o=>{const p=KS.S.prospects.find(x=>x.id===o.pros
+ const drafts=KS.S.campaigns.flatMap(c=>c.drafts||[]).filter(d=>d.status==="Draft").length;
+ const pend=KS.S.approvals.filter(a=>a.status==="Pending").length; const pipe=KS.S.deals.filter(d=>!["Won","Lost"].includes(d.stage)).reduce((a,d)=>a+(d.value||0),0)+KS.S.crm.filter(l=>l.stage!=="Won"&&l.stage!=="Lost").length*2500;
+ const icp=KS.S.icp;
+-return `<h1>Bonjour 👋</h1><p>Voici vos opportunités commerciales.</p><div class="grid4">
++return `<h1>Bonjour 👋</h1>${KS.S.demo?`<section class="card demoB"><h2>Découvrez le parcours KlirProspect</h2><p>Cette démonstration montre une interface vide. Elle ne contient aucun prospect réel et ne lance aucune recherche OpenStreetMap.</p><ol><li>Ouvrez <a href="#/prospecting/new">Nouvelle recherche</a> pour définir le secteur, la ville et la quantité maximale.</li><li>Examinez le récapitulatif, la zone et le coût avant de lancer une recherche depuis un compte autorisé.</li><li>Depuis les résultats d'un compte, sélectionnez des fiches, préparez votre suivi et exportez votre sélection.</li></ol><p><a href="#/offre">Consulter les limites et les règles de crédits</a></p></section>`:""}<p>Voici vos opportunités commerciales.</p><div class="grid4">
+ ${[["PROSPECTS",KS.S.prospects.length],["QUALIFIÉS",q],["OPPORTUNITÉS",openOpps.length],["PIPELINE $",pipe.toLocaleString()]].map(([k,v])=>`<div class="card stat"><span>${k}</span><b>${v}</b></div>`).join("")}</div>
+ ${window.OppEngine?window.OppEngine.dashStats():""}
+ ${window.WebAI?window.WebAI.dashCard():""}
+@@ -314,14 +314,36 @@ ${window.KlirProjects?window.KlirProjects.dashCard():""}
+ <div class="cols"><div class="card"><h3>🎯 Votre ICP</h3>${icp?`<p><small>${sectorLabel(icp.industry)} • ${icp.city} • ${icp.size} employés</small></p><button class="cta" onclick="location.hash='#/prospecting/new'">Trouver des prospects</button>`:`<p><small>Non défini.</small></p><button class="cta" onclick="location.hash='#/icp'">Construire mon ICP</button>`}</div>
+ <div class="card"><h3>🤖 Klir AI</h3><p><small>« Que dois-je faire aujourd'hui ? »</small></p><div class="rowb"><button id="copilotBtn">Analyser mon pipeline</button><button onclick="location.hash='#/copilot'">Ouvrir Copilot</button></div><div id="copilotOut"></div></div></div>
+ <div class="card"><h3>Activité récente</h3>${KS.S.activities.slice(0,5).map(a=>`<div class="row">• ${a.t} <small>${a.at}</small></div>`).join("")||"<p>Aucune activité.</p>"}</div>`;}
+-function quotedSearchCost(text){const qty=(E.parseQuery(text||"").quantity)||50;return 5+Math.ceil(qty/10);}
+-function vNew(){return `<h1>Trouver des prospects</h1><div class="card demoB">Entreprises repérées dans les données OpenStreetMap disponibles. © les contributeurs OpenStreetMap. Ce n'est pas un registre officiel ni une liste exhaustive. Le téléphone, le site, le courriel et l'adresse restent vides s'ils ne sont pas publiés. Aucune entreprise n'est inventée. Rayon par défaut 2,2 km (1,5 km pour tous les secteurs). L'emprise de l'île de Montréal est optionnelle et ne s'applique pas à Laval. Au plus 40 objets sont demandés, puis la quantité affichée est bornée. Prix de la formulation actuelle : <b id="searchPrice">${quotedSearchCost(KS.S.prefill||"")}</b> crédits, débités seulement si la collecte est complète et contient des fiches. Recherches comptées ce mois : ${KS.S.usage.searches||0} / ${(window.KlirStore.LIMITS[KS.S.plan]||window.KlirStore.LIMITS.Free).searches}.</div><div class="card"><h3>Que recherchez-vous ?</h3>
+-<label for="qInput">Formulation de la recherche</label><textarea id="qInput" rows="3" placeholder="Trouve-moi 100 entreprises à Montréal, tous secteurs. Vous pouvez aussi préciser : restaurants, santé, technologie, immobilier, finance…">${KS.S.prefill||""}</textarea>
++function formSearchParams(text,savedParams){
++  const parsed=E.parseQuery(text||"");
++  if(savedParams&&typeof savedParams==="object")return E.normalizeSearchParams(parsed,savedParams);
++  const field=id=>document.getElementById(id);
++  if(!field("aQty"))return parsed;
++  return E.normalizeSearchParams(parsed,{
++    industry:field("aInd").value,cityKey:field("aCity").value,
++    quantity:field("aQty").value,size:field("aSize").value||null,area:field("aArea").value
++  });
++}
++function quotedSearchCost(text,params){const qty=E.normalizeSearchParams(params||E.parseQuery(text||"")).quantity;return 5+Math.ceil(qty/10);}
++function syncSearchFields(params){
++  const values={aInd:params.industry,aCity:params.cityKey,aQty:params.quantity,aSize:params.size||"",aArea:params.area};
++  for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);if(el)el.value=String(value);}
++}
++function updateSearchQuote(){
++  const input=document.getElementById("qInput");if(!input)return;
++  const params=formSearchParams(input.value);
++  const price=document.getElementById("searchPrice");if(price)price.textContent=String(quotedSearchCost(input.value,params));
++  const summary=document.getElementById("searchSummary");
++  if(summary)summary.textContent=`${sectorLabel(params.industry)} · ${params.city.city} · ${params.quantity} résultats maximum · ${params.area==="montreal_island"?"île de Montréal":params.industry==="all"?"rayon de 1,5 km":"rayon de 2,2 km"}. Coordonnées selon disponibilité ; le nombre demandé n'est pas garanti.`;
++}
++function vNew(){return `<h1>Trouver des prospects</h1><div class="card demoB">Entreprises repérées dans les données OpenStreetMap disponibles. © les contributeurs OpenStreetMap. Ce n'est pas un registre officiel ni une liste exhaustive. Le téléphone, le site, le courriel et l'adresse restent vides s'ils ne sont pas publiés. Aucune entreprise n'est inventée. Rayon par défaut 2,2 km (1,5 km pour tous les secteurs). L'emprise de l'île de Montréal est optionnelle et ne s'applique pas à Laval. Au plus 40 objets sont demandés, puis la quantité affichée est bornée. Prix des paramètres affichés : <b id="searchPrice">${quotedSearchCost(KS.S.prefill||"")}</b> crédits, débités seulement si la collecte est complète et contient des fiches. Recherches comptées ce mois : ${KS.S.usage.searches||0} / ${(window.KlirStore.LIMITS[KS.S.plan]||window.KlirStore.LIMITS.Free).searches}.</div><div class="card"><h3>Que recherchez-vous ?</h3>
++<label for="qInput">Formulation de la recherche</label><textarea id="qInput" rows="3" placeholder="Trouve-moi 30 entreprises de rénovation à Montréal. Vous pouvez aussi préciser : restaurants, santé, technologie, immobilier, finance…">${esc(KS.S.prefill||"")}</textarea>
++<p id="searchSummary" role="status" aria-live="polite"></p>
+ <div class="rowb"><button class="cta" id="runBtn">⚡ Trouver mes prospects</button><button id="advBtn">Recherche avancée ⚙</button></div>
+ <div id="advBox" hidden><div class="grid4">
+ <label>Industrie<select id="aInd"><option value="all" selected>Tous les secteurs</option>${Object.entries(KlirData.INDUSTRIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("")}</select></label>
+ <label>Ville<select id="aCity">${Object.keys(KlirData.CITIES).map(k=>`<option>${k}</option>`).join("")}</select></label>
+-<label>Quantité<input id="aQty" type="number" value="100" min="10" max="500"></label>
++<label>Quantité maximale<input id="aQty" type="number" value="${E.SEARCH_LIMITS.defaultQuantity}" min="${E.SEARCH_LIMITS.min}" max="${E.SEARCH_LIMITS.max}" step="1"></label>
+ <label>Taille<select id="aSize"><option value="" selected>Non renseigné</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>500+</option></select></label>
+ <label>Zone<select id="aArea"><option value="radius" selected>Rayon fixe autour du centre</option><option value="montreal_island">Emprise de l'île de Montréal</option></select></label></div><p><small>Le rayon fixe reste 2,2 km (1,5 km tous secteurs). L'emprise de l'île ne s'applique qu'à Montréal et ne remplace pas une recherche Laval.</small></p></div>
+ <div id="parsed"></div><div id="prog"></div><div class="card"><h3>🌐 Présence numérique (Website Intelligence)</h3><p><small>Filtre appliqué après la recherche. La vérification réelle des sites se fait en arrière-plan dans les résultats.</small></p><div>${["webActive|Website active","webInactive|Website inactive","noSite|No active website detected","regInactive|Registered domain / inactive website","domainAvailable|Domain available","domainRegistered|Domain registered","httpsIssue|HTTPS unavailable"].map(s=>{const kv=s.split("|");return `<label style="display:inline-block;margin-right:12px"><input type="checkbox" data-webf="${kv[0]}" style="width:auto"> ${kv[1]}</label>`;}).join("")}</div></div></div>`;}
+@@ -380,7 +402,7 @@ function vCrmDeals(){const stages=["Proposal","Negotiation","Won","Lost"];const
+ function vCrmActivities(){return `<h1>CRM — Activités</h1><div class="card subnav">${crmNav("crm")}</div><div class="card">${KS.S.activities.map(a=>`<div class="row"><span>• ${a.t}</span><small>${a.at}</small></div>`).join("")||"<p>Aucune activité.</p>"}</div>`;}
+ function vCopilotPage(){return `<h1>🤖 Sales Copilot</h1><div class="card"><h3>Que dois-je faire ensuite ?</h3><div class="rowb"><button class="cta" id="copilotBtn">Analyser mon pipeline</button></div><div id="copilotOut"></div></div>`;}
+ function vMessages(){const all=KS.S.campaigns.flatMap(c=>(c.drafts||[]).map(d=>({c,d})));const pen=all.filter(x=>x.d.status==="Draft");
+-  return `<h1>📣 Outreach — Messages (${all.length}, ${pen.length} en revue)</h1><div class="card demoB">🧪 Chaque message exige une <b>revue humaine</b> avant envoi. Envoi global via Campagnes (canal configuré requis).</div>
++  return `<h1>📣 Outreach — Messages (${all.length}, ${pen.length} en revue)</h1><div class="card demoB">🧪 Chaque message exige une <b>revue humaine</b> avant envoi. Cette version prépare des brouillons ; aucun courriel commercial n'est envoyé.</div>
+   ${all.slice(0,30).map(({c,d})=>{const p=KS.S.prospects.find(x=>x.id===d.prospectId);return `<div class="card"><b>${p?p.company_name:"?"}</b> <span class="pill">${d.status}</span> <small>• ${c.name}</small><p>${d.text.slice(0,220)}...</p>${d.status==="Draft"?`<div class="rowb"><button data-dap="${c.id}:${d.id}">✓ Approuver</button><button data-drj="${c.id}:${d.id}">✕ Rejeter</button></div>`:""}</div>`;}).join("")||"<div class='card'>Aucun brouillon. Générez des messages depuis les résultats ou le Copilot.</div>"}`;}
+ function vCamp(){return `<h1>Campagnes</h1><div class="card demoB">🧪 Aucun envoi automatique : les brouillons IA exigent une <b>revue humaine + approbation</b>, et l'envoi exige un canal configuré + respect opt-out.</div><button id="newCamp">+ Nouvelle campagne</button>${KS.S.campaigns.map(c=>{const dr=(c.drafts||[]);const ap=dr.filter(d=>d.status==="Approved").length;return `<div class="card"><b>${c.name}</b> <span class="pill">${c.status}</span><p><small>${c.prospects.length} prospects • ${c.created} • ${dr.length} brouillons (${ap} approuvés)</small></p><label>Canal <select data-ch="${c.id}">${["Email","LinkedIn","SMS"].map(ch=>`<option ${ (c.channel||"Email")===ch?"selected":""}>${ch}</option>`).join("")}</select></label><p>${c.message||""}</p><p><small>LinkedIn : aide à la préparation uniquement, sans automatisation contraire aux règles de la plateforme.</small></p>${dr.slice(0,5).map(d=>{const p=KS.S.prospects.find(x=>x.id===d.prospectId);return `<div class="row"><div><b>${p?p.company_name:"?"}</b> <span class="pill">${d.status}</span><br><small>${d.text.slice(0,120)}...</small></div><div>${d.status==="Draft"?`<button data-dap="${c.id}:${d.id}">✓</button><button data-drj="${c.id}:${d.id}">✕</button>`:""}</div></div>`;}).join("")}${dr.length>5?`<small>+ ${dr.length-5} autres brouillons</small>`:""}<div class="rowb"><button data-send="${c.id}">Passer en Active</button>${dr.length?`<button data-dall="${c.id}">Tout approuver</button>`:""}<button data-ship="${c.id}">📤 Envoyer (canal configuré requis)</button></div></div>`;}).join("")||"<p>Aucune campagne.</p>"}`;}
+ function vAI(){const pend=KS.S.approvals.filter(a=>a.status==="Pending");return `<h1>🤖 Klir AI</h1>${pend.length?`<div class="card"><h3>⏳ Actions en attente d'approbation (${pend.length})</h3>${pend.map(a=>`<div class="row"><div><b>${a.tool}</b> <small>${a.desc||""}</small><br><small>${a.at}</small></div><div><button data-ap="${a.id}">Approuver</button><button data-rj="${a.id}">Rejeter</button></div></div>`).join("")}</div>`:""}<div class="card"><div id="chat">${KS.S.aiLog.map(m=>`<div class="${m.me?"me":"bot"}">${m.t}</div>`).join("")||"<div class='bot'>Posez-moi une question : « Trouve-moi 100 entrepreneurs à Montréal », « Montre mes 20 meilleurs prospects », « Prépare un message »...</div>"}</div>
+@@ -400,7 +422,15 @@ function bind(){
+   const $=id=>document.getElementById(id);
+   if($("advBtn"))$("advBtn").onclick=()=>{$("advBox").hidden=!$("advBox").hidden;};
+   if($("runBtn"))$("runBtn").onclick=()=>runSearch($("qInput").value);
+-  if($("qInput")&&$("searchPrice"))$("qInput").oninput=()=>{$("searchPrice").textContent=String(quotedSearchCost($("qInput").value));};
++  if($("qInput")){
++    syncSearchFields(E.parseQuery($("qInput").value));
++    updateSearchQuote();
++    $("qInput").oninput=()=>{syncSearchFields(E.parseQuery($("qInput").value));updateSearchQuote();};
++    for(const id of ["aInd","aCity","aQty","aSize","aArea"]){
++      if($(id))$(id).oninput=()=>{updateSearchQuote();};
++      if($(id))$(id).onchange=()=>{syncSearchFields(formSearchParams($("qInput").value));updateSearchQuote();};
++    }
++  }
+   document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{location.hash="#/prospecting/results/"+b.dataset.open;});
+   document.querySelectorAll("[data-rerun]").forEach(b=>b.onclick=()=>relaunchSearch(b.dataset.rerun));
+   document.querySelectorAll("[data-delsearch]").forEach(b=>b.onclick=()=>deleteSavedSearch(b.dataset.delsearch));
+@@ -499,19 +529,12 @@ async function runSearch(q,savedParams){
+   const L=window.KlirStore.LIMITS[KS.S.plan];
+   if(KS.S.usage.searches>=L.searches)return alert(`Quota mensuel atteint (${L.searches} recherches complètes comptées). Il repart à zéro au mois suivant, fuseau America/Toronto. Une erreur, un résultat vide ou une collecte partielle ne compte pas.`);
+   if(!q||!q.trim())return alert("Décrivez d'abord le type de client recherché.");if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
+-  const _costQ=(E.parseQuery(q).quantity||100);
++  const params=formSearchParams(q,savedParams);
++  syncSearchFields(params);
++  updateSearchQuote();
++  const _costQ=params.quantity;
+   const searchCost=5+Math.ceil(_costQ/10);
+   if((KS.S.credits.balance||0)<searchCost)return alert(`Crédits insuffisants (${KS.S.credits.balance} restants, ${searchCost} requis pour : Recherche). L'achat de crédits n'est pas ouvert. Le solde reste celui de cette session.`);
+-  const params=E.parseQuery(q);
+-  if(savedParams&&typeof savedParams==="object"){
+-    if(savedParams.industry)params.industry=savedParams.industry;
+-    if(savedParams.cityKey)params.cityKey=savedParams.cityKey;
+-    if(savedParams.city)params.city=savedParams.city;
+-    if(savedParams.quantity)params.quantity=savedParams.quantity;
+-    if(savedParams.size)params.size=savedParams.size;
+-    if(savedParams.area)params.area=savedParams.area;
+-    if(savedParams.webFilter)params.webFilter=savedParams.webFilter;
+-  }else if(document.getElementById("advBox")&&!document.getElementById("advBox").hidden){params.industry=document.getElementById("aInd").value;params.cityKey=document.getElementById("aCity").value;params.city=KlirData.CITIES[params.cityKey];params.quantity=parseInt(document.getElementById("aQty").value)||100;params.size=document.getElementById("aSize").value||null;params.area=document.getElementById("aArea")?document.getElementById("aArea").value:"radius";}
+   try{var _wfn=(window.WebIntel?window.WebIntel.parseFilter(q):{});var _wfc={};document.querySelectorAll("[data-webf]:checked").forEach(c=>{_wfc[c.dataset.webf]=true;});params.webFilter=Object.assign({},(savedParams&&savedParams.webFilter)||{},_wfn,_wfc);}catch(e){if(!params.webFilter)params.webFilter={};}
+   document.getElementById("parsed").innerHTML=`<div class="grid4"><div class="card"><small>Secteur</small><b>${sectorLabel(params.industry)}</b></div><div class="card"><small>Location</small><b>${params.city.city}</b></div><div class="card"><small>Quantity</small><b>${params.quantity}</b></div><div class="card"><small>Taille</small><b>${sizeLabel(params.size)}</b></div></div>`;
+   const prog=document.getElementById("prog"); prog.innerHTML=`<div class="card"><b id="pt">Recherche en cours...</b><div class="bar"><div id="pb" style="width:35%"></div></div><small id="ps">Interrogation d'OpenStreetMap…</small></div>`;
+diff --git a/src/engine.js b/src/engine.js
+index 5611ece..e2fc88e 100644
+--- a/src/engine.js
++++ b/src/engine.js
+@@ -13,6 +13,20 @@ function industryKeys(params){
+   if(key&&key!=="all"&&KlirData.INDUSTRIES[key])return [key];
+   return Object.keys(KlirData.INDUSTRIES);
+ }
++const SEARCH_LIMITS=Object.freeze({min:10,max:40,defaultQuantity:40});
++function normalizeSearchParams(params,overrides={}){
++  const next={...params,...overrides};
++  const quantity=Number(next.quantity);
++  next.quantity=Number.isFinite(quantity)&&quantity>0
++    ?Math.min(SEARCH_LIMITS.max,Math.max(SEARCH_LIMITS.min,Math.floor(quantity)))
++    :SEARCH_LIMITS.defaultQuantity;
++  if(!KlirData.INDUSTRIES[next.industry])next.industry="all";
++  if(!Object.hasOwn(KlirData.CITIES,next.cityKey))next.cityKey="default";
++  next.city=KlirData.CITIES[next.cityKey];
++  next.area=next.area==="montreal_island"&&next.cityKey==="montréal"?"montreal_island":"radius";
++  next.size=["1–10","11–50","51–200","201–500","500+"].includes(next.size)?next.size:null;
++  return next;
++}
+ function parseQuery(q){
+   q=(q||""); const low=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+   const allAsked=/tous les (domaines|secteurs|industries)|toutes les (industries|activites)|tous secteurs|multi[- ]secteurs/.test(low);
+@@ -28,9 +42,13 @@ function parseQuery(q){
+     const at=folded?low.lastIndexOf(folded):-1;
+     if(at>cityAt||(at===cityAt&&at>=0&&folded.length>cityLen)){cityKey=k;cityAt=at;cityLen=folded.length;}
+   }
+-  let qty=50; const m=q.match(/(\d{2,4})\s*(entreprises?|prospects?|boites|companies)?/i); if(m)qty=Math.min(500,Math.max(10,parseInt(m[1])));
++  let qty=SEARCH_LIMITS.defaultQuantity;
++  // A quantity must describe prospects, not a year or a company-size range.
++  const m=low.match(/(?:^|[^\d–-])(\d+)\s*(?:entreprises?|prospects?|boites?|companies|restaurants?|cliniques?|artisans?)\b/)
++    ||low.match(/^\s*(\d+)(?!\d|\s*[–-]\s*\d)(?:\s|$)/);
++  if(m)qty=Number(m[1]);
+   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
+-  return {industry, cityKey, city:KlirData.CITIES[cityKey], quantity:qty, size, raw:q};
++  return normalizeSearchParams({industry,cityKey,quantity:qty,size,raw:q});
+ }
+ function seededRand(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
+ function genProspects(params, qty){
+@@ -152,9 +170,9 @@ function enrichWaterfall(p, active){
+   p.enrichedFrom=prov;
+   return {filled, chain};
+ }
+-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
++window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+ function aiAnalysis(p, params){
+   const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
+   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
+ }
+-window.KlirEngine={normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
++window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+diff --git a/test/search-parameters.test.mjs b/test/search-parameters.test.mjs
+new file mode 100644
+index 0000000..97f2b5a
+--- /dev/null
++++ b/test/search-parameters.test.mjs
+@@ -0,0 +1,138 @@
++import assert from "node:assert/strict";
++import test from "node:test";
++import vm from "node:vm";
++import { readFile } from "node:fs/promises";
++
++const root = new URL("../src/", import.meta.url);
++const app = await readFile(new URL("app.js", root), "utf8");
++
++async function harness({ quantity = "30", balance = 200, outcome = "complete" } = {}) {
++  const fields = Object.fromEntries(Object.entries({
++    qInput: "30 entreprises de rénovation à Montréal", aInd: "construction",
++    aCity: "montréal", aQty: quantity, aSize: "", aArea: "radius",
++    searchPrice: "", searchSummary: "", parsed: "", prog: ""
++  }).map(([id, value]) => [id, { value, innerHTML: "", textContent: "" }]));
++  const calls = { reservations: [], sources: [], settlements: [], alerts: [] };
++  const sandbox = {
++    console, Date, Set, document: { getElementById: id => fields[id] || null, querySelectorAll: () => [] },
++    authState: { user: { email: "tester@example.invalid" } },
++    searchRunning: false, pendingDebitKey: "", serverLedgerApplied: false, serverSearches: null,
++    sel: new Set(), selExplicit: false, selSearch: null, curSearch: null,
++    alert: message => calls.alerts.push(message), esc: String, nav() {},
++    applyServerUsage() {}, sectorLabel: key => sandbox.KlirEngine.industryLabel(key),
++    KS: {
++      S: { plan: "Free", demo: false, usage: { searches: 0, prospects: 0 }, credits: { balance },
++        searches: [], prospects: [], icp: null },
++      uid: () => "search-test", save() {}, addActivity() {}, notify() {}, audit() {}
++    },
++    async reserveServerUsage(amount, label) { calls.reservations.push({ amount, label }); return { ok: true }; },
++    async settleServerUsage(debit) { calls.settlements.push(debit); return true; },
++    spendCredits(amount) { sandbox.KS.S.credits.balance -= amount; return true; }
++  };
++  sandbox.window = sandbox;
++  sandbox.KlirStore = { LIMITS: { Free: { searches: 10 } } };
++  sandbox.KlirSources = { osm: { async search(params, limit) {
++    calls.sources.push({ params: structuredClone(params), limit });
++    if (outcome === "error") throw new Error("source indisponible");
++    const rows = outcome === "empty" ? [] : [{
++      id: "osm_node_1", company_name: "Atelier test", city: params.city.city,
++      industry: "Construction / Rénovation", industry_key: "construction",
++      source: "OpenStreetMap", phone: "", public_email: "", website: "", signals: []
++    }];
++    if (outcome === "partial") rows.osmCoverage = { status: "partial" };
++    return rows;
++  } } };
++  vm.createContext(sandbox);
++  for (const file of ["data.js", "engine.js"]) vm.runInContext(await readFile(new URL(file, root), "utf8"), sandbox);
++  sandbox.E = sandbox.KlirEngine;
++  vm.runInContext(app.slice(app.indexOf("function sizeLabel"), app.indexOf("function spendCredits")), sandbox);
++  vm.runInContext(app.slice(app.indexOf("function formSearchParams"), app.indexOf("function vNew")), sandbox);
++  vm.runInContext(app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm")), sandbox);
++  return { sandbox, fields, calls };
++}
++
++test("les quantités et devis restent bornés à la couverture réellement proposée", async () => {
++  const { sandbox: s } = await harness();
++  for (const [query, expected] of [
++    ["30 entreprises de rénovation à Montréal", 30],
++    ["500 entreprises à Montréal", 40],
++    ["5 entreprises à Montréal", 10],
++    ["entreprises de 11-50 employés à Montréal", 40],
++    ["entreprises créées en 2025 à Montréal", 40],
++    ["20 cliniques dentaires à Québec", 20],
++    ["20 construction companies à Toronto", 20]
++  ]) {
++    const params = s.E.parseQuery(query);
++    assert.equal(params.quantity, expected, query);
++    assert.equal(s.quotedSearchCost(query), 5 + Math.ceil(expected / 10));
++  }
++});
++
++test("le devis, la réservation, l'appel OSM et l'historique utilisent la quantité avancée", async () => {
++  const { sandbox: s, fields, calls } = await harness({ quantity: "10", balance: 6 });
++  fields.aCity.value = "laval";
++  fields.aArea.value = "montreal_island";
++  s.updateSearchQuote();
++  assert.equal(fields.searchPrice.textContent, "6");
++  assert.match(fields.searchSummary.textContent, /Laval.*10 résultats maximum.*rayon de 2,2 km/);
++  await s.runSearch(fields.qInput.value);
++  assert.equal(calls.reservations[0].amount, 6);
++  assert.equal(calls.sources[0].limit, 10);
++  assert.equal(calls.sources[0].params.quantity, 10);
++  assert.equal(calls.sources[0].params.city.city, "Laval");
++  assert.equal(calls.sources[0].params.area, "radius");
++  assert.equal(s.KS.S.searches[0].params.quantity, 10);
++  assert.equal(s.KS.S.credits.balance, 0);
++  assert.deepEqual(calls.settlements, [true]);
++});
++
++test("une relance conserve les paramètres sauvegardés, même si le formulaire diffère", async () => {
++  const { sandbox: s, fields, calls } = await harness({ quantity: "40", balance: 7 });
++  const saved = { industry: "sante", cityKey: "québec", quantity: 20, size: null, area: "radius" };
++  fields.aSize.value = "11–50";
++  await s.runSearch(fields.qInput.value, saved);
++  assert.equal(calls.reservations[0].amount, 7);
++  assert.equal(calls.sources[0].params.city.city, "Québec");
++  assert.equal(calls.sources[0].params.industry, "sante");
++  assert.equal(calls.sources[0].params.quantity, 20);
++  assert.equal(calls.sources[0].params.size, null);
++  assert.equal(fields.aQty.value, "20");
++});
++
++test("une ancienne quantité de 500 est plafonnée avant réservation et affichage", async () => {
++  const { sandbox: s, fields, calls } = await harness();
++  await s.runSearch(fields.qInput.value, { quantity: 500, cityKey: "montréal" });
++  assert.equal(calls.reservations[0].amount, 9);
++  assert.equal(calls.sources[0].limit, 40);
++  assert.equal(s.KS.S.searches[0].params.quantity, 40);
++  assert.equal(fields.aQty.value, "40");
++});
++
++test("un solde insuffisant pour les paramètres effectifs bloque avant tout appel", async () => {
++  const { sandbox: s, fields, calls } = await harness({ quantity: "40", balance: 8 });
++  await s.runSearch(fields.qInput.value);
++  assert.equal(calls.reservations.length, 0);
++  assert.equal(calls.sources.length, 0);
++  assert.match(calls.alerts[0], /9 requis/);
++});
++
++for (const outcome of ["partial", "empty", "error"]) {
++  test(`${outcome} : aucun débit ni quota après résolution des paramètres`, async () => {
++    const { sandbox: s, fields, calls } = await harness({ outcome });
++    await s.runSearch(fields.qInput.value);
++    assert.equal(s.KS.S.credits.balance, 200);
++    assert.equal(s.KS.S.usage.searches, 0);
++    assert.equal(calls.settlements.includes(true), false);
++    assert.equal(s.KS.S.searches.length, outcome === "partial" ? 1 : 0);
++    if (outcome === "partial") assert.equal(s.KS.S.prospects[0].collection_status, "partial");
++  });
++}
++
++test("un double clic ne réserve et n'interroge la source qu'une fois", async () => {
++  const { sandbox: s, fields, calls } = await harness();
++  await Promise.all([s.runSearch(fields.qInput.value), s.runSearch(fields.qInput.value)]);
++  assert.equal(calls.sources.length, 1);
++  assert.equal(calls.reservations.length, 1);
++  assert.equal(s.KS.S.searches.length, 1);
++  assert.equal(s.KS.S.credits.balance, 192);
++});

@@ -40,18 +40,8 @@ Les modèles locaux de confirmation et de récupération envoient un `token_hash
 
 ## Liaison distante
 
-Réglage manquant : un projet Supabase **vide et dédié** à KlirProspect, puis les deux variables publiques du build.
+Le projet de test est `KlirProspect Test` (`pwakjxjjxswdjsapsbxn`), dans l’organisation Klirline INC, région `ca-central-1`. Son coût mensuel confirmé est 0. Les migrations de comptes et d’historique y sont appliquées, ainsi que la fonction `delete-account`. Il ne contient aucun compte. Le projet de production `cbklwmjudobqwbkbxqgy` ne doit pas servir à la prévisualisation.
 
-Le seul projet accessible est `KlirlienCORE_database-68347165` (`bhyhcbfmkdpmqivnqwsb`), dans l’organisation Klirline Inc. Il contient déjà `public.profiles` et le schéma métier Klirline. Soixante-deux tables de ce projet, dont des tables de données, n’ont pas la RLS activée. Aucune migration, fonction ou configuration n’y a été appliquée : ce n’est pas la cible de KlirProspect, et créer un autre projet demanderait une confirmation de coût.
-
-Quand un projet vide est désigné :
-
-```bash
-npx supabase link --project-ref PROJECT_REF
-npx supabase db push --dry-run
-npx supabase functions deploy delete-account
-```
-
-Ajouter ensuite l’origine exacte du site (`https://hôte/` et `https://hôte`) dans les URL de redirection Auth, et `ALLOWED_ORIGIN` comme secret de fonction. Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` au build client.
+La prévisualisation n’est pas encore branchée. Les deux variables publiques du build, `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY`, doivent être posées seulement sur le déclencheur de prévisualisation de Workers Builds. La clé se lit dans le tableau de bord du projet de test et ne doit pas être commitée. Ajouter ensuite l’origine exacte de la prévisualisation (`https://hôte/` et `https://hôte`) dans les URL de redirection Auth, et `ALLOWED_ORIGIN` comme secret de fonction. Ne jamais exposer `SUPABASE_SERVICE_ROLE_KEY` au build client.
 
 Voir [SECURITY.md](SECURITY.md) pour le modèle de sécurité et les limites résiduelles.

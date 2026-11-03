@@ -178,6 +178,7 @@ test("le parcours de production n'appelle ni genProspects ni les signaux aléato
   assert.equal(radar.includes("KlirSecurity.random"), false);
   assert.equal(radar.includes("Nouveau site"), false);
   assert.equal(radar.includes("Recrutement"), false);
+  assert.equal(radar.includes("Signal commercial"), false);
   assert.equal(search.includes("spendCredits(searchCost"), true);
   assert.ok(search.indexOf("Recherche échouée") < search.indexOf("spendCredits(searchCost"));
   assert.ok(search.indexOf("Recherche terminée, aucun résultat") < search.indexOf("spendCredits(searchCost"));
@@ -231,4 +232,42 @@ test("la taille inconnue, la date de collecte et le site absent ont un libellé 
   const legacy = { website: "", domain: "", website_status: "INACTIVE", signals: [] };
   assert.equal(ui.WebIntel.badgeSite(legacy).includes("Site non renseigné"), true);
   assert.equal(ui.WebIntel.badgeSite(legacy).includes("INACTIVE"), false);
+});
+
+test("un score élevé reste une suggestion et une date non vérifiée n'est pas affichée", async () => {
+  const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+  const helpers = app.slice(app.indexOf("function sizeLabel"), app.indexOf("function spendCredits"));
+  const sandbox = { Date };
+  vm.createContext(sandbox);
+  vm.runInContext(helpers, sandbox);
+  const scored = sandbox.radarSuggestion({
+    company_name: "Schwartz's",
+    industry: "Restauration",
+    city: "Montréal",
+    rel: 92,
+    signals: ["Source ouverte"],
+    source: "OpenStreetMap",
+    phone: "",
+    public_email: "",
+    website: ""
+  }, null);
+  assert.equal(scored.kind, "Prospect pertinent à examiner");
+  assert.equal(scored.signal, "Pertinence calculée");
+  assert.equal(scored.why.includes("Suggestion calculée"), true);
+  assert.equal(scored.why.includes("OpenStreetMap"), true);
+  assert.equal(scored.why.includes("pas un événement confirmé"), true);
+  for (const word of ["Recrutement", "Expansion", "Nouveau site", "Signal commercial"]) {
+    assert.equal(scored.kind.includes(word), false);
+    assert.equal(scored.signal.includes(word), false);
+  }
+  const mentioned = sandbox.radarSuggestion({
+    industry: "Restauration", city: "Montréal", rel: 90, signals: ["Recrutement"], source: "OpenStreetMap"
+  }, null);
+  assert.equal(mentioned.signal, "Pertinence calculée");
+  assert.equal(mentioned.why.includes("Non revérifiée") || mentioned.why.includes("n'a pas été revérifiée"), true);
+  assert.equal(sandbox.sourceDateLabel({ collected_at: "2026-10-10T11:20:00.000Z", last_verified: "2026-10-10" }), "Collecté le 2026-10-10");
+  const historical = sandbox.sourceDateLabel({ last_verified: "2026-10-10" });
+  assert.equal(historical, "Date de collecte non renseignée");
+  assert.equal(historical.includes("2026"), false);
+  assert.equal(sandbox.sourceDateLabel({ collected_at: "pas une date", last_verified: "2026-10-10" }), "Date de collecte non renseignée");
 });

@@ -237,6 +237,60 @@ function dismissCallback() {
   return state();
 }
 
+function usageMessage(error) {
+  const message = error && error.message ? String(error.message) : "";
+  if (/credits_insuffisants/i.test(message)) return "Crédits insuffisants. L'achat de crédits n'est pas ouvert. Le solde reste celui du compte.";
+  if (/quota_mensuel/i.test(message)) return "Quota mensuel atteint. Il repart à zéro au mois suivant, fuseau America/Toronto.";
+  if (/session_requise/i.test(message)) return "Session requise.";
+  return "Le registre des crédits n'a pas accepté l'opération. Aucune recherche n'est lancée.";
+}
+
+async function readCreditAccount() {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, message: "Session requise." };
+    const result = await supabase.rpc("read_credit_account");
+    if (result.error) return { ok: false, message: usageMessage(result.error) };
+    const row = result.data || {};
+    return { ok: true, balance: row.balance, searches: row.searches_used, period: row.usage_period };
+  } catch (error) {
+    return { ok: false, message: usageMessage(error) };
+  }
+}
+
+async function reserveUsage(request) {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, message: "Session requise." };
+    const result = await supabase.rpc("reserve_usage", {
+      p_receipt: request && request.receipt,
+      p_amount: request && request.amount,
+      p_label: request && request.label
+    });
+    if (result.error) return { ok: false, message: usageMessage(result.error) };
+    const row = result.data || {};
+    return { ok: true, balance: row.balance, searches: row.searches_used };
+  } catch (error) {
+    return { ok: false, message: usageMessage(error) };
+  }
+}
+
+async function settleUsage(request) {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, message: "Session requise." };
+    const result = await supabase.rpc("settle_usage", {
+      p_receipt: request && request.receipt,
+      p_outcome: request && request.outcome
+    });
+    if (result.error) return { ok: false, message: usageMessage(result.error) };
+    const row = result.data || {};
+    return { ok: true, balance: row.balance, searches: row.searches_used, status: row.status };
+  } catch (error) {
+    return { ok: false, message: usageMessage(error) };
+  }
+}
+
 async function initialize() {
   captureCallback();
   if (!client) return state();
@@ -281,6 +335,9 @@ window.KlirAuth = {
   mergeWorkspace,
   resyncWorkspace,
   deleteAccount,
+  readCreditAccount,
+  reserveUsage,
+  settleUsage,
   completeCallback,
   dismissCallback
 };

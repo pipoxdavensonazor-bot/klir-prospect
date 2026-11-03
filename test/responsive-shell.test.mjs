@@ -67,4 +67,9 @@ test("la feuille de style prévoit le tactile, le texte et l’absence de défil
   assert.match(css, /\.land-actions\s*\{[^}]*flex-wrap:\s*wrap/);
   assert.match(css, /@media \(min-width:\s*901px\)/);
   assert.match(css, /#menuBtn,\s*#sideOverlay\s*\{\s*display:\s*none/);
+  assert.match(css, /--frame:\s*clamp\(1rem,\s*2\.5vw,\s*2\.5rem\)/);
+  assert.match(css, /\.land\s*\{[^}]*width:\s*min\(72rem,/);
+  assert.match(css, /\.land\s*\{[^}]*border:\s*1px solid/);
+  assert.match(css, /\.lay\s*\{[^}]*width:\s*min\(90rem,/);
+  assert.match(css, /\.auth\s*\{[^}]*width:\s*min\(36rem,/);
 });

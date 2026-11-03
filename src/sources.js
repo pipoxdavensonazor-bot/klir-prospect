@@ -89,12 +89,16 @@ var KlirSources = window.KlirSources || {};
       return { lat: j[0].lat, lng: j[0].lon, label: j[0].display_name };
     } finally { clearTimeout(to); }
   }
+  const CONSTRUCTION_BASE_CRAFTS = ["builder", "electrician", "plumber", "roofer", "painter", "carpenter"];
+  const CONSTRUCTION_RENOVATION_CRAFTS = ["plasterer", "tiler", "glazier", "window_construction", "insulation", "parquet_layer", "joiner", "stonemason", "scaffolder", "hvac", "floorer"];
+  const CONSTRUCTION_CRAFTS = CONSTRUCTION_BASE_CRAFTS.concat(CONSTRUCTION_RENOVATION_CRAFTS);
+  const MONTREAL_ISLAND_BOUNDS = { south: 45.4102, west: -73.9744, north: 45.7058, east: -73.4742 };
   const OSM_FILTERS = {
     restauration: ['["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]'],
     sante: ['["amenity"~"^(clinic|doctors|dentist|pharmacy|hospital)$"]'],
     immobilier: ['["office"="estate_agent"]'],
     finance: ['["amenity"~"^(bank|bureau_de_change)$"]', '["office"~"^(financial|insurance|accountant|tax_advisor)$"]'],
-    construction: ['["craft"~"^(builder|electrician|plumber|roofer|painter|carpenter)$"]', '["office"="construction_company"]'],
+    construction: ['["craft"~"^(' + CONSTRUCTION_CRAFTS.join("|") + ')$"]', '["office"="construction_company"]'],
     technologie: ['["office"~"^(it|telecommunication)$"]', '["shop"~"^(computer|electronics|mobile_phone)$"]'],
     commerce: ['["shop"]'],
     services: ['["office"]', '["craft"]'],
@@ -126,7 +130,7 @@ var KlirSources = window.KlirSources || {};
     if (/clinic|doctors|dentist|pharmacy|hospital/.test(blob)) return "sante";
     if (/estate_agent/.test(blob)) return "immobilier";
     if (/bank|insurance|financial|accountant/.test(blob)) return "finance";
-    if (/builder|electrician|plumber|roofer|painter|carpenter|construction/.test(blob)) return "construction";
+    if (CONSTRUCTION_CRAFTS.indexOf(String(tags.craft || "")) >= 0 || String(tags.office || "") === "construction_company") return "construction";
     if (/^it$|telecommunication|computer|electronics/.test(blob)) return "technologie";
     if (tags.shop) return "commerce";
     return "services";
@@ -162,22 +166,98 @@ var KlirSources = window.KlirSources || {};
       employee_range: "",
       source: "OpenStreetMap",
       source_url: "https://www.openstreetmap.org/" + (element.type || "node") + "/" + element.id,
-      last_verified: new Date().toISOString().slice(0, 10),
+      last_verified: "",
       signals: ["Source ouverte"]
     };
+  }
+  function foldedCity(params) {
+    const name = params && params.city ? String(params.city.city || "") : "";
+    return name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  function resolveArea(params) {
+    const requested = params && params.area === "montreal_island" ? "montreal_island" : "radius";
+    if (requested === "montreal_island" && foldedCity(params) === "montreal") {
+      return { requested: requested, used: "montreal_island", bounds: MONTREAL_ISLAND_BOUNDS };
+    }
+    return { requested: requested, used: "radius", bounds: null };
   }
   function overpassQuery(params, limit) {
     const city = params && params.city;
     const lat = Number(city && city.lat);
     const lng = Number(city && city.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
     const industry = params.industry && OSM_FILTERS[params.industry] ? params.industry : "all";
-    const radius = industry === "all" ? 1500 : 2200;
-    const around = "(around:" + radius + "," + lat + "," + lng + ")";
+    const area = resolveArea(params);
+    let clause;
+    if (area.used === "montreal_island") {
+      const bounds = area.bounds;
+      clause = "(" + bounds.south + "," + bounds.west + "," + bounds.north + "," + bounds.east + ")";
+    } else {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
+      const radius = industry === "all" ? 1500 : 2200;
+      const around = "(around:" + radius + "," + lat + "," + lng + ")";
+      clause = around;
+    }
+    const types = industry === "construction" ? ["node", "way", "relation"] : ["node"];
     const body = OSM_FILTERS[industry].map(function (filter) {
-      return "node[\"name\"]" + filter + around + ";";
+      return types.map(function (type) {
+        return type + "[\"name\"]" + filter + clause + ";";
+      }).join("");
     }).join("");
     return "[out:json][timeout:15];(" + body + ");out tags " + limit + ";";
+  }
+  function overpassCoverage(payload) {
+    const raw = payload && payload.remark;
+    const remark = raw == null ? "" : String(raw).trim().slice(0, 500);
+    if (remark) return { status: "partial", remark: remark };
+    return { status: "complete", remark: "" };
+  }
+  function publishedToken(kind, value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (kind === "phone") return raw.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+    if (kind === "email") return raw.toLowerCase();
+    if (kind === "domain") return raw.toLowerCase().replace(/^www\./, "");
+    return raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  }
+  function publishedName(row) {
+    return publishedToken("text", row && row.company_name).replace(/\b(inc|ltee|sarl|sas|llc|corp)\b/g, "").replace(/\s+/g, " ").trim();
+  }
+  function identityPairs(row) {
+    return [
+      publishedToken("phone", row && row.phone),
+      publishedToken("email", row && row.public_email),
+      publishedToken("domain", row && (row.domain || row.website)),
+      publishedToken("text", row && row.address)
+    ];
+  }
+  function publishedConflict(a, b) {
+    const left = identityPairs(a);
+    const right = identityPairs(b);
+    return left.some(function (value, index) { return value && right[index] && value !== right[index]; });
+  }
+  function samePublishedBusiness(a, b) {
+    const name = publishedName(a);
+    if (!name || name !== publishedName(b) || publishedConflict(a, b)) return false;
+    const left = identityPairs(a);
+    const right = identityPairs(b);
+    return left.some(function (value, index) { return value && value === right[index]; });
+  }
+  function rememberPublished(row, idKey) {
+    row.osm_ids = row.osm_ids || [];
+    if (idKey && row.osm_ids.indexOf(idKey) < 0) row.osm_ids.push(idKey);
+    row.field_sources = row.field_sources || {};
+    ["phone", "public_email", "website", "domain", "address", "postal_code"].forEach(function (field) {
+      if (row[field] && !row.field_sources[field]) row.field_sources[field] = idKey;
+    });
+  }
+  function absorbPublished(keep, extra, idKey) {
+    ["phone", "public_email", "website", "domain", "address", "postal_code"].forEach(function (field) {
+      if (!keep[field] && extra[field]) {
+        keep[field] = extra[field];
+        keep.field_sources[field] = idKey;
+      }
+    });
+    rememberPublished(keep, idKey);
   }
   function overpassRetryDelay(response) {
     const fallback = 8000;
@@ -240,14 +320,45 @@ var KlirSources = window.KlirSources || {};
   async function searchPlaces(params, maxN) {
     const limit = Math.min(40, Math.max(5, maxN || 20));
     const payload = await askOverpass(overpassQuery(params, limit));
+    const area = resolveArea(params);
+    const coverage = overpassCoverage(payload);
+    coverage.area = area.used;
+    coverage.areaRequested = area.requested;
+    coverage.areaFallback = area.requested === "montreal_island" && area.used !== "montreal_island";
     const rows = [];
+    const byOsmId = new Map();
     for (const element of payload.elements || []) {
+      if (!element || element.id == null) continue;
+      const idKey = (element.type || "node") + "/" + element.id;
       const row = mapOsmElement(element, params);
-      if (row) rows.push(row);
+      if (!row) continue;
+      rememberPublished(row, idKey);
+      const prior = byOsmId.get(idKey);
+      if (prior) {
+        absorbPublished(prior, row, idKey);
+        continue;
+      }
+      const twin = rows.find(function (existing) { return samePublishedBusiness(existing, row); });
+      if (twin) {
+        absorbPublished(twin, row, idKey);
+        byOsmId.set(idKey, twin);
+        continue;
+      }
+      byOsmId.set(idKey, row);
+      rows.push(row);
       if (rows.length >= limit) break;
     }
+    rows.osmCoverage = coverage;
     return rows;
   }
-  KlirSources.osm = { lookup: osmLookup, search: searchPlaces, mapElement: mapOsmElement, query: overpassQuery };
+  KlirSources.osm = {
+    lookup: osmLookup,
+    search: searchPlaces,
+    mapElement: mapOsmElement,
+    query: overpassQuery,
+    constructionCrafts: CONSTRUCTION_CRAFTS,
+    renovationCrafts: CONSTRUCTION_RENOVATION_CRAFTS,
+    areas: { montreal_island: MONTREAL_ISLAND_BOUNDS }
+  };
   window.KlirSources = KlirSources;
 })();
