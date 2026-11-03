@@ -26,9 +26,15 @@ La source de ce parcours est le catalogue Overture figé `2026-10-21.0`, prépar
 
 ## Proposition de prix
 
-**490 $ CA hors taxes, une fois, pour 30 jours.** Un utilisateur, une entreprise. Facture manuelle. L'accès s'ouvre après encaissement.
+**490 $ CA hors taxes, une fois.** Un utilisateur, une entreprise. Facture manuelle. L'accès s'ouvre après encaissement. Les 30 jours sont le délai pour utiliser ce qui suit, pas un abonnement.
 
-Ce prix couvre les deux séances et une liste de travail bornée. Chaque recherche rend au plus 40 fiches publiées. Le téléphone et le courriel restent vides lorsqu'ils sont absents de la source. Le temps des deux séances est compris dans les 490 $.
+Le client paie pour trois choses, livrées ensemble :
+
+1. Deux rendez-vous de 45 minutes avec Klirline. Le premier lance une recherche réelle et lit les fiches. Le second reprend la liste, les notes et le CSV.
+2. Un compte, pendant 30 jours, limité à 10 recherches complètes de restaurants et cafés dans les trois cercles de 2,2 km (Montréal, Laval, Québec). Chaque recherche rend au plus 40 fiches publiées. Une collecte vide, partielle ou en erreur ne compte pas dans les 10.
+3. La liste conservée après ces recherches : notes, prochaine action, et un fichier CSV UTF-8 que le client télécharge.
+
+Le téléphone et le courriel d'une fiche restent vides lorsqu'ils sont absents de la source. Le client repart avec les fiches trouvées et le fichier, pas avec des rendez-vous pris auprès des restaurants. Aucun message n'est envoyé à leur place.
 
 Inclus :
 
