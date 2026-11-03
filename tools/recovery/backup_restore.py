@@ -26,13 +26,25 @@ def sql(url,statement):
 
 def source_guard(url):
     u=urlparse(url)
-    require(u.scheme in ('postgres','postgresql') and (u.hostname=='db.'+TEST+'.supabase.co' or (u.hostname or '').endswith('.pooler.supabase.com') and (u.username or '')=='postgres.'+TEST),'Only the named Supabase Test source is allowed.')
-    require(u.port in (None,5432),'Use the direct or session pooler port 5432, never transaction pooling.')
-    require(parse_qs(u.query).get('sslmode',[''])[0] in ('require','verify-ca','verify-full'),'Source connection must explicitly require TLS.')
+    require(u.scheme in ('postgres','postgresql') and (
+        u.hostname=='db.'+TEST+'.supabase.co' and u.username=='postgres'
+        or (u.hostname or '').endswith('.pooler.supabase.com') and u.username=='postgres.'+TEST
+    ),'Only the named Supabase Test source is allowed.')
+    require(u.port==5432 and u.path=='/postgres' and not u.fragment,'Use the explicit Test database/session port 5432.')
+    options=parse_qs(u.query,keep_blank_values=True)
+    require(set(options)=={'sslmode'} and len(options['sslmode'])==1
+            and options['sslmode'][0] in ('require','verify-ca','verify-full'),
+            'Only one explicit TLS option is allowed; connection overrides refused.')
 
 def target_guard(url):
     u=urlparse(url)
-    require(u.scheme in ('postgres','postgresql') and u.hostname in ('127.0.0.1','localhost','::1'),'Restore target must be LOCAL, never Test or production.')
+    require(u.scheme in ('postgres','postgresql') and u.hostname=='127.0.0.1'
+            and u.port and u.path=='/postgres' and not u.fragment,
+            'Restore target must be explicit IPv4 loopback, never Test or production.')
+    options=parse_qs(u.query,keep_blank_values=True)
+    require(not options or (set(options)=={'sslmode'} and len(options['sslmode'])==1
+            and options['sslmode'][0] in ('disable','require','verify-ca','verify-full')),
+            'Restore connection overrides refused.')
 
 def archive_members(archive):
     members=archive.getmembers()

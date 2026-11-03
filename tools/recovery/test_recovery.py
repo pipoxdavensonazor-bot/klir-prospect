@@ -24,17 +24,22 @@ class RecoverySafety(unittest.TestCase):
             'postgresql://postgres@db.pwakjxjjxswdjsapsbxn.supabase.co.evil.invalid/postgres?sslmode=require',
             'postgresql://postgres@db.pwakjxjjxswdjsapsbxn.supabase.co/postgres',
             'postgresql://postgres.pwakjxjjxswdjsapsbxn@aws-0-ca-central-1.pooler.supabase.com:6543/postgres?sslmode=require',
+            'postgresql://postgres@db.pwakjxjjxswdjsapsbxn.supabase.co:5432/postgres?sslmode=require&host=db.cbklwmjudobqwbkbxqgy.supabase.co',
+            'postgresql://postgres@db.pwakjxjjxswdjsapsbxn.supabase.co:5432/postgres?sslmode=require&user=other',
+            'postgresql://postgres@db.pwakjxjjxswdjsapsbxn.supabase.co:5432/postgres?sslmode=require&sslmode=disable',
         ]:
             with self.subTest(url=url), self.assertRaises(RuntimeError):
                 guard(url)
 
     def test_restore_local_only(self):
         guard = scope['target_guard']
-        for host in ['localhost', '127.0.0.1', '[::1]']:
-            guard(f'postgresql://postgres@{host}:55432/postgres')
-        for host in ['db.pwakjxjjxswdjsapsbxn.supabase.co', 'db.cbklwmjudobqwbkbxqgy.supabase.co', 'localhost.evil.invalid', '192.168.1.2']:
+        guard('postgresql://postgres@127.0.0.1:55432/postgres')
+        for host in ['localhost','[::1]','db.pwakjxjjxswdjsapsbxn.supabase.co', 'db.cbklwmjudobqwbkbxqgy.supabase.co', 'localhost.evil.invalid', '192.168.1.2']:
             with self.subTest(host=host), self.assertRaises(RuntimeError):
                 guard(f'postgresql://postgres@{host}/postgres')
+        for suffix in ['?host=db.cbklwmjudobqwbkbxqgy.supabase.co','?hostaddr=203.0.113.1','?service=production','?dbname=other','?sslmode=disable&sslmode=require']:
+            with self.subTest(suffix=suffix), self.assertRaises(RuntimeError):
+                guard('postgresql://postgres@127.0.0.1:55432/postgres'+suffix)
 
     def test_archive_rejects_missing_duplicate_traversal_and_symlink(self):
         required = ['roles.sql', 'schema.sql', 'data.sql', 'auth-hooks.sql', 'manifest.json']
