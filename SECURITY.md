@@ -20,6 +20,7 @@
 - les vérifications de domaine faites par le navigateur sont limitées par CORS et ne doivent pas devenir un proxy générique;
 - `sessionStorage` protège contre la persistance longue, pas contre un script exécuté dans la même origine; une architecture serveur avec cookies HttpOnly reste préférable pour des données très sensibles;
 - la prévisualisation de cette livraison reste sans base ; aucune isolation de comptes distante, restauration distante ou conformité de facturation n'est validée. Le correctif de quota `20261022130000_enforce_reserved_search_quota` doit être appliqué et testé sur la base dédiée avant production.
+- le Checkout Stripe de test n'est utilisable que si la prévisualisation du projet Test active explicitement `STRIPE_TEST_CHECKOUT_ENABLED` avec une clé `sk_test_` ou `rk_test_`. Le navigateur ne fixe pas le prix, le succès ni les crédits. Tant que ce drapeau et les secrets de test sont absents, l'achat reste fermé. Aucun paiement réel n'a été observé.
 
 ## Backend avant réactivation
 

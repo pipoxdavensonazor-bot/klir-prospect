@@ -47,7 +47,7 @@ def main():
         psql = ['docker','exec','-i',name,'psql','-X','-h','/tmp','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-At']
         run(psql, b'create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key);')
         run(psql, (HERE / 'candidate.sql').read_bytes())
-        setup=(f"insert into auth.users values ('{USER}'); insert into private.stripe_test_orders(id,user_id,session_id,offer_id,amount_minor,currency,credits,duration_days) values ('{ORDER}','{USER}','cs_test_fixture','fiction',4900,'cad',90,30),('{ORDER_TWO}','{USER}','cs_test_other','fiction',4900,'cad',90,30),('{ORDER_THREE}','{USER}','cs_test_rollback','fiction',4900,'cad',90,30);")
+        setup=(f"insert into auth.users values ('{USER}'); insert into private.stripe_test_orders(id,user_id,session_id,offer_id,amount_minor,currency,credits,duration_days) values ('{ORDER}','{USER}','cs_test_fixture','klirprospect-pilot-demo',4900,'cad',90,30),('{ORDER_TWO}','{USER}','cs_test_other','klirprospect-pilot-demo',4900,'cad',90,30),('{ORDER_THREE}','{USER}','cs_test_rollback','klirprospect-pilot-demo',4900,'cad',90,30);")
         run(psql, setup.encode())
         def race(order, session, events):
             processes=[subprocess.Popen(psql,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE) for _ in events]

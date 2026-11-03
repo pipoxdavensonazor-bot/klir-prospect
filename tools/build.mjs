@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { allowsPublicConfig, decideSupabase, isPublicSupabaseKey, resolveEnvironment } from "./release-identity.mjs";
+import { previewCheckoutFlag, STRIPE_TEST_PROJECT_URL } from "../supabase/functions/_shared/stripe-test-offer.mjs";
 
 function publishedCommit() {
   const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
@@ -86,10 +87,15 @@ const environment = resolveEnvironment(process.env);
 const published = await publicSupabaseConfig(environment);
 const supabaseUrl = published.supabaseUrl;
 const supabasePublishableKey = published.supabasePublishableKey;
+const stripeTestCheckout = previewCheckoutFlag(environment, process.env.STRIPE_TEST_CHECKOUT_ENABLED);
+if (stripeTestCheckout && supabaseUrl !== STRIPE_TEST_PROJECT_URL) {
+  throw new Error("Le paiement de test exige le projet Supabase de test, pas la production.");
+}
 await writeFile(new URL("config.js", out), `window.__KLIR_CONFIG__=${JSON.stringify({
   supabaseUrl,
   supabasePublishableKey,
-  environment
+  environment,
+  stripeTestCheckout
 }).replace(/</g, "\\u003c")};\n`);
 await build({
   entryPoints: [fileURLToPath(new URL("../src/auth.js", import.meta.url))],
