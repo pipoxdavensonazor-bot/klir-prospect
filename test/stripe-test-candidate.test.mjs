@@ -4,7 +4,7 @@ import {createStripeTestWebhook} from '../supabase/functions/_shared/stripe-test
 
 function fixture(overrides={}) {
   const event={id:'evt_fixture',livemode:false,type:'checkout.session.completed',data:{object:{id:'cs_test_fixture'}}};
-  const session={id:'cs_test_fixture',livemode:false,mode:'payment',status:'complete',payment_status:'paid',amount_total:4900,currency:'cad'};
+  const session={id:'cs_test_fixture',livemode:false,mode:'payment',status:'complete',payment_status:'paid',amount_total:4900,currency:'cad',payment_intent:'pi_test_fixture'};
   const order={id:'order_fixture',sessionId:session.id,userId:'user_fixture',offerId:'offer_fixture',amountMinor:4900,currency:'cad'};
   const applied=new Set();let calls=0,retrievals=0;
   const deps={
@@ -45,5 +45,21 @@ test('remboursements et litiges restent à rapprocher, jamais acquittés silenci
   for(const type of ['charge.refunded','charge.refund.updated','refund.created','refund.updated','refund.failed','charge.dispute.created','charge.dispute.closed']){
     f.event.type=type;assert.deepEqual(await invoke(f),{status:503,outcome:'reconciliation_required'});
   }
+  assert.equal(f.calls,0);
+});
+test('un remboursement intégral révoque une fois, un montant partiel non',async()=>{
+  const refunds=[];
+  const f=fixture({
+    findRefundOrder:async()=>({id:'order_fixture',paymentIntent:'pi_test_fixture',amountMinor:4900}),
+    applyRefundAtomically:async(request)=>{refunds.push(request);return refunds.length===1?{outcome:'applied'}:{outcome:'duplicate'};}
+  });
+  f.event.type='charge.refunded';
+  f.event.data.object={payment_intent:'pi_test_fixture',amount_refunded:4900};
+  assert.equal((await invoke(f)).outcome,'applied');
+  f.event.id='evt_refund_again';
+  assert.equal((await invoke(f)).outcome,'duplicate');
+  f.event.data.object.amount_refunded=1000;
+  assert.equal((await invoke(f)).outcome,'reconciliation_required');
+  assert.equal(refunds.length,2);
   assert.equal(f.calls,0);
 });

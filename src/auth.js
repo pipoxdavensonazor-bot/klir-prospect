@@ -295,6 +295,29 @@ function overturePreview() {
   return config.environment === "preview" && config.supabaseUrl === "https://pwakjxjjxswdjsapsbxn.supabase.co";
 }
 
+async function startStripeTestCheckout() {
+  const flags = window.__KLIR_CONFIG__ || {};
+  if (!overturePreview() || flags.stripeTestCheckout !== true || !currentUser || !currentUser.email) return { ok: false, outcome: "purchases_closed" };
+  const supabase = await requireClient();
+  const result = await supabase.functions.invoke("stripe-test-checkout", { body: {} });
+  const data = result.data || {};
+  if (result.error || !/^https:\/\/checkout\.stripe\.com\//.test(data.url || "") || !/^cs_test_[A-Za-z0-9_]+$/.test(data.sessionId || "")) {
+    return { ok: false, outcome: data.outcome || "unavailable" };
+  }
+  sessionStorage.setItem("klir_stripe_test_session", data.sessionId);
+  return { ok: true, url: data.url };
+}
+
+async function confirmStripeTestCheckout(sessionId) {
+  const flags = window.__KLIR_CONFIG__ || {};
+  if (!overturePreview() || flags.stripeTestCheckout !== true || !currentUser) return { ok: false, outcome: "purchases_closed" };
+  const supabase = await requireClient();
+  const result = await supabase.functions.invoke("stripe-test-confirm", { body: { sessionId: sessionId || "" } });
+  const data = result.data || {};
+  if (result.error) return { ok: false, outcome: data.outcome || "unavailable" };
+  return { ok: true, outcome: data.outcome, active: data.active === true, balance: Number.isInteger(data.balance) ? data.balance : null };
+}
+
 async function searchOverture(request) {
   if (!overturePreview() || !currentUser) throw new Error("Recherche Overture réservée au pilote connecté.");
   const supabase = await requireClient();
@@ -402,6 +425,8 @@ window.KlirAuth = {
   deleteAccount,
   readCreditAccount,
   overturePreview,
+  startStripeTestCheckout,
+  confirmStripeTestCheckout,
   searchOverture,
   reserveUsage,
   settleUsage,

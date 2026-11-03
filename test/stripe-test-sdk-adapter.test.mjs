@@ -9,7 +9,10 @@ function sdkFixture() {
     constructor(key,options){
       calls.push(['constructor',key,options]);
       this.webhooks={constructEventAsync:async(...args)=>{calls.push(['verify',...args]);return {livemode:false};}};
-      this.checkout={sessions:{retrieve:async id=>{calls.push(['retrieve',id]);return {id};}}};
+      this.checkout={sessions:{
+        retrieve:async id=>{calls.push(['retrieve',id]);return {id};},
+        create:async payload=>{calls.push(['create',payload]);return {id:'cs_test_created',url:'https://checkout.stripe.com/c/pay/cs_test_created'};}
+      }};
     }
   }
   return {FakeStripe,calls};
@@ -33,4 +36,11 @@ test('transmet le corps brut au SDK simulé et accepte seulement une session de 
   assert.deepEqual(calls[1],['verify',raw,'signature-fictive','whsec_fixture',undefined,'synthetic-crypto']);
   assert.equal((await adapter.retrieveSession('cs_test_fixture')).id,'cs_test_fixture');
   assert.throws(()=>adapter.retrieveSession('cs_live_fixture'),/Invalid test session/);
+  const priced=createStripeTestSdkAdapter({Stripe:FakeStripe,testSecretKey:'sk_test_fixture',webhookSecret:'whsec_fixture',priceId:'price_fixture'});
+  await priced.createSession({orderId:'order_fixture',email:'ada@example.com',origin:'https://preview.example.test'});
+  const payload=calls.at(-1)[1];
+  assert.deepEqual(payload.line_items,[{price:'price_fixture',quantity:1}]);
+  assert.equal(payload.mode,'payment');
+  assert.equal(payload.unit_amount,undefined);
+  assert.equal(payload.success_url,'https://preview.example.test/#/offre/retour');
 });
