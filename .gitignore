@@ -4,3 +4,6 @@ dist/
 .env
 .env.*
 !.env.example
+*.zip
+*.patch
+index (7).html
