@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
+import { transform } from "esbuild";
 
 const html = await readFile(new URL("../src/index.html", import.meta.url), "utf8");
 const headers = await readFile(new URL("../_headers", import.meta.url), "utf8");
@@ -34,6 +35,19 @@ test("les sources ne contiennent plus d’attributs d’événements inline", as
     assert.equal(attribute.test(source), false, name);
     attribute.lastIndex = 0;
   }
+});
+
+test("la minification conserve le script d’aperçu couvert par l’empreinte CSP", async () => {
+  const source = await readFile(new URL("../src/webai.js", import.meta.url), "utf8");
+  const minified = (await transform(source, {
+    minify: true,
+    target: ["es2022"],
+    charset: "utf8",
+    legalComments: "none"
+  })).code;
+  const script = source.match(/var WEB_PREVIEW_SCRIPT = "([\s\S]*?)";/)[1];
+  assert.ok(script.length > 40);
+  assert.equal(minified.includes(script), true);
 });
 
 test("l’empreinte CSP correspond au script fixe de l’aperçu", () => {
