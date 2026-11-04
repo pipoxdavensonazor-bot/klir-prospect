@@ -1,0 +1,113 @@
+[
+  {
+    "city": "montreal",
+    "sector": "restauration",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.005828299999997
+  },
+  {
+    "city": "montreal",
+    "sector": "construction",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.011712
+  },
+  {
+    "city": "montreal",
+    "sector": "sante",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.0174625
+  },
+  {
+    "city": "laval",
+    "sector": "restauration",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.001889299999995
+  },
+  {
+    "city": "laval",
+    "sector": "construction",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "http_status": 502,
+    "state": "error",
+    "error": "HTTP 502",
+    "count": null,
+    "seconds": 0.6494116999999969
+  },
+  {
+    "city": "laval",
+    "sector": "sante",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.01495730000001
+  },
+  {
+    "city": "quebec",
+    "sector": "restauration",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "state": "error",
+    "count": null,
+    "error": "TimeoutError: The operation was aborted due to timeout",
+    "seconds": 18.008864799999994
+  },
+  {
+    "city": "quebec",
+    "sector": "construction",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "http_status": 502,
+    "state": "error",
+    "error": "HTTP 502",
+    "count": null,
+    "seconds": 0.5213184999999939
+  },
+  {
+    "city": "quebec",
+    "sector": "sante",
+    "source": "OpenStreetMap",
+    "max": 40,
+    "radius_m": 2200,
+    "attempts": 1,
+    "http_status": 502,
+    "state": "error",
+    "error": "HTTP 502",
+    "count": null,
+    "seconds": 0.6238153000000166
+  }
+]

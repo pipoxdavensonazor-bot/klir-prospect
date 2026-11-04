@@ -1,0 +1,9 @@
+{
+  "raw_bytes": 31557165,
+  "gzip_bytes": 3681814,
+  "rows_processed": 25127,
+  "sqlite_bytes": 39723008,
+  "import_gzip_index_seconds": 4.323943299998064,
+  "peak_working_set_bytes": 235692032,
+  "note": "Local SQLite prototype, not a Postgres/D1/Worker performance estimate; existing index may be reused on subsequent runs."
+}

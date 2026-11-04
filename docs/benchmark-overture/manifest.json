@@ -1,0 +1,141 @@
+{
+  "release": "2026-10-21.0",
+  "created_utc": "2026-10-23T02:37:23.924376+00:00",
+  "radius_m": 2200,
+  "centres": {
+    "montreal": [
+      45.5017,
+      -73.5673
+    ],
+    "laval": [
+      45.6066,
+      -73.7124
+    ],
+    "quebec": [
+      46.8139,
+      -71.208
+    ]
+  },
+  "maximum": 40,
+  "crosswalk": {
+    "restauration": [
+      "bar",
+      "cafe",
+      "coffee_shop",
+      "fast_food_restaurant",
+      "pub",
+      "restaurant"
+    ],
+    "construction": [
+      "building_or_construction_service",
+      "carpentry",
+      "contractor",
+      "electrician",
+      "flooring_contractor",
+      "general_contractor",
+      "masonry_contractor",
+      "painting",
+      "plumbing",
+      "roofing"
+    ],
+    "sante": [
+      "dental_clinic",
+      "dentist",
+      "general_dentistry",
+      "hospital",
+      "outpatient_care_facility",
+      "pharmacy",
+      "physical_therapy",
+      "physician",
+      "primary_care_or_general_clinic"
+    ]
+  },
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "overturemaps_version": "1.0.2",
+  "snapshots": [
+    {
+      "city": "montreal",
+      "release": "2026-10-21.0",
+      "sha256": "d507530cd526cccc24f961896265de921b7cb4e4441af3a41e763aa530a11600",
+      "bytes": 23946325,
+      "raw_count": 19072,
+      "parse_ms": 448.2680000073742,
+      "actual_properties": {
+        "confidence": 19072,
+        "websites": 16320,
+        "emails": 9145,
+        "phones": 16838,
+        "addresses": 19072,
+        "names": 19072,
+        "sources": 19072,
+        "basic_category": 18172,
+        "taxonomy": 18135,
+        "version": 19072,
+        "socials": 14517,
+        "brand": 13638,
+        "operating_status": 231
+      },
+      "source_licenses": {
+        "Apache-2.0": 3077,
+        "CDLA-Permissive-2.0": 34973,
+        "CC0-1.0": 325
+      }
+    },
+    {
+      "city": "laval",
+      "release": "2026-10-21.0",
+      "sha256": "66445145ccc594e017482393fa8cba83016639ec7c56d6f5d6ff3fff6afb927e",
+      "bytes": 1575795,
+      "raw_count": 1252,
+      "parse_ms": 24.371800012886524,
+      "actual_properties": {
+        "confidence": 1252,
+        "websites": 1057,
+        "emails": 593,
+        "socials": 927,
+        "phones": 1181,
+        "brand": 860,
+        "addresses": 1252,
+        "names": 1252,
+        "sources": 1252,
+        "basic_category": 1203,
+        "taxonomy": 1201,
+        "version": 1252,
+        "operating_status": 28
+      },
+      "source_licenses": {
+        "CDLA-Permissive-2.0": 2322,
+        "Apache-2.0": 193,
+        "CC0-1.0": 17
+      }
+    },
+    {
+      "city": "quebec",
+      "release": "2026-10-21.0",
+      "sha256": "a4d6e0d6801c34de1e8a98b2a88ad641ea6925db8a51b1b99a96188f53035c00",
+      "bytes": 6035045,
+      "raw_count": 4803,
+      "parse_ms": 85.70729999337345,
+      "actual_properties": {
+        "confidence": 4803,
+        "websites": 3934,
+        "emails": 2552,
+        "socials": 3878,
+        "phones": 4126,
+        "brand": 3754,
+        "addresses": 4803,
+        "names": 4803,
+        "sources": 4803,
+        "basic_category": 4597,
+        "taxonomy": 4589,
+        "version": 4803,
+        "operating_status": 63
+      },
+      "source_licenses": {
+        "CDLA-Permissive-2.0": 8947,
+        "Apache-2.0": 651,
+        "CC0-1.0": 71
+      }
+    }
+  ]
+}

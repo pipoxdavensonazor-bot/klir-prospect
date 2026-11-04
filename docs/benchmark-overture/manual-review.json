@@ -1,0 +1,112 @@
+{
+  "method": "First nearest selected record from each of 9 cases; desk review of official pages, no calling or email. Purposive sample, not representative. Source values unchanged.",
+  "review_date": "2026-10-22 America/Toronto",
+  "summary": {
+    "documented_match": 6,
+    "unresolved": 2,
+    "location_conflict": 1
+  },
+  "reviews": [
+    {
+      "case": "montreal-restauration",
+      "id": "43bec1d0-961b-452a-9bda-b137bfced6b5",
+      "name": "Vargas Steak-Bar-Sushi",
+      "status": "documented_match",
+      "note": "Restaurant, adresse et téléphone concordent sur le site officiel. Courriel non confirmé manuellement. Aucun intérêt commercial démontré.",
+      "evidence_urls": [
+        "https://vargas.ca/"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "montreal-construction",
+      "id": "4d87054f-f1e3-43ea-86a5-d42e3265891d",
+      "name": "Construction PCL Inc.",
+      "status": "documented_match",
+      "note": "Bureau PCL confirmé à la même adresse et au même téléphone. Grande entreprise : adéquation au segment petites entreprises non démontrée. Le site existe alors que le champ source était vide.",
+      "evidence_urls": [
+        "https://www.pcl.com/ca/fr/Qui-sommes-nous/nos-bureaux/montreal"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "montreal-sante",
+      "id": "f98123cb-9d06-4b44-a102-c6e4b77f10c0",
+      "name": "Pharmaprix",
+      "status": "documented_match",
+      "note": "Pharmacie et adresse confirmées par la page officielle Place Ville Marie. Deux téléphones dans la fiche : pas de choix arbitraire. Réseau, pertinence commerciale à qualifier.",
+      "evidence_urls": [
+        "https://www.pharmaprix.ca/fr/stores/1825-pharmaprix-place-ville-marie/"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "laval-restauration",
+      "id": "7e1b0336-0a10-4cfe-a127-3c057404ba4f",
+      "name": "Tim Hortons",
+      "status": "documented_match",
+      "note": "Succursale 301-1895 René-Laennec et téléphone concordants sur le localisateur officiel. Chaîne : pas de qualification commerciale déduite.",
+      "evidence_urls": [
+        "https://locations.timhortons.ca/fr/locations-list/qc/laval/",
+        "https://locations.timhortons.ca/en/qc/laval/2465-boul-saint-martin-e/"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "laval-construction",
+      "id": "934cc21c-f9d0-476a-9f15-5edf3dc36af8",
+      "name": "Paquette F & Fils Inc",
+      "status": "unresolved",
+      "note": "URL source inaccessible au contrôle. Une fiche secondaire indique fermeture et données historiques : indice insuffisant pour affirmer une fermeture. À vérifier avant usage.",
+      "evidence_urls": [
+        "http://www.f.paquette.com",
+        "https://www.allbiz.ca/group-paquette"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "laval-sante",
+      "id": "e6c900ee-da6e-4898-be59-73a20413e046",
+      "name": "Physio N Go",
+      "status": "unresolved",
+      "note": "Nom Physio N Go et ancien domaine non confirmés comme actuels. Un site officiel Physiomotionplus affiche la même adresse et le même téléphone : identité ou changement de marque à vérifier, sans fusion automatique.",
+      "evidence_urls": [
+        "https://www.physiomotionplus.com/"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "quebec-restauration",
+      "id": "96b5a23f-08f8-4e51-827e-307cd594bf33",
+      "name": "Café Assétar",
+      "status": "documented_match",
+      "note": "Café ASSÉTAR et adresse confirmés sur le site de l’Université Laval. URL Wix de la fiche non confirmée. Café étudiant : adéquation au segment à qualifier.",
+      "evidence_urls": [
+        "https://www.ulaval.ca/plan-du-campus/cafe-assetar"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "quebec-construction",
+      "id": "f7d4ae7d-7c80-45d2-bdcd-3722a8be2cc6",
+      "name": "Construction Immobilex Inc.",
+      "status": "location_conflict",
+      "note": "Coordonnées dans le cercle de Québec mais adresse fournie à Gatineau. Exclure du résultat local tant que cette contradiction persiste. Le site confirme le secteur, pas la localisation à Québec.",
+      "evidence_urls": [
+        "https://www.constructionimmobilex.com/"
+      ],
+      "useful_new_vs_osm": null
+    },
+    {
+      "case": "quebec-sante",
+      "id": "8672cb8e-597e-4171-8bc0-6a972753de09",
+      "name": "Familiprix Clinique",
+      "status": "documented_match",
+      "note": "Adresse et téléphone confirmés par la page officielle Familiprix. Nom de bannière générique dans la fiche ; page officielle nomme les propriétaires. Aucun courriel source validé manuellement.",
+      "evidence_urls": [
+        "https://www.familiprix.com/fr/pharmacies/vincent-gelinas-et-audrey-kimpton-a82c0334-cc81-4410-a82f-b9ccc6777d13"
+      ],
+      "useful_new_vs_osm": null
+    }
+  ]
+}

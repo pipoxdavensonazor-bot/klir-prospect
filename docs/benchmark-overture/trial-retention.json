@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-23T04:45:38.831915+00:00",
+  "cache_removed": 1,
+  "receipt_survived": true,
+  "results_compacted": 1,
+  "workspace_untouched": true,
+  "receipt_metadata_retained": true,
+  "controlled_fixture_91_days": true,
+  "qa_operation_restored_exactly": true
+}
