@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import { allowsPublicConfig, decideSupabase, isPublicSupabaseKey, publishRequiresSupabaseConfig, resolveEnvironment } from "./release-identity.mjs";
 import { previewCheckoutFlag, STRIPE_TEST_PROJECT_URL } from "../supabase/functions/_shared/stripe-test-offer.mjs";
 
@@ -107,24 +108,73 @@ await build({
   format: "iife",
   platform: "browser",
   target: ["es2022"],
+  minify: true,
+  legalComments: "none",
   sourcemap: false
 });
 
-const html = await readFile(new URL("index.html", out), "utf8");
+let html = await readFile(new URL("index.html", out), "utf8");
 for (const file of runtime.filter((name) => name.endsWith(".js"))) {
   if (!html.includes(`src="${file}"`)) throw new Error(`Script absent de src/index.html: ${file}`);
 }
 for (const file of ["config.js", "auth.js"]) {
   if (!html.includes(`src="${file}"`)) throw new Error(`Script absent de src/index.html: ${file}`);
 }
+const icons = ["icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/logo.png"];
+const iconNames = new Map();
+let manifest = await readFile(new URL("manifest.webmanifest", out), "utf8");
+for (const icon of icons) {
+  const bytes = await readFile(new URL(icon, out));
+  const hash = createHash("sha256").update(bytes).digest("hex").slice(0, 10);
+  const hashed = icon.replace(/\.png$/i, `.${hash}.png`);
+  await writeFile(new URL(hashed, out), bytes);
+  await rm(new URL(icon, out));
+  iconNames.set(icon, hashed);
+  html = html.replaceAll(`${icon}?v=2`, hashed).replaceAll(icon, hashed);
+  manifest = manifest.replaceAll(icon, hashed);
+}
+await writeFile(new URL("manifest.webmanifest", out), manifest);
+function stampIcons(text) {
+  let next = text;
+  for (const [icon, hashed] of iconNames) next = next.replaceAll(icon, hashed);
+  return next;
+}
+const seen = new Set();
+for (const file of [...runtime, "config.js", "auth.js"]) {
+  const source = await readFile(new URL(file, out));
+  const loader = file.endsWith(".css") ? "css" : "js";
+  const minified = stampIcons(file === "auth.js"
+    ? source.toString("utf8")
+    : (await transform(source.toString("utf8"), {
+      loader,
+      minify: true,
+      target: ["es2022"],
+      charset: "utf8",
+      legalComments: "none"
+    })).code);
+  const hash = createHash("sha256").update(minified).digest("hex").slice(0, 10);
+  const hashed = file.replace(/\.([a-z0-9]+)$/i, `.${hash}.$1`);
+  if (seen.has(hashed)) throw new Error(`Empreinte en collision: ${file}`);
+  seen.add(hashed);
+  await writeFile(new URL(hashed, out), minified);
+  if (hashed !== file) await rm(new URL(file, out));
+  html = html.replaceAll(`src="${file}"`, `src="${hashed}"`).replaceAll(`href="${file}"`, `href="${hashed}"`);
+}
+if (!html.includes("defer src=") || html.includes('src="app.js"') || html.includes('href="styles.css"')) {
+  throw new Error("Les assets publiés doivent rester différés et porter leur empreinte.");
+}
+await writeFile(new URL("index.html", out), html);
 if (html.includes("text/x-server-plugin") || html.includes("nuage.js") || html.includes("team.js")) {
   throw new Error("Un chemin sensible a été inclus dans le build.");
 }
 if (!html.includes('rel="manifest" href="manifest.webmanifest"')) {
   throw new Error("Le manifeste web est absent de src/index.html.");
 }
-for (const file of ["manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"]) {
+for (const file of ["manifest.webmanifest", ...iconNames.values()]) {
   await readFile(new URL(file, out));
+}
+if (html.includes("icons/icon-192.png") || html.includes("icons/logo.png") || manifest.includes("icons/icon-192.png")) {
+  throw new Error("Une icône publiée n'a pas reçu son empreinte.");
 }
 await writeFile(new URL("build.json", out), JSON.stringify({
   reproducible: true,
