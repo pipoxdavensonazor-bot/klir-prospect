@@ -2,6 +2,8 @@
 
 2 novembre 2026, heure de Toronto. Branche de travail `codex/commercial-readiness-audit`, travaux Codex conservés. Achat fermé. Aucune clé réelle, aucune production, aucune fusion de la PR #21.
 
+Réécriture de novembre 2026, depuis `main` : le code et la migration sont repris ici, mais `20261103010000_stripe_test_preview.sql` n’est toujours pas appliquée. La valider d’abord sur le projet Test `pwakjxjjxswdjsapsbxn`, jamais d’abord sur la production `cbklwmjudobqwbkbxqgy`.
+
 ## Ce qui est préparé
 
 Le produit visé est « KlirProspect — pilote accompagné (DÉMO) », paiement ponctuel de 49 $ CA pour 30 jours. Le prix est figé dans la base (`4900`, `cad`, 30 jours, offre `klirprospect-pilot-demo`). Le navigateur ne peut pas envoyer un montant, un nombre de crédits ou un paiement réussi.
