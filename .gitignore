@@ -7,3 +7,4 @@ dist/
 *.zip
 *.patch
 index (7).html
+__pycache__/

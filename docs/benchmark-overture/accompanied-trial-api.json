@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-10-23T04:46:13.756Z",
+  "testProject": "pwakjxjjxswdjsapsbxn",
+  "purpose": "Targeted regression of explicit restaurant segment, not a general benchmark",
+  "other_sector_rejected": true,
+  "rejection_no_debit": true,
+  "old_receipt_replayed_exact_features": true,
+  "replay_no_debit": true,
+  "workspaces_unchanged": true,
+  "private_snapshot_not_exposed": true,
+  "observations": [
+    {
+      "city": "montreal",
+      "count": 10,
+      "review_annotations": 2,
+      "revision": "trial-restaurants-v2",
+      "charged": 6
+    },
+    {
+      "city": "laval",
+      "count": 10,
+      "review_annotations": 2,
+      "revision": "trial-restaurants-v2",
+      "charged": 6
+    },
+    {
+      "city": "quebec",
+      "count": 10,
+      "review_annotations": 1,
+      "revision": "trial-restaurants-v2",
+      "charged": 6
+    }
+  ]
+}

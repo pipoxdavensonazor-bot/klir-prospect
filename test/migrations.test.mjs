@@ -7,6 +7,7 @@ const root = new URL("../supabase/migrations/", import.meta.url);
 const createSql = await readFile(new URL("20261006004359_create_profiles_and_rls.sql", root), "utf8");
 const hardenSql = await readFile(new URL("20261006014637_harden_auth_rls.sql", root), "utf8");
 const ledgerSql = await readFile(new URL("20261011221500_credit_ledger.sql", root), "utf8");
+const reservedQuotaSql = await readFile(new URL("20261022130000_enforce_reserved_search_quota.sql", root), "utf8");
 
 const stub = `
 create schema if not exists auth;
@@ -41,6 +42,7 @@ async function database() {
   await db.exec(createSql);
   await db.exec(hardenSql);
   await db.exec(ledgerSql);
+  await db.exec(reservedQuotaSql);
   return db;
 }
 
@@ -125,6 +127,52 @@ test("les recherches d'un compte restent lisibles par le même compte sur une au
 function receipt(prefix, seed) {
   return prefix + "_" + String(seed).padStart(24, "a");
 }
+
+test("dix réservations occupent le quota, une libération rend une place et un autre compte reste indépendant", async () => {
+  const db = await database();
+  try {
+    const ada = "11111111-1111-1111-1111-111111111111";
+    const bea = "22222222-2222-2222-2222-222222222222";
+    await db.query("insert into auth.users(id,raw_user_meta_data) values ($1,'{}'),($2,'{}')", [ada,bea]);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)", [ada]);
+    await db.exec("set role authenticated");
+    const ids = Array.from({length:11}, (_,i)=>"debit_"+(i+1).toString(16).padStart(24,"0"));
+    for (const id of ids.slice(0,10)) await db.query("select public.reserve_usage($1,6,'Recherche')",[id]);
+    await assert.rejects(db.query("select public.reserve_usage($1,6,'Recherche')",[ids[10]]),/quota_mensuel/);
+    const repeat = await db.query("select public.reserve_usage($1,6,'Recherche') as value",[ids[0]]);
+    assert.equal(repeat.rows[0].value.balance,140);
+    await assert.rejects(db.query("select public.settle_usage($1,null)",[ids[0]]),/recu_invalide/);
+    await db.query("select public.settle_usage($1,'release')",[ids[0]]);
+    await db.query("select public.reserve_usage($1,6,'Recherche')",[ids[10]]);
+    for (const id of ids.slice(1)) await db.query("select public.settle_usage($1,'complete')",[id]);
+    const result = await db.query("select public.read_credit_account() as value");
+    assert.equal(result.rows[0].value.searches_used,10);
+    assert.equal(result.rows[0].value.balance,140);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[bea]);
+    const other = await db.query("select public.reserve_usage($1,6,'Recherche') as value",[ids[0]]);
+    assert.equal(other.rows[0].value.balance,194);
+    assert.equal(other.rows[0].value.searches_used,0);
+  } finally { await db.close(); }
+});
+
+test("une ancienne réservation excédentaire ne dépasse pas dix confirmations et peut être remboursée", async () => {
+  const db = await database();
+  try {
+    const ada = "11111111-1111-1111-1111-111111111111";
+    await db.query("insert into auth.users(id,raw_user_meta_data) values ($1,'{}')",[ada]);
+    const ids = Array.from({length:11}, (_,i)=>"debit_"+(i+1).toString(16).padStart(24,"0"));
+    for (const id of ids) await db.query("insert into public.usage_holds(user_id,receipt,amount,label) values($1,$2,6,'Recherche')",[ada,id]);
+    await db.query("update public.credit_accounts set balance=134 where user_id=$1",[ada]);
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[ada]);
+    await db.exec("set role authenticated");
+    for (const id of ids.slice(0,10)) await db.query("select public.settle_usage($1,'complete')",[id]);
+    await assert.rejects(db.query("select public.settle_usage($1,'complete')",[ids[10]]),/quota_mensuel/);
+    await db.query("select public.settle_usage($1,'release')",[ids[10]]);
+    const result = await db.query("select public.read_credit_account() as value");
+    assert.equal(result.rows[0].value.searches_used,10);
+    assert.equal(result.rows[0].value.balance,140);
+  } finally { await db.close(); }
+});
 
 test("le registre débite une collecte complète une seule fois et rend le solde d'une collecte vide", async () => {
   const db = await database();

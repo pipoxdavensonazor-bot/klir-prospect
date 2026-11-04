@@ -16,10 +16,33 @@ test("neutralise les charges HTML et les attributs", () => {
 });
 
 test("neutralise les formules CSV", () => {
-  for (const value of ["=2+2", "+cmd", "-10+1", "@SUM(A1:A2)", "\tformula"]) {
+  for (const value of ["=2+2", "+cmd", "-10+1", "@SUM(A1:A2)", "\tformula", "  =2+2", " \t@cmd"]) {
     assert.match(security.csvCell(value), /^"'|^"'/);
   }
   assert.equal(security.csvCell("normal"), '"normal"');
+});
+
+test("lit les champs CSV cites sans decaler les colonnes et refuse les fichiers mal formes", () => {
+  const comma=security.csvRows('\uFEFFCompany,City,Phone\r\n"Café, Inc.","Québec","+1 418"\r\n');
+  assert.deepEqual(JSON.parse(JSON.stringify(comma)),[['Company','City','Phone'],['Café, Inc.','Québec','+1 418']]);
+  const semi=security.csvRows('Company;City;Phone\n"Café; ""Bleu""";Laval;123\n');
+  assert.deepEqual(JSON.parse(JSON.stringify(semi[1])),['Café; "Bleu"','Laval','123']);
+  assert.equal(security.csvRows('Company,City\n"ligne\nmultiligne",Laval')[1][0],'ligne\nmultiligne');
+  assert.throws(()=>security.csvRows('Company,City\n"non ferme,Laval'),/CSV invalide/);
+  assert.throws(()=>security.csvRows('Company,City\nNom,Québec,123'),/CSV invalide/);
+});
+
+test("l’import associe la ville et le telephone au bon candidat et refuse une ligne incomplete", async () => {
+  const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+  const sandbox = {window:{KlirSecurity:security},KS:{S:{prospects:[],weights:{}},uid:()=>"fixture"},
+    E:{fingerprint:p=>p.company_name,normDomain:()=>"",scoreProspect:()=>({})},KlirData:{CITIES:{default:{}}}};
+  vm.createContext(sandbox);
+  vm.runInContext(app.slice(app.indexOf("function importCsvText("),app.indexOf("function drawCharts(")),sandbox);
+  const result=sandbox.importCsvText('Company,City,Phone\n"Café, Inc.",Québec,4181234567');
+  assert.equal(result.rows[0].company_name,'Café, Inc.');
+  assert.equal(result.rows[0].city,'Québec');
+  assert.equal(result.rows[0].phone,'4181234567');
+  assert.match(sandbox.importCsvText('Company,City,Phone\nCafé,Québec').err,/CSV invalide/);
 });
 
 test("refuse les destinations privées et ambiguës", () => {

@@ -1,0 +1,38 @@
+[
+  {
+    "file": "attribution.html",
+    "url": "https://docs.overturemaps.org/attribution/",
+    "bytes": 127174,
+    "state": "complete"
+  },
+  {
+    "file": "Apache-2.0.txt",
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+    "bytes": 11358,
+    "state": "complete"
+  },
+  {
+    "file": "CDLA-Permissive-2.0.html",
+    "url": "https://cdla.dev/permissive-2-0/",
+    "bytes": 145146,
+    "state": "complete"
+  },
+  {
+    "file": "CC0-1.0.html",
+    "url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode.en",
+    "state": "error",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "file": "Foursquare-NOTICE.html",
+    "url": "https://opensource.foursquare.com/places-notice-txt/",
+    "bytes": 91202,
+    "state": "complete"
+  },
+  {
+    "file": "collection.json",
+    "url": "https://stac.overturemaps.org/2026-10-21.0/places/place/collection.json",
+    "bytes": 5008,
+    "state": "complete"
+  }
+]

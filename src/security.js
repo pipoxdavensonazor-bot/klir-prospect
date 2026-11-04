@@ -66,12 +66,54 @@
 
   function sheetText(value) {
     var raw = String(value == null ? "" : value).replace(/\r?\n/g, " ");
-    if (/^[=+\-@\t\r]/.test(raw)) raw = "'" + raw;
+    if (/^[\t\r]/.test(raw) || /^\s*[=+\-@]/.test(raw)) raw = "'" + raw;
     return raw;
   }
 
   function csvCell(value) {
     return '"' + sheetText(value).replace(/"/g, '""') + '"';
+  }
+
+  function csvRows(value) {
+    var input = String(value || "").replace(/^\uFEFF/, ""), quoted = false, counts = {",": 0, ";": 0};
+    for (var i = 0; i < input.length; i++) {
+      var char = input[i];
+      if (char === '"') {
+        if (quoted && input[i + 1] === '"') i++;
+        else quoted = !quoted;
+      } else if (!quoted && (char === "\r" || char === "\n")) break;
+      else if (!quoted && (char === "," || char === ";")) counts[char]++;
+    }
+    var delimiter = counts[";"] > counts[","] ? ";" : ",";
+    var rows = [], row = [], field = "", inQuotes = false, afterQuote = false;
+    function pushRow() {
+      row.push(field); field = ""; afterQuote = false;
+      if (row.some(function (cell) { return cell.trim(); })) rows.push(row);
+      row = [];
+    }
+    for (var j = 0; j < input.length; j++) {
+      var c = input[j];
+      if (inQuotes) {
+        if (c === '"' && input[j + 1] === '"') { field += '"'; j++; }
+        else if (c === '"') { inQuotes = false; afterQuote = true; }
+        else field += c;
+      } else if (c === delimiter) {
+        row.push(field); field = ""; afterQuote = false;
+      } else if (c === "\r" || c === "\n") {
+        if (c === "\r" && input[j + 1] === "\n") j++;
+        pushRow();
+        if (rows.length >= 1001) break;
+      } else if (c === '"') {
+        if (field || afterQuote) throw new Error("CSV invalide");
+        inQuotes = true;
+      } else if (afterQuote) {
+        if (c !== " " && c !== "\t") throw new Error("CSV invalide");
+      } else field += c;
+    }
+    if (inQuotes) throw new Error("CSV invalide");
+    if (row.length || field || afterQuote) pushRow();
+    if (rows.some(function (item) { return item.length !== rows[0].length; })) throw new Error("CSV invalide");
+    return rows;
   }
 
   function random() {
@@ -102,6 +144,7 @@
     publishValue: publishValue,
     cleanState: cleanState,
     csvCell: csvCell,
+    csvRows: csvRows,
     sheetText: sheetText,
     random: random,
     domain: domain,

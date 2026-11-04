@@ -43,6 +43,25 @@ export function parseAuthCallback(search) {
   return { tokenHash, type };
 }
 
+export function parseAuthError(search) {
+  const params = new URLSearchParams(String(search || "").replace(/^[?#]/, ""));
+  if (!params.has("error") && !params.has("error_code")) return null;
+  // Never display provider descriptions: they are untrusted URL input.
+  return params.get("error_code") === "otp_expired"
+    ? "Ce lien a expiré ou a déjà été utilisé. Demandez un nouveau lien et ouvrez uniquement le plus récent."
+    : "Ce lien n’a pas pu être validé. Demandez un nouveau lien ou revenez à la connexion.";
+}
+
+export function recoveryRequestMessage(error) {
+  if (!error || ["user_not_found", "email_not_found", "user_not_registered"].includes(error.code)) {
+    return "Si ce compte existe, le lien a été envoyé.";
+  }
+  if (error.status === 429 || error.code === "over_email_send_rate_limit") {
+    return "Trop de demandes ont été envoyées. Patientez avant de réessayer.";
+  }
+  return "La demande ne peut pas être traitée pour le moment. Réessayez plus tard.";
+}
+
 function stripSecrets(value, depth) {
   if (depth > 12 || value == null) return null;
   if (Array.isArray(value)) return value.slice(0, 10000).map((item) => stripSecrets(item, depth + 1));
