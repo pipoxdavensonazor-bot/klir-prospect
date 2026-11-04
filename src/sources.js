@@ -44,7 +44,7 @@ var KlirSources = window.KlirSources || {};
       if (!isNaN(t) && (Date.now() - t) < 730 * 864e5) signals.push("Entreprise récente");
     } catch (e) {}
     if (s.adresse) signals.push("Adresse vérifiée");
-    return {
+    return publishRow({
       id: d.siren ? "sz_" + d.siren : window.KlirStore.uid("sz"),
       company_name: name, legal_name: d.nom_complet || name,
       website: "", domain: "",
@@ -56,7 +56,11 @@ var KlirSources = window.KlirSources || {};
       employee_range: empRange(d.tranche_effectif_salarie || s.tranche_effectif_salarie),
       source: "Sirene (data.gouv.fr)", source_url: "https://annuaire-entreprises.data.gouv.fr/etablissement/" + (s.siret || d.siren || ""),
       last_verified: new Date().toISOString().slice(0, 10), signals: signals
-    };
+    });
+  }
+  function publishRow(row) {
+    if (!row || !window.KlirSecurity || typeof window.KlirSecurity.publishValue !== "function") return row;
+    return window.KlirSecurity.publishValue(row);
   }
   async function search(params, maxN) {
     const city = (params.city && params.city.city) || "";
@@ -146,7 +150,7 @@ var KlirSources = window.KlirSources || {};
     let domain = "";
     try { domain = website ? new URL(website).hostname.replace(/^www\./, "") : ""; } catch (error) { domain = ""; }
     const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
-    return {
+    return publishRow({
       id: "osm_" + (element.type || "node") + "_" + element.id,
       company_name: name,
       legal_name: name,
@@ -168,7 +172,7 @@ var KlirSources = window.KlirSources || {};
       source_url: "https://www.openstreetmap.org/" + (element.type || "node") + "/" + element.id,
       last_verified: "",
       signals: ["Source ouverte"]
-    };
+    });
   }
   function foldedCity(params) {
     const name = params && params.city ? String(params.city.city || "") : "";

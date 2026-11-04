@@ -15,7 +15,7 @@
 
 ## Risques résiduels
 
-- l’application historique construit encore certaines vues avec `innerHTML` et des gestionnaires inline. Les entrées persistées/importées sont neutralisées, mais une migration complète vers des nœuds DOM ou un framework à échappement automatique reste requise. La CSP conserve temporairement `unsafe-inline`;
+- l’application historique construit encore certaines vues avec `innerHTML` et des gestionnaires inline. Les chaînes externes (OpenStreetMap, Sirene, textes IA, prospects, CRM, campagnes) sont neutralisées avec `KlirSecurity.publishValue` / `text` avant d’entrer dans l’état, et les interpolations HTML passent par `KlirSecurity.html` (ou `hx` / `esc` / `wEsc` / `pjEsc`). Une migration complète vers des nœuds DOM reste souhaitable. La CSP conserve temporairement `unsafe-inline` à cause des gestionnaires `onclick` ; leur retrait, puis une CSP à nonces, est un suivi séparé ;
 - quotas, crédits et fonctions métier historiques restent démonstratifs côté client; seuls le profil et l’état migré sont actuellement protégés par PostgreSQL/RLS;
 - les vérifications de domaine faites par le navigateur sont limitées par CORS et ne doivent pas devenir un proxy générique;
 - `sessionStorage` protège contre la persistance longue, pas contre un script exécuté dans la même origine; une architecture serveur avec cookies HttpOnly reste préférable pour des données très sensibles;
