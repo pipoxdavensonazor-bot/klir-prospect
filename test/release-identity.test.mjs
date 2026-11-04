@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { decideSupabase, resolveEnvironment } from "../tools/release-identity.mjs";
+import { decideSupabase, publishRequiresSupabaseConfig, resolveEnvironment } from "../tools/release-identity.mjs";
 
 const production = "https://cbklwmjudobqwbkbxqgy.supabase.co";
 const previewBranch = "cursor/prospect-main-review-c23c";
@@ -61,10 +61,19 @@ test("une prévisualisation n'emprunte pas la base publique ni celle de producti
   assert.equal(unlabeled.supabaseSource, "absent");
 });
 
+test("seul le build de production exige la configuration publique", () => {
+  assert.equal(publishRequiresSupabaseConfig("production"), true);
+  assert.equal(publishRequiresSupabaseConfig("ci"), false);
+  assert.equal(publishRequiresSupabaseConfig("preview"), false);
+  assert.equal(publishRequiresSupabaseConfig("local"), false);
+  assert.equal(publishRequiresSupabaseConfig("inconnu"), false);
+});
+
 test("le build ne copie le site public que hors prévisualisation", async () => {
   const build = (await readFile(new URL("../tools/build.mjs", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
   assert.equal(build.includes("if (!decision.fetchPublic)"), true);
   assert.equal(build.includes("allowsPublicConfig"), true);
+  assert.equal(build.includes("publishRequiresSupabaseConfig"), true);
   assert.equal(build.includes("WORKERS_CI ? \"production\""), false);
   assert.equal(build.includes("pilotEmails"), false);
   assert.equal(build.includes("supabasePublishableKey,\n  environment"), true);

@@ -7,6 +7,13 @@ export function allowsPublicConfig(environment) {
   return PUBLIC_CONFIG_ENVIRONMENTS.has(environment);
 }
 
+// Seule la publication de production refuse un build sans configuration publique.
+// La CI GitHub (environnement ci) et le mode local restent sur la démo si la copie
+// du site public échoue. La prévisualisation ne copie déjà pas ce site.
+export function publishRequiresSupabaseConfig(environment) {
+  return environment === "production";
+}
+
 function present(value) {
   const text = String(value || "").trim();
   return text !== "" && text !== "0" && text !== "false";

@@ -14,6 +14,38 @@
       .slice(0, maxLength || 5000);
   }
 
+  function html(value) {
+    return String(value == null ? "" : value)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function riskyText(value) {
+    return /[<>]|&#|#x|&(?:lt|gt|amp|quot|apos)\b/i.test(value);
+  }
+
+  function publishValue(value, depth) {
+    depth = depth || 0;
+    if (depth > 12) return null;
+    if (typeof value === "string") return riskyText(value) ? text(value) : value;
+    if (Array.isArray(value)) return value.slice(0, 10000).map(function (item) {
+      return publishValue(item, depth + 1);
+    });
+    if (value && typeof value === "object") {
+      var out = {};
+      Object.keys(value).slice(0, 500).forEach(function (key) {
+        if (/^(password|pass|token|apiKey|key|secret)$/i.test(key)) return;
+        out[key] = publishValue(value[key], depth + 1);
+      });
+      return out;
+    }
+    return value;
+  }
+
   function cleanState(value, depth) {
     depth = depth || 0;
     if (depth > 12) return null;
@@ -66,6 +98,8 @@
 
   window.KlirSecurity = {
     text: text,
+    html: html,
+    publishValue: publishValue,
     cleanState: cleanState,
     csvCell: csvCell,
     sheetText: sheetText,

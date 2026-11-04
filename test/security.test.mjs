@@ -29,6 +29,20 @@ test("refuse les destinations privées et ambiguës", () => {
   assert.equal(security.domain("https://www.example.com/path"), "www.example.com");
 });
 
+test("échappe le HTML et ne réécrit pas un nom légitime", () => {
+  assert.equal(security.html("Boulangerie Au Pain Doré"), "Boulangerie Au Pain Doré");
+  assert.equal(security.html("Montréal"), "Montréal");
+  assert.equal(security.html("Schwartz's"), "Schwartz&#39;s");
+  assert.equal(security.html('<img src=x onerror=alert(1)>').includes("<"), false);
+  assert.equal(security.html('"><img src=x>').includes('"'), false);
+  const kept = security.publishValue({ company_name: "Schwartz's", city: "Montréal" });
+  assert.equal(kept.company_name, "Schwartz's");
+  assert.equal(kept.city, "Montréal");
+  const hostile = security.publishValue({ company_name: "<img src=x onerror=alert(1)>" });
+  assert.equal(hostile.company_name.includes("<"), false);
+  assert.equal(hostile.company_name.includes(">"), false);
+});
+
 test("retire récursivement secrets et jetons", () => {
   const clean = security.cleanState({
     password: "secret",

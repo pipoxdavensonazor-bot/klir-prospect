@@ -1,6 +1,10 @@
 name = "klir-prospect"
 compatibility_date = "2026-10-01"
 
+# Pas de champ main : ce Worker ne sert que les fichiers de dist/.
+# Wrangler 4 fournit alors son script interne. Un main vers un fichier
+# absent (le commit 03ed079 pointait vers un script qui n'est pas dans
+# ce dépôt) arrête `npx wrangler deploy` avant l'envoi des assets.
 [build]
 command = "npm run build"
 
