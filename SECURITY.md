@@ -15,7 +15,7 @@
 
 ## Risques résiduels
 
-- l’application historique construit encore certaines vues avec `innerHTML` et des gestionnaires inline. Les chaînes externes (OpenStreetMap, Sirene, textes IA, prospects, CRM, campagnes) sont neutralisées avec `KlirSecurity.publishValue` / `text` avant d’entrer dans l’état, et les interpolations HTML passent par `KlirSecurity.html` (ou `hx` / `esc` / `wEsc` / `pjEsc`). Une migration complète vers des nœuds DOM reste souhaitable. La CSP conserve temporairement `unsafe-inline` à cause des gestionnaires `onclick` ; leur retrait, puis une CSP à nonces, est un suivi séparé ;
+- l’application historique construit encore certaines vues avec `innerHTML` et des styles inline. Les chaînes externes (OpenStreetMap, Sirene, textes IA, prospects, CRM, campagnes) sont neutralisées avec `KlirSecurity.publishValue` / `text` avant d’entrer dans l’état, et les interpolations HTML passent par `KlirSecurity.html` (ou `hx` / `esc` / `wEsc` / `pjEsc`). Une migration complète vers des nœuds DOM reste souhaitable. Les clics passent par des écouteurs (`data-nav`, `data-scroll`, `data-dismiss` ou `.onclick` posé depuis un script externe) : `script-src` n’autorise plus `'unsafe-inline'`. Le seul script inline restant est le gestionnaire fixe du formulaire d’aperçu Web AI, autorisé par empreinte `sha256`. `style-src` conserve `'unsafe-inline'` tant que les styles inline n’ont pas migré ;
 - le registre de crédits et ses réservations sont gérés par PostgreSQL avec RLS lorsque les migrations sont appliquées sur le projet de test, puis seulement ensuite en production. Le résultat de collecte (`complete` ou `release`) et le montant demandé sont toutefois déclarés par le navigateur ; ce mécanisme ne prouve pas un usage facturable. Avant de vendre des crédits, exécuter et constater la collecte côté serveur, puis y confirmer le débit. Les limites IA et exports historiques restent côté client ;
 - les vérifications de domaine faites par le navigateur sont limitées par CORS et ne doivent pas devenir un proxy générique;
 - `sessionStorage` protège contre la persistance longue, pas contre un script exécuté dans la même origine; une architecture serveur avec cookies HttpOnly reste préférable pour des données très sensibles;
@@ -32,6 +32,6 @@
 6. Stockage structuré avec chiffrement, rétention/minimisation PII, export et effacement conformes.
 7. Import de domaine via service dédié: résolution DNS et blocage des réseaux privés après chaque redirection, limites de taille/temps/type.
 8. Synchronisation paginée ou par objets, avec limites explicites, contrôle de concurrence et erreurs visibles; abandon du slot monolithique 300 Ko.
-9. Retrait de `unsafe-inline` après migration des gestionnaires et styles inline, puis CSP avec nonces/hashes.
+9. Retrait de `style-src 'unsafe-inline'` après migration des styles inline. Les scripts inline variables, s’il en reste, passeraient ensuite par des nonces.
 
 Les anciennes données navigateur ne doivent pas être migrées automatiquement. Une migration explicite doit demander le consentement, retirer comptes/hashes/tokens/clés, valider le schéma et supprimer les anciennes clés après confirmation.
