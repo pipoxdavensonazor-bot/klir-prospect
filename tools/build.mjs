@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { allowsPublicConfig, decideSupabase, resolveEnvironment } from "./release-identity.mjs";
+import { allowsPublicConfig, decideSupabase, publishRequiresSupabaseConfig, resolveEnvironment } from "./release-identity.mjs";
 
 function publishedCommit() {
   const fromEnv = process.env.WORKERS_CI_COMMIT_SHA || process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "";
@@ -44,12 +44,16 @@ async function publicSupabaseConfig(environment) {
     supabasePublishableKey = supabasePublishableKey || parsed.supabasePublishableKey || "";
     supabaseSource = "public-site";
   } catch (error) {
-    if (process.env.CI) throw new Error("Configuration publique Supabase introuvable pour le build.");
+    if (process.env.CI && publishRequiresSupabaseConfig(environment)) {
+      throw new Error("Configuration publique Supabase introuvable pour le build.");
+    }
   }
   if (supabaseUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
     throw new Error("SUPABASE_URL invalide.");
   }
-  if (process.env.CI && (!supabaseUrl || !supabasePublishableKey || /service_role/i.test(supabasePublishableKey))) {
+  const secretKey = /service_role/i.test(supabasePublishableKey);
+  const missingPublicConfig = !supabaseUrl || !supabasePublishableKey;
+  if (process.env.CI && (secretKey || (publishRequiresSupabaseConfig(environment) && missingPublicConfig))) {
     throw new Error("SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont requis pour publier.");
   }
   return {
