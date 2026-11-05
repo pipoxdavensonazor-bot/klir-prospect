@@ -3,7 +3,21 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const html = await readFile(new URL("../src/index.html", import.meta.url), "utf8");
-const headers = await readFile(new URL("../_headers", import.meta.url), "utf8");
+const headers = normalizeNewlines(await readFile(new URL("../_headers", import.meta.url), "utf8"));
+
+function normalizeNewlines(text) {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+function assertLongCacheRules(raw) {
+  const text = normalizeNewlines(raw);
+  assert.match(text, /^\/\n {2}Cache-Control: public, max-age=0, must-revalidate$/m);
+  assert.match(text, /^\/index\.html\n {2}Cache-Control: public, max-age=0, must-revalidate$/m);
+  assert.match(text, /^\/\*\.js\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
+  assert.match(text, /^\/\*\.css\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
+  assert.match(text, /^\/icons\/\*\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
+  assert.match(text, /Content-Security-Policy:/);
+}
 
 const SCRIPT_ORDER = [
   "config.js",
@@ -35,10 +49,12 @@ test("les 13 scripts restent dans l’ordre et ne bloquent plus l’analyse", ()
 });
 
 test("le cache long vise les assets empreintés, pas le document", () => {
-  assert.match(headers, /^\/\n {2}Cache-Control: public, max-age=0, must-revalidate$/m);
-  assert.match(headers, /^\/index\.html\n {2}Cache-Control: public, max-age=0, must-revalidate$/m);
-  assert.match(headers, /^\/\*\.js\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
-  assert.match(headers, /^\/\*\.css\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
-  assert.match(headers, /^\/icons\/\*\n {2}Cache-Control: public, max-age=31536000, immutable$/m);
-  assert.match(headers, /Content-Security-Policy:/);
+  assertLongCacheRules(headers);
+});
+
+test("les mêmes règles de cache acceptent un fichier _headers en CRLF", () => {
+  const crlf = headers.replace(/\n/g, "\r\n");
+  assert.equal(crlf.includes("\r\n"), true);
+  assert.equal(crlf.replace(/\r\n/g, "").includes("\n"), false);
+  assertLongCacheRules(crlf);
 });
