@@ -6,6 +6,7 @@
 - sessions Supabase limitées à l’onglet (`sessionStorage`), PKCE, rotation et déconnexion globale;
 - confirmation e-mail et récupération par `token_hash`, échangé seulement après un clic, avec sessions PKCE limitées à l’onglet;
 - profil RLS, horodatage de sortie du mode démo écrit par trigger, et suppression réelle après ressaisie du mot de passe;
+- rôle admin distinct : ligne dans `private.admins`, lue seulement par `public.is_admin()` (`security definer`, `search_path` vide). Aucun client authentifié ne peut s’y inscrire, et `public.profiles` n’a pas de colonne de rôle. La migration `20261105014500_admin_role` n’est appliquée ni sur Test ni sur Prod sans OK explicite de Philippe. Voir `docs/role-admin.md`;
 - migration des données démo volontaire, limitée à 2 Mo, nettoyée des secrets et protégée par RLS;
 - identifiants générés avec Web Crypto;
 - imports CSV limités à 1 Mo / 1 000 lignes, texte neutralisé et formules CSV protégées;

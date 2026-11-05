@@ -38,6 +38,7 @@ const client = configured ? createClient(config.supabaseUrl, config.supabasePubl
 
 let currentUser = null;
 let currentProfile = null;
+let currentAdmin = false;
 let passwordRecovery = false;
 let initialized = false;
 let callbackError = null;
@@ -84,16 +85,30 @@ async function requireClient() {
   return client;
 }
 
+async function readAdminFlag(supabase) {
+  try {
+    const result = await supabase.rpc("is_admin");
+    return !result.error && result.data === true;
+  } catch {
+    return false;
+  }
+}
+
 async function hydrate() {
-  if (!client) return state();
+  if (!client) {
+    currentAdmin = false;
+    return state();
+  }
   const { data: { user }, error } = await client.auth.getUser();
   if (error && error.name !== "AuthSessionMissingError") throw error;
   currentUser = user || null;
   currentProfile = null;
+  currentAdmin = false;
   if (currentUser) {
     const result = await client.from("profiles").select("id, display_name, demo_migrated_at, created_at, updated_at").eq("id", currentUser.id).single();
     if (result.error) throw result.error;
     currentProfile = result.data;
+    currentAdmin = await readAdminFlag(client);
   }
   return state();
 }
@@ -103,6 +118,7 @@ function state() {
     configured,
     user: currentUser,
     profile: currentProfile,
+    admin: currentAdmin === true,
     passwordRecovery,
     callbackError,
     pending: readPending(),
@@ -158,6 +174,7 @@ async function signOut() {
   if (!result.error) {
     currentUser = null;
     currentProfile = null;
+    currentAdmin = false;
     passwordRecovery = false;
     sessionStorage.removeItem(CALLBACK_KEY);
   }
@@ -247,6 +264,7 @@ async function deleteAccount(confirmation, password) {
   if (!result.error && result.data?.deleted) {
     currentUser = null;
     currentProfile = null;
+    currentAdmin = false;
     passwordRecovery = false;
     sessionStorage.clear();
   }
@@ -374,6 +392,7 @@ async function initialize() {
       if (event === "SIGNED_OUT") {
         currentUser = null;
         currentProfile = null;
+        currentAdmin = false;
         passwordRecovery = false;
       }
       queueMicrotask(async () => {
