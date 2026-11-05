@@ -274,29 +274,47 @@ var KlirSources = window.KlirSources || {};
     if (!Number.isNaN(when)) return Math.min(Math.max(0, when - Date.now()), cap);
     return fallback;
   }
-  function overpassLog(status, attempt, durationMs) {
-    console.info("[overpass] " + JSON.stringify({ status: status, attempt: attempt, durationMs: durationMs }));
+  const OVERPASS_TIMEOUT_MS = 18000;
+  // Le Worker ne proxifie pas : il ne sert que dist/.
+  // 429 attend Retry-After ; 5xx, coupure et délai passent au serveur suivant.
+  const OVERPASS_ENDPOINTS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ];
+  function overpassHost(endpoint) {
+    try { return new URL(endpoint).host; } catch (error) { return ""; }
+  }
+  function overpassLog(status, attempt, durationMs, endpoint) {
+    console.info("[overpass] " + JSON.stringify({
+      status: status,
+      attempt: attempt,
+      durationMs: durationMs,
+      host: overpassHost(endpoint)
+    }));
   }
   async function askOverpass(query) {
     let lastError = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < OVERPASS_ENDPOINTS.length; attempt++) {
+      const endpoint = OVERPASS_ENDPOINTS[attempt];
       const started = Date.now();
       const ctl = new AbortController();
-      const to = setTimeout(function () { ctl.abort(); }, 18000);
+      const to = setTimeout(function () { ctl.abort(); }, OVERPASS_TIMEOUT_MS);
       let retryable = false;
-      let delay = 8000;
+      let delay = 0;
       try {
-        const response = await fetch("https://overpass-api.de/api/interpreter", {
+        const response = await fetch(endpoint, {
           method: "POST",
           signal: ctl.signal,
           headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "KlirProspect/0.1 (https://klirprospect.klirline.ca)" },
           body: "data=" + encodeURIComponent(query)
         });
         const durationMs = Date.now() - started;
-        overpassLog(response.status, attempt + 1, durationMs);
+        overpassLog(response.status, attempt + 1, durationMs, endpoint);
         if (response.status === 429 || response.status >= 500) {
           retryable = true;
-          delay = overpassRetryDelay(response);
+          delay = response.status === 429 ? overpassRetryDelay(response) : 0;
           const code = response.status === 429 ? "429" : String(response.status);
           lastError = new Error("Recherche échouée : OpenStreetMap a répondu " + code + ".");
         } else if (!response.ok) {
@@ -310,14 +328,14 @@ var KlirSources = window.KlirSources || {};
         }
       } catch (error) {
         if (error && error.message && error.message.indexOf("Recherche échouée") === 0) throw error;
-        overpassLog(0, attempt + 1, Date.now() - started);
+        overpassLog(0, attempt + 1, Date.now() - started, endpoint);
         lastError = new Error(error && error.name === "AbortError" ? "Recherche échouée : OpenStreetMap n'a pas répondu à temps." : "Recherche échouée : OpenStreetMap est indisponible.");
         retryable = true;
       } finally {
         clearTimeout(to);
       }
-      if (!retryable || attempt === 1) break;
-      await new Promise(function (resolve) { setTimeout(resolve, delay); });
+      if (!retryable || attempt === OVERPASS_ENDPOINTS.length - 1) break;
+      if (delay > 0) await new Promise(function (resolve) { setTimeout(resolve, delay); });
     }
     throw lastError || new Error("Recherche échouée : OpenStreetMap est indisponible.");
   }
@@ -360,6 +378,7 @@ var KlirSources = window.KlirSources || {};
     search: searchPlaces,
     mapElement: mapOsmElement,
     query: overpassQuery,
+    endpoints: OVERPASS_ENDPOINTS.slice(),
     constructionCrafts: CONSTRUCTION_CRAFTS,
     renovationCrafts: CONSTRUCTION_RENOVATION_CRAFTS,
     areas: { montreal_island: MONTREAL_ISLAND_BOUNDS }
