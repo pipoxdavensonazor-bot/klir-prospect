@@ -55,16 +55,30 @@ async function loadSources(sandbox) {
 
 function scriptedFetch(steps) {
   const calls = [];
+  const urls = [];
   let index = 0;
   return {
     calls,
-    fetch: async (_url, _options) => {
+    urls,
+    fetch: async (url, _options) => {
       const step = steps[Math.min(index, steps.length - 1)];
       index += 1;
-      calls.push(step.status);
+      calls.push(step.status == null ? 0 : step.status);
+      urls.push(String(url));
+      if (step.error) throw step.error;
       return new Response(step.body, { status: step.status, headers: step.headers || {} });
     }
   };
+}
+
+function abortError() {
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+function listed(sources) {
+  return Array.from(sources.osm.endpoints);
 }
 
 function params() {
@@ -93,7 +107,7 @@ test("une réponse Overpass valide conserve les contacts publiés et laisse les 
   assert.equal(rows[1].employee_range, "");
 });
 
-test("un HTTP 504 est repris une seule fois, puis la réponse valide est conservée sans doublon", async () => {
+test("un HTTP 504 bascule vers le serveur suivant, puis la réponse valide est conservée sans doublon", async () => {
   const { sandbox, waits, logs } = clockedSandbox();
   const http = scriptedFetch([
     { status: 504, body: "" },
@@ -103,28 +117,98 @@ test("un HTTP 504 est repris une seule fois, puis la réponse valide est conserv
   const sources = await loadSources(sandbox);
   const rows = await sources.osm.search(params(), 8);
   assert.deepEqual(http.calls, [504, 200]);
-  assert.deepEqual(waits, [8000]);
+  assert.deepEqual(http.urls, listed(sources).slice(0, 2));
+  assert.deepEqual(waits, []);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].id, "osm_node_343490371");
   const parsed = logs.map((line) => JSON.parse(line.replace("[overpass] ", "")));
   assert.deepEqual(parsed.map((entry) => entry.status), [504, 200]);
   assert.deepEqual(parsed.map((entry) => entry.attempt), [1, 2]);
+  assert.deepEqual(parsed.map((entry) => entry.host), ["overpass-api.de", "lz4.overpass-api.de"]);
   assert.equal(parsed.every((entry) => Number.isFinite(entry.durationMs)), true);
   assert.equal(logs.join(" ").includes("+1-514"), false);
   assert.equal(logs.join(" ").includes("schwartzs"), false);
 });
 
-test("un HTTP 504 persistant échoue sans troisième appel", async () => {
+test("un HTTP 502 bascule sans attendre et s'arrête au premier succès", async () => {
+  const { sandbox, waits } = clockedSandbox();
+  const http = scriptedFetch([
+    { status: 502, body: "bad gateway" },
+    { status: 502, body: "bad gateway" },
+    { status: 200, body: JSON.stringify({ elements: [bare] }) }
+  ]);
+  sandbox.fetch = http.fetch;
+  const sources = await loadSources(sandbox);
+  const rows = await sources.osm.search(params(), 8);
+  assert.deepEqual(http.calls, [502, 502, 200]);
+  assert.deepEqual(http.urls, listed(sources).slice(0, 3));
+  assert.deepEqual(waits, []);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].company_name, "Frite Alors!");
+});
+
+test("un HTTP 504 persistant interroge chaque serveur une seule fois", async () => {
   const { sandbox, waits } = clockedSandbox();
   const http = scriptedFetch([{ status: 504, body: "timeout" }]);
   sandbox.fetch = http.fetch;
   const sources = await loadSources(sandbox);
   await assert.rejects(sources.osm.search(params(), 8), /Recherche échouée : OpenStreetMap a répondu 504/);
-  assert.deepEqual(http.calls, [504, 504]);
-  assert.deepEqual(waits, [8000]);
+  assert.deepEqual(http.calls, [504, 504, 504, 504]);
+  assert.deepEqual(http.urls, listed(sources));
+  assert.equal(new Set(http.urls).size, listed(sources).length);
+  assert.deepEqual(waits, []);
 });
 
-test("un HTTP 429 respecte Retry-After et ne dépasse pas une reprise", async () => {
+test("des HTTP 502 sur tous les serveurs échouent sans autre appel", async () => {
+  const { sandbox, waits } = clockedSandbox();
+  const http = scriptedFetch([{ status: 502, body: "bad gateway" }]);
+  sandbox.fetch = http.fetch;
+  const sources = await loadSources(sandbox);
+  await assert.rejects(
+    sources.osm.search(params(), 8),
+    (error) => error && error.message === "Recherche échouée : OpenStreetMap a répondu 502."
+  );
+  assert.deepEqual(http.calls, [502, 502, 502, 502]);
+  assert.deepEqual(http.urls, listed(sources));
+  assert.deepEqual(waits, []);
+});
+
+test("un délai dépassé ou une coupure bascule, un HTTP 400 s'arrête", async () => {
+  const { sandbox, waits } = clockedSandbox();
+  const timedOut = scriptedFetch([
+    { error: abortError() },
+    { status: 200, body: JSON.stringify({ elements: [named] }) }
+  ]);
+  sandbox.fetch = timedOut.fetch;
+  const sources = await loadSources(sandbox);
+  const rows = await sources.osm.search(params(), 8);
+  assert.deepEqual(timedOut.calls, [0, 200]);
+  assert.deepEqual(timedOut.urls, listed(sources).slice(0, 2));
+  assert.equal(rows.length, 1);
+  assert.deepEqual(waits, []);
+
+  const down = clockedSandbox();
+  const dropped = scriptedFetch([
+    { error: new TypeError("Failed to fetch") },
+    { status: 200, body: JSON.stringify({ elements: [bare] }) }
+  ]);
+  down.sandbox.fetch = dropped.fetch;
+  const recovered = await loadSources(down.sandbox);
+  const recoveredRows = await recovered.osm.search(params(), 8);
+  assert.deepEqual(dropped.urls, listed(recovered).slice(0, 2));
+  assert.equal(recoveredRows.length, 1);
+
+  const rejected = clockedSandbox();
+  const invalid = scriptedFetch([{ status: 400, body: "bad request" }]);
+  rejected.sandbox.fetch = invalid.fetch;
+  const stopped = await loadSources(rejected.sandbox);
+  await assert.rejects(stopped.osm.search(params(), 8), /Recherche échouée : OpenStreetMap a répondu 400/);
+  assert.deepEqual(invalid.calls, [400]);
+  assert.deepEqual(invalid.urls, [listed(stopped)[0]]);
+  assert.deepEqual(rejected.waits, []);
+});
+
+test("un HTTP 429 attend Retry-After puis bascule vers le serveur suivant", async () => {
   const { sandbox, waits } = clockedSandbox();
   const http = scriptedFetch([
     { status: 429, body: "", headers: { "Retry-After": "2" } },
@@ -134,9 +218,36 @@ test("un HTTP 429 respecte Retry-After et ne dépasse pas une reprise", async ()
   const sources = await loadSources(sandbox);
   const rows = await sources.osm.search(params(), 8);
   assert.deepEqual(http.calls, [429, 200]);
+  assert.deepEqual(http.urls, listed(sources).slice(0, 2));
   assert.deepEqual(waits, [2000]);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].public_email, "");
+});
+
+test("le CSP autorise chaque instance Overpass et le parcours Overture reste devant OSM", async () => {
+  const { sandbox } = clockedSandbox();
+  sandbox.fetch = async () => new Response("{}", { status: 200 });
+  const sources = await loadSources(sandbox);
+  const html = await readFile(new URL("../src/index.html", import.meta.url), "utf8");
+  const headers = await readFile(new URL("../_headers", import.meta.url), "utf8");
+  const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+  assert.deepEqual(listed(sources), [
+    "https://overpass-api.de/api/interpreter",
+    "https://lz4.overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ]);
+  for (const endpoint of sources.osm.endpoints) {
+    const origin = new URL(endpoint).origin;
+    assert.equal(html.includes(origin), true, origin);
+    assert.equal(headers.includes(origin), true, origin);
+  }
+  assert.equal(html.includes("https://nominatim.openstreetmap.org"), true);
+  assert.equal(headers.includes("https://nominatim.openstreetmap.org"), true);
+  const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
+  assert.ok(search.indexOf("return runOvertureSearch") < search.indexOf("KlirSources.osm.search"));
+  assert.ok(search.indexOf("sourceError") < search.indexOf("settleServerUsage(false)"));
+  assert.ok(search.indexOf("settleServerUsage(false)") < search.indexOf("spendCredits(searchCost"));
 });
 
 test("une réponse JSON valide sans fiche n'est pas une erreur", async () => {

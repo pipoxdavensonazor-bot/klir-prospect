@@ -31,9 +31,14 @@ async function loadSources(sandbox) {
   return sandbox;
 }
 
-function scriptedFetch(body) {
+function assertOverpassUrl(sandbox, url) {
+  const endpoints = sandbox.KlirSources && sandbox.KlirSources.osm && sandbox.KlirSources.osm.endpoints;
+  assert.equal(Array.isArray(endpoints) && endpoints.includes(String(url)), true, String(url));
+}
+
+function scriptedFetch(sandbox, body) {
   return async (url) => {
-    assert.equal(String(url).includes("overpass-api.de"), true);
+    assertOverpassUrl(sandbox, url);
     return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
   };
 }
@@ -41,7 +46,7 @@ function scriptedFetch(body) {
 async function searchWith(body, status = 200) {
   const sandbox = clockedSandbox();
   sandbox.fetch = async (url) => {
-    assert.equal(String(url).includes("overpass-api.de"), true);
+    assertOverpassUrl(sandbox, url);
     if (status !== 200) return new Response("nope", { status });
     return new Response(JSON.stringify(body), { status: 200 });
   };
@@ -80,7 +85,7 @@ test("une réponse complète, vide, partielle ou en erreur suit le tarif sans ch
 
 test("deux entreprises homonymes restent distinctes, un objet répété et des champs concordants se complètent", async () => {
   const sandbox = clockedSandbox();
-  sandbox.fetch = scriptedFetch({
+  sandbox.fetch = scriptedFetch(sandbox, {
     elements: [
       { type: "node", id: 10, tags: { name: "Atelier Nord", craft: "joiner", phone: "+1 514 555-0100" } },
       { type: "way", id: 11, tags: { name: "Atelier Nord", craft: "joiner", phone: "514-555-0100", email: "nord@exemple.ca", "addr:housenumber": "10", "addr:street": "rue du Pont" } },
@@ -116,7 +121,7 @@ test("deux entreprises homonymes restent distinctes, un objet répété et des c
 
 test("les autres secteurs restent limités aux nœuds et l'export n'invente pas de coordonnées", async () => {
   const sandbox = clockedSandbox();
-  sandbox.fetch = scriptedFetch({ elements: [] });
+  sandbox.fetch = scriptedFetch(sandbox, { elements: [] });
   const loaded = await loadSources(sandbox);
   const health = loaded.KlirSources.osm.query({ industry: "sante", city: montreal }, 20);
   assert.equal(health.includes('node["name"]'), true);
