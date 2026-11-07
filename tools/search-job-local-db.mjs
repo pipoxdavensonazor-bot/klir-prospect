@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import { Client } from "pg";
 import { pathToFileURL } from "node:url";
@@ -128,7 +128,37 @@ async function execScript(client, sql) {
   for (const statement of splitSql(sql)) await client.query(statement);
 }
 
+async function withSchemaLock(fn) {
+  const path = "/tmp/klir-search-job-schema.lock";
+  const started = Date.now();
+  for (;;) {
+    try {
+      await mkdir(path);
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      const info = await stat(path).catch(() => null);
+      if (info && Date.now() - info.mtimeMs > 60_000) await rm(path, { recursive: true });
+      if (Date.now() - started > 60_000) {
+        const timeout = new Error("schema_lock_timeout");
+        timeout.code = "schema_lock_timeout";
+        throw timeout;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await rm(path, { recursive: true });
+  }
+}
+
 export async function applyLocalSearchJobSchema(client) {
+  return withSchemaLock(async () => applyLocalSearchJobSchemaUnlocked(client));
+}
+
+async function applyLocalSearchJobSchemaUnlocked(client) {
   await ensureConnectRole(client);
   await execScript(client, stub);
   const root = new URL("../supabase/migrations/", import.meta.url);
