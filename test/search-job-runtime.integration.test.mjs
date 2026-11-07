@@ -63,8 +63,8 @@ test("la migration du rôle ne crée pas de connexion et le script local sépare
   assert.doesNotMatch(visibleRuntime, /jobs_enabled\s*=\s*true/);
   assert.doesNotMatch(runtime, /fetch\s*\(/);
   assert.doesNotMatch(worker, /fetch\s*\(/);
-  assert.match(entry, /jobsEnabled: async \(\) => false/);
-  assert.match(entry, /verifyJwt: async \(\) => null/);
+  assert.match(entry, /handleSearchJobRequest/);
+  assert.doesNotMatch(entry, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_DB_URL|local:/);
   assert.doesNotMatch(app, /search-jobs/);
   const parts = splitSql("select 1; create function f() returns int as $$ begin return 1; end $$ language plpgsql;");
   assert.equal(parts.length, 2);
