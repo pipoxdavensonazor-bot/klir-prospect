@@ -18,7 +18,7 @@ async function harness({ quantity = "30", balance = 200, outcome = "complete" } 
     authState: { user: { email: "tester@example.invalid" } },
     searchRunning: false, pendingDebitKey: "", serverLedgerApplied: false, serverSearches: null,
     sel: new Set(), selExplicit: false, selSearch: null, curSearch: null,
-    alert: message => calls.alerts.push(message), esc: String, nav() {},
+    alert: message => calls.alerts.push(message), esc: String, hx: String, nav() {},
     applyServerUsage() {}, sectorLabel: key => sandbox.KlirEngine.industryLabel(key),
     KS: {
       S: { plan: "Free", demo: false, usage: { searches: 0, prospects: 0 }, credits: { balance },
@@ -73,9 +73,17 @@ test("le devis, la réservation, l'appel OSM et l'historique utilisent la quanti
   fields.aCity.value = "laval";
   fields.aArea.value = "montreal_island";
   s.updateSearchQuote();
-  assert.equal(fields.searchPrice.textContent, "6");
-  assert.match(fields.searchSummary.textContent, /Laval.*10 résultats maximum.*rayon de 2,2 km/);
+  assert.equal(fields.searchPrice.textContent, "0");
+  assert.match(fields.searchSummary.textContent, /texte indique Montréal/);
+  assert.match(fields.searchSummary.textContent, /sélection indique Laval/);
+  assert.match(fields.searchSummary.textContent, /aucun crédit n'est réservé/i);
   await s.runSearch(fields.qInput.value);
+  assert.equal(calls.reservations.length, 0);
+  assert.equal(calls.sources.length, 0);
+  await s.runSearch(fields.qInput.value, {
+    placeConfirmation: "laval", cityKey: "laval", industry: "construction",
+    quantity: 10, size: null, area: "montreal_island"
+  });
   assert.equal(calls.reservations[0].amount, 6);
   assert.equal(calls.sources[0].limit, 10);
   assert.equal(calls.sources[0].params.quantity, 10);
@@ -91,6 +99,10 @@ test("une relance conserve les paramètres sauvegardés, même si le formulaire 
   const saved = { industry: "sante", cityKey: "québec", quantity: 20, size: null, area: "radius" };
   fields.aSize.value = "11–50";
   await s.runSearch(fields.qInput.value, saved);
+  assert.equal(calls.sources.length, 0);
+  assert.equal(calls.reservations.length, 0);
+  assert.match(fields.prog.innerHTML, /Lieux en contradiction/);
+  await s.runSearch(fields.qInput.value, { ...saved, placeConfirmation: "québec" });
   assert.equal(calls.reservations[0].amount, 7);
   assert.equal(calls.sources[0].params.city.city, "Québec");
   assert.equal(calls.sources[0].params.industry, "sante");

@@ -167,6 +167,27 @@ test("Paris homonyme, Tokyo, São Paulo et Casablanca ne lancent aucune autre vi
   assert.equal(refused.city, null);
   assert.match(refused.place.message, /Paris, Texas, États-Unis/);
 
+  const named = engine.parseQuery("30 entreprises de rénovation à Montréal");
+  const conflict = engine.applyExplicitPlace(named, { cityKey: "laval", quantity: 10 });
+  assert.equal(conflict.place.status, "ambiguous");
+  assert.equal(conflict.place.title, "Lieux en contradiction");
+  assert.equal(conflict.city, null);
+  assert.match(conflict.place.message, /texte indique Montréal, QC, Canada/);
+  assert.match(conflict.place.message, /sélection indique Laval, QC, Canada/);
+  assert.match(conflict.place.message, /aucun crédit n'est réservé/i);
+  const injected = engine.applyExplicitPlace(named, { cityKey: "laval", placeConfirmation: "toronto" });
+  assert.equal(injected.city, null);
+  assert.equal(injected.place.title, "Lieux en contradiction");
+  const chosenText = engine.applyExplicitPlace(named, { cityKey: "laval", placeConfirmation: "montréal" });
+  assert.equal(chosenText.city.city, "Montréal");
+  assert.equal(chosenText.city.lat, 45.5017);
+  const chosenList = engine.applyExplicitPlace(named, { cityKey: "laval", placeConfirmation: "laval", area: "montreal_island" });
+  assert.equal(chosenList.city.city, "Laval");
+  assert.equal(chosenList.area, "radius");
+  const aligned = engine.applyExplicitPlace(named, { cityKey: "montréal" });
+  assert.equal(aligned.place.status, "supported");
+  assert.equal(aligned.city.city, "Montréal");
+
   for (const [query, status, display] of [
     ["10 restaurants à Tokyo", "unsupported", "Tokyo"],
     ["10 restaurants à Tōkyō", "unsupported", "Tōkyō"],

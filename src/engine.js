@@ -220,19 +220,40 @@ function withBlockedPlace(parsed,controls,place){
   next.city=null;
   return next;
 }
+function contradictionCandidates(place,explicit){
+  if(!place||place.status!=="supported"||!supportedCity(place.cityKey))return null;
+  const selected=explicit&&supportedCity(explicit.cityKey)?explicit.cityKey:null;
+  if(!selected||selected===place.cityKey)return null;
+  return [placeCandidate(place.cityKey),placeCandidate(selected)];
+}
+function contradictionPlace(candidates){
+  const place=blockedPlace("ambiguous",candidates.map(item=>item.label).join(" · "),candidates);
+  place.title="Lieux en contradiction";
+  place.message="Le texte indique "+candidates[0].label+" et la sélection indique "+candidates[1].label+". Confirmez un seul lieu. Aucune recherche n'est lancée et aucun crédit n'est réservé tant que le choix n'est pas confirmé. "+COVERAGE_NOTE;
+  return place;
+}
+function confirmedCandidate(candidates,explicit){
+  const confirmation=explicit&&explicit.placeConfirmation;
+  if(!confirmation)return null;
+  return (candidates||[]).find(item=>item.cityKey===confirmation||item.id===confirmation)||null;
+}
 function applyExplicitPlace(parsed,explicit){
   const source=parsed&&parsed.place?parsed:parseQuery(parsed&&parsed.raw||"");
   const controls=attachControls(source,explicit||{});
   const place=source.place;
   if(place.status==="unsupported"||place.status==="not_found")return withBlockedPlace(source,controls,place);
   if(place.status==="ambiguous"){
-    const confirmation=explicit&&explicit.placeConfirmation;
-    const chosen=(place.candidates||[]).find(item=>item.cityKey===confirmation||item.id===confirmation);
+    const chosen=confirmedCandidate(place.candidates,explicit);
     if(!chosen)return withBlockedPlace(source,controls,place);
     if(chosen.status!=="supported")return withBlockedPlace(source,controls,blockedPlace("unsupported",chosen.label));
     return withSupportedCity(source,controls,chosen.cityKey);
   }
-  if(place.status==="supported"&&supportedCity(explicit&&explicit.cityKey))return withSupportedCity(source,controls,explicit.cityKey);
+  const conflict=contradictionCandidates(place,explicit);
+  if(conflict){
+    const chosen=confirmedCandidate(conflict,explicit);
+    if(!chosen)return withBlockedPlace(source,controls,contradictionPlace(conflict));
+    return withSupportedCity(source,controls,chosen.cityKey);
+  }
   if(place.status==="supported")return withSupportedCity(source,controls,place.cityKey);
   if(supportedCity(explicit&&explicit.cityKey))return withSupportedCity({...source,place:{status:"supported",cityKey:explicit.cityKey,display:supportedCity(explicit.cityKey).city,title:"Lieu pris en charge",message:"",candidates:[placeCandidate(explicit.cityKey)]}},controls,explicit.cityKey);
   return withBlockedPlace(source,controls,blockedPlace("not_found",""));

@@ -461,6 +461,7 @@ function showPlaceBlock(params){
   if(typeof prog.querySelectorAll==="function")prog.querySelectorAll("[data-place-confirm]").forEach(button=>{
     button.onclick=()=>runSearch((document.getElementById("qInput")||{}).value||params.raw||"",{
       placeConfirmation:button.getAttribute("data-place-confirm"),
+      cityKey:(document.getElementById("aCity")||{}).value,
       industry:params.industry,quantity:params.quantity,size:params.size,area:params.area
     });
   });

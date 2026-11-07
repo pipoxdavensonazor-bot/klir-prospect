@@ -29,6 +29,7 @@ Le lieu est décidé localement, sans géocodeur réseau :
 | --- | --- | --- |
 | `supported` | Une des six villes, avec ou sans accent, en français ou en anglais | La recherche peut partir. Le récapitulatif montre la ville, la province ou la région, le pays, le centre et le rayon ou l’emprise. |
 | `absent` | La phrase ne nomme aucun lieu | La ville choisie dans la liste est utilisée, et elle est affichée avant le lancement. `default` n’est plus une ville. |
+| Contradiction | Le texte nomme une ville prise en charge et la liste ou la relance en nomme une autre | Aucune recherche. Les deux lieux sont proposés. Seule une confirmation explicite de l’un d’eux part. Un troisième lieu n’est pas accepté. |
 | `not_found` | Un lieu est écrit mais inconnu du contrat (`北京`, `Blorpland`) | Aucune recherche, aucun crédit réservé. Le texte d’origine est conservé. |
 | `unsupported` | Lieu reconnu hors périmètre : Tokyo, Tōkyō, 東京, São Paulo, Sao Paulo, Casablanca, الدار البيضاء, ou un homonyme confirmé comme non couvert | Aucune recherche, aucun crédit réservé. L’écriture Unicode d’origine est conservée. |
 | `ambiguous` | Plusieurs villes du catalogue, ou Paris qualifié (Texas, TX, Ontario, et les autres homonymes listés) | Aucune recherche tant qu’un seul candidat pris en charge n’est pas confirmé. Confirmer Paris, Texas n’ouvre pas Paris en France ni Montréal. |
@@ -55,6 +56,7 @@ Contrôle manuel, sans compte et sans appel Overpass :
 3. Écrire `10 restaurants à Paris, Texas`. Deux choix apparaissent. Tant qu’on ne confirme pas Paris, Île-de-France, aucun appel ne part. Confirmer Paris, Texas doit rester un refus.
 4. Écrire `10 restaurants à Paris`. Le récapitulatif doit nommer Île-de-France et le centre 48.8566, 2.3522.
 5. Effacer le lieu et choisir Laval dans la liste. Le récapitulatif doit montrer Laval, pas Montréal.
+6. Réécrire `à Montréal` tout en laissant Laval dans la liste. Le récapitulatif doit demander un choix et ne doit pas lancer Laval ni Montréal tant que l’un des deux n’est pas confirmé.
 6. Le guide et l’offre doivent continuer à dire que ce n’est pas une couverture mondiale.
 
 Retour arrière : revenir au commit précédent de `main`. Aucune migration à annuler. Les recherches déjà enregistrées avec `cityKey: "default"` ne seront plus relancées vers Montréal ; il faudra choisir une des six villes. Les recherches enregistrées avec une vraie clé (`montréal`, `laval`, etc.) se relancent comme avant.
