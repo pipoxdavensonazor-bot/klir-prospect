@@ -91,6 +91,8 @@ test("la migration C n'allume pas le drapeau et ne donne pas le règlement au cl
   assert.match(ledgerSql, /revoke all on function private\.reconcile_search_job\(uuid\) from public, anon, authenticated/);
   assert.match(ledgerSql, /reglement_serveur_requis/);
   assert.doesNotMatch(ledgerSql, /grant execute on function private\.reconcile_search_job/i);
+  assert.doesNotMatch(ledgerSql, /grant execute on function public\.settle_usage/i);
+  assert.doesNotMatch(ledgerSql, /grant execute on function public\.reserve_usage/i);
 });
 
 test("deux comptes, l'admin et anon restent isolés, et le reçu v2 n'est pas réglé par le client", async () => {
