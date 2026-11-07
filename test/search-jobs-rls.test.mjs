@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { createSearchJobStore } from "../supabase/functions/_shared/search-job-store.mjs";
 
 const root = new URL("../supabase/migrations/", import.meta.url);
 const profilesSql = await readFile(new URL("20261006004359_create_profiles_and_rls.sql", root), "utf8");
@@ -119,6 +120,25 @@ test("anon est refusé, A et B sont isolés, et l'admin ne lit pas le job d'autr
   const again = await db.query("select public.cancel_search_job($1::uuid) as row", [created.rows[0].row.id]);
   assert.equal(again.rows[0].row.status, "cancelled");
   assert.equal(again.rows[0].row.id, cancelled.rows[0].row.id);
+});
+
+test("le port SQL enqueue et annule via une requête injectée", async () => {
+  const db = await database();
+  await db.exec("update private.search_job_settings set jobs_enabled = true");
+  await asUser(db, ada);
+  const store = createSearchJobStore((sql, params) => db.query(sql, params));
+  const created = await store.enqueue("receipt-port-1", { place_status: "supported", cityKey: "laval" });
+  assert.equal(created.created, true);
+  const again = await store.enqueue("receipt-port-1", { place_status: "supported", cityKey: "laval" });
+  assert.equal(again.created, false);
+  assert.equal(again.id, created.id);
+  const own = await store.readOwn();
+  assert.equal(own.length, 1);
+  const cancelled = await store.cancel(created.id);
+  assert.equal(cancelled.status, "cancelled");
+  await asUser(db, bea);
+  const foreign = await store.readOwn();
+  assert.equal(foreign.length, 0);
 });
 
 test("le plafond minute refuse une deuxième clé sans dupliquer la première", async () => {

@@ -3,6 +3,8 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createSearchJobRunner } from "../supabase/functions/_shared/search-job-runner.mjs";
 import { handleSearchJob } from "../supabase/functions/_shared/search-job-http.mjs";
+import { createGetUserVerifier } from "../supabase/functions/_shared/search-job-auth.mjs";
+import { consumeSearchJob } from "../supabase/functions/_shared/search-job-store.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
 const bea = "22222222-2222-4222-8222-222222222222";
@@ -167,6 +169,70 @@ test("l'entrée HTTP exige un JWT, le drapeau, le plafond et le propriétaire", 
   const entry = await readFile(new URL("../supabase/functions/search-jobs/index.ts", import.meta.url), "utf8");
   const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
   assert.match(entry, /jobsEnabled: async \(\) => false/);
+  assert.equal(entry.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
   assert.equal(app.includes("search-jobs"), false);
   assert.equal(app.includes("enqueue_search_job"), false);
+});
+
+test("le vérificateur JWT et le consommateur s'injectent sans clé ni débit", async () => {
+  const verifier = createGetUserVerifier(async (token) => {
+    if (token === "bon") return { data: { user: { id: ada } }, error: null };
+    if (token === "panne") throw new Error("réseau");
+    return { data: { user: null }, error: { message: "invalid" } };
+  });
+  assert.deepEqual(await verifier("bon"), { id: ada });
+  assert.equal(await verifier("mauvais"), null);
+  assert.equal(await verifier("panne"), null);
+  assert.throws(() => createGetUserVerifier(null), /getUser_required/);
+
+  const calls = [];
+  const observed = await consumeSearchJob({
+    job: { userId: ada, status: "queued", attempt: 0, payload: supported, cancelRequested: false },
+    adapter: {
+      async run(_payload, context) {
+        calls.push(context.attempt);
+        if (context.attempt === 1) {
+          const error = new Error("provider_502");
+          error.code = "provider_502";
+          error.retryable = true;
+          throw error;
+        }
+        return { count: 2 };
+      }
+    }
+  });
+  assert.equal(observed.status, "observed");
+  assert.equal(observed.outcome, "complete");
+  assert.deepEqual(calls, [1, 2]);
+  assert.equal(observed.progress, 100);
+
+  const empty = await consumeSearchJob({
+    job: { userId: ada, status: "queued", attempt: 0, payload: supported },
+    adapter: { async run() { return { count: 0 }; } }
+  });
+  assert.equal(empty.outcome, "empty");
+
+  const live = { userId: ada, status: "queued", attempt: 0, payload: supported, cancelRequested: false };
+  const stoppedMidway = await consumeSearchJob({
+    job: live,
+    adapter: {
+      async run() {
+        live.cancelRequested = true;
+        const error = new Error("stop");
+        error.code = "provider_timeout";
+        error.retryable = true;
+        throw error;
+      }
+    }
+  });
+  assert.equal(stoppedMidway.status, "cancelled");
+
+  const stopped = await consumeSearchJob({
+    job: { userId: ada, status: "cancelled", payload: supported },
+    adapter: { async run() { throw new Error("ne doit pas partir"); } }
+  });
+  assert.equal(stopped.status, "cancelled");
+  const source = await readFile(new URL("../supabase/functions/_shared/search-job-auth.mjs", import.meta.url), "utf8");
+  assert.equal(source.includes("SERVICE_ROLE"), false);
+  assert.equal(source.includes("createClient"), false);
 });
