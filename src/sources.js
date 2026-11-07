@@ -93,10 +93,11 @@ var KlirSources = window.KlirSources || {};
       return { lat: j[0].lat, lng: j[0].lon, label: j[0].display_name };
     } finally { clearTimeout(to); }
   }
+  const SEARCH_SCOPE = (window.KlirData && window.KlirData.SEARCH_SCOPE) || { radiusAllM: 1500, radiusSectorM: 2200, queryTimeoutSec: 15, requestTimeoutMs: 18000, retryAfterCapMs: 30000, montrealIsland: { south: 45.4102, west: -73.9744, north: 45.7058, east: -73.4742 } };
   const CONSTRUCTION_BASE_CRAFTS = ["builder", "electrician", "plumber", "roofer", "painter", "carpenter"];
   const CONSTRUCTION_RENOVATION_CRAFTS = ["plasterer", "tiler", "glazier", "window_construction", "insulation", "parquet_layer", "joiner", "stonemason", "scaffolder", "hvac", "floorer"];
   const CONSTRUCTION_CRAFTS = CONSTRUCTION_BASE_CRAFTS.concat(CONSTRUCTION_RENOVATION_CRAFTS);
-  const MONTREAL_ISLAND_BOUNDS = { south: 45.4102, west: -73.9744, north: 45.7058, east: -73.4742 };
+  const MONTREAL_ISLAND_BOUNDS = SEARCH_SCOPE.montrealIsland;
   const OSM_FILTERS = {
     restauration: ['["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]'],
     sante: ['["amenity"~"^(clinic|doctors|dentist|pharmacy|hospital)$"]'],
@@ -197,7 +198,7 @@ var KlirSources = window.KlirSources || {};
       clause = "(" + bounds.south + "," + bounds.west + "," + bounds.north + "," + bounds.east + ")";
     } else {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Cette ville n'a pas de coordonnées pour OpenStreetMap.");
-      const radius = industry === "all" ? 1500 : 2200;
+      const radius = industry === "all" ? SEARCH_SCOPE.radiusAllM : SEARCH_SCOPE.radiusSectorM;
       const around = "(around:" + radius + "," + lat + "," + lng + ")";
       clause = around;
     }
@@ -207,7 +208,7 @@ var KlirSources = window.KlirSources || {};
         return type + "[\"name\"]" + filter + clause + ";";
       }).join("");
     }).join("");
-    return "[out:json][timeout:15];(" + body + ");out tags " + limit + ";";
+    return "[out:json][timeout:" + SEARCH_SCOPE.queryTimeoutSec + "];(" + body + ");out tags " + limit + ";";
   }
   function overpassCoverage(payload) {
     const raw = payload && payload.remark;
@@ -265,7 +266,7 @@ var KlirSources = window.KlirSources || {};
   }
   function overpassRetryDelay(response) {
     const fallback = 8000;
-    const cap = 30000;
+    const cap = SEARCH_SCOPE.retryAfterCapMs;
     const header = response && response.headers && response.headers.get ? response.headers.get("Retry-After") : "";
     if (!header) return fallback;
     const seconds = Number(header);
@@ -274,7 +275,7 @@ var KlirSources = window.KlirSources || {};
     if (!Number.isNaN(when)) return Math.min(Math.max(0, when - Date.now()), cap);
     return fallback;
   }
-  const OVERPASS_TIMEOUT_MS = 18000;
+  const OVERPASS_TIMEOUT_MS = SEARCH_SCOPE.requestTimeoutMs;
   // Le Worker ne proxifie pas : il ne sert que dist/.
   // 429 attend Retry-After ; 5xx, coupure et délai passent au serveur suivant.
   const OVERPASS_ENDPOINTS = [
@@ -340,6 +341,9 @@ var KlirSources = window.KlirSources || {};
     throw lastError || new Error("Recherche échouée : OpenStreetMap est indisponible.");
   }
   async function searchPlaces(params, maxN) {
+    if (params && params.place && params.place.status && params.place.status !== "supported") {
+      throw new Error("Recherche refusée : le lieu n'est pas un périmètre pris en charge.");
+    }
     const limit = Math.min(40, Math.max(5, maxN || 20));
     const payload = await askOverpass(overpassQuery(params, limit));
     const area = resolveArea(params);
@@ -381,7 +385,12 @@ var KlirSources = window.KlirSources || {};
     endpoints: OVERPASS_ENDPOINTS.slice(),
     constructionCrafts: CONSTRUCTION_CRAFTS,
     renovationCrafts: CONSTRUCTION_RENOVATION_CRAFTS,
-    areas: { montreal_island: MONTREAL_ISLAND_BOUNDS }
+    areas: { montreal_island: MONTREAL_ISLAND_BOUNDS },
+    limits: {
+      requestMs: OVERPASS_TIMEOUT_MS,
+      queryTimeoutSec: SEARCH_SCOPE.queryTimeoutSec,
+      retryAfterCapMs: SEARCH_SCOPE.retryAfterCapMs
+    }
   };
   window.KlirSources = KlirSources;
 })();

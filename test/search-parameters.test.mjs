@@ -46,7 +46,7 @@ async function harness({ quantity = "30", balance = 200, outcome = "complete" } 
   for (const file of ["data.js", "engine.js"]) vm.runInContext(await readFile(new URL(file, root), "utf8"), sandbox);
   sandbox.E = sandbox.KlirEngine;
   vm.runInContext(app.slice(app.indexOf("function sizeLabel"), app.indexOf("function spendCredits")), sandbox);
-  vm.runInContext(app.slice(app.indexOf("function formSearchParams"), app.indexOf("function vNew")), sandbox);
+  vm.runInContext(app.slice(app.indexOf("function formControls"), app.indexOf("function vNew")), sandbox);
   vm.runInContext(app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm")), sandbox);
   return { sandbox, fields, calls };
 }
