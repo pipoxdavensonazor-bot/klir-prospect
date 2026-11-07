@@ -2,6 +2,7 @@ import http from "node:http";
 import { Client } from "pg";
 import { pathToFileURL } from "node:url";
 import { createGetUserVerifier } from "../supabase/functions/_shared/search-job-auth.mjs";
+import { assertLocalAuthTarget, createSupabaseGetUser } from "../supabase/functions/_shared/search-job-supabase-auth.mjs";
 import { handleSearchJob } from "../supabase/functions/_shared/search-job-http.mjs";
 import { createSearchJobStore } from "../supabase/functions/_shared/search-job-store.mjs";
 import { createLocalSimulatedProvider, runWorkerCycle } from "../supabase/functions/_shared/search-job-worker.mjs";
@@ -43,13 +44,29 @@ export function assertRuntimeConfig(env = process.env) {
     error.code = "port_invalide";
     throw error;
   }
+  const auth = env.SEARCH_JOBS_AUTH || "local";
+  if (auth !== "local" && auth !== "supabase") {
+    const error = new Error("auth_mode_inconnu");
+    error.code = "auth_mode_inconnu";
+    throw error;
+  }
+  const authTarget = auth === "supabase"
+    ? assertLocalAuthTarget(env.SEARCH_JOBS_AUTH_URL, env.SEARCH_JOBS_AUTH_KEY)
+    : null;
   return {
     host,
     database: env.SEARCH_JOBS_DB_NAME,
     user: CONNECT_ROLE,
     port,
-    worker: env.SEARCH_JOBS_WORKER === "manual" ? "manual" : "auto"
+    worker: env.SEARCH_JOBS_WORKER === "manual" ? "manual" : "auto",
+    auth,
+    authTarget
   };
+}
+
+function createRuntimeGetUser(env) {
+  if ((env.SEARCH_JOBS_AUTH || "local") === "supabase") return createSupabaseGetUser(env);
+  return createLocalGetUser();
 }
 
 function createLocalGetUser() {
@@ -137,7 +154,7 @@ export async function startSearchJobRuntime(env = process.env) {
   const onApi = gate();
   const onRunner = gate();
   const adapter = createLocalSimulatedProvider();
-  const verifyJwt = createGetUserVerifier(createLocalGetUser());
+  const verifyJwt = createGetUserVerifier(createRuntimeGetUser(env));
 
   async function withUser(userId, fn) {
     await api.query("begin");
@@ -191,6 +208,7 @@ export async function startSearchJobRuntime(env = process.env) {
         send(res, 200, {
           local: true,
           worker: config.worker,
+          auth: config.auth === "supabase" ? "supabase-getUser" : "local-simulated",
           api: apiWho,
           runner: runnerWho
         });

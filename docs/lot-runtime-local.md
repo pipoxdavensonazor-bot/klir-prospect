@@ -4,7 +4,7 @@ Cette branche part du lot C (`cursor/search-job-ledger-lot-c-2f07`). Elle ne fus
 
 ## Ce qui est exécutable
 
-`node tools/search-job-runtime.mjs` ouvre une entrée HTTP locale. Elle vérifie un jeton par `createGetUserVerifier(getUser)`, la même forme que `supabase.auth.getUser`. En local, `getUser` n’accepte que `local:<uuid>`. Ce n’est pas une signature JWT et ce n’est pas le projet Supabase. L’entrée déployable `supabase/functions/search-jobs/index.ts` reste fermée : `jobsEnabled` vaut `false` et `verifyJwt` rend `null`.
+`node tools/search-job-runtime.mjs` ouvre une entrée HTTP locale. Elle vérifie un jeton par `createGetUserVerifier(getUser)`. Sans `SEARCH_JOBS_AUTH=supabase`, `getUser` n’accepte que `local:<uuid>` : c’est simulé, pas une signature. Avec `SEARCH_JOBS_AUTH=supabase`, le processus appelle le vrai `supabase.auth.getUser` vers une URL de boucle locale seulement. Le détail est dans `docs/lot-auth-getuser.md`. L’entrée déployable `supabase/functions/search-jobs/index.ts` reste fermée : `jobsEnabled` vaut `false` et `verifyJwt` rend `null`.
 
 Le processus se connecte en `klir_job_connect`, puis chaque ordre passe par `set role` :
 
