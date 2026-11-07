@@ -80,8 +80,9 @@ test("le client supabase-js getUser interroge le service local et ne décode pas
     assert.match(source, /auth\.getUser\(jwt\)/);
     assert.doesNotMatch(source, /jwt\.decode|atob\(|JSON\.parse\(Buffer/);
     const entry = await readFile(new URL("../supabase/functions/search-jobs/index.ts", import.meta.url), "utf8");
-    assert.match(entry, /verifyJwt: async \(\) => null/);
-    assert.doesNotMatch(entry, /createClient|createSupabaseGetUser/);
+    assert.match(entry, /handleSearchJobRequest/);
+    assert.match(entry, /createClient/);
+    assert.doesNotMatch(entry, /verifyJwt: async \(\) => null|local:|SUPABASE_SERVICE_ROLE_KEY|atob\(/);
   } finally {
     await stub.close();
   }
