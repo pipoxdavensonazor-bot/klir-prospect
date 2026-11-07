@@ -18,6 +18,10 @@ export function createSearchJobStore(query) {
       const result = await query("select id, user_id, status, attempt, progress from public.search_jobs");
       return result.rows;
     },
+    async readById(jobId) {
+      const result = await query("select public.read_search_job($1::uuid) as row", [jobId]);
+      return result.rows[0] ? result.rows[0].row : null;
+    },
     async cancel(jobId) {
       const result = await query("select public.cancel_search_job($1::uuid) as row", [jobId]);
       return result.rows[0].row;
