@@ -23,7 +23,8 @@ const PARIS_OTHER=[
   {id:"paris-illinois", label:"Paris, Illinois, États-Unis", names:["illinois"], codes:["il"]},
   {id:"paris-idaho", label:"Paris, Idaho, États-Unis", names:["idaho"], codes:["id"]},
   {id:"paris-arkansas", label:"Paris, Arkansas, États-Unis", names:["arkansas"], codes:["ar"]},
-  {id:"paris-maine", label:"Paris, Maine, États-Unis", names:["maine"], codes:["me"]}
+  {id:"paris-maine", label:"Paris, Maine, États-Unis", names:["maine"], codes:["me"]},
+  {id:"paris-us", label:"Paris, États-Unis", names:["etats-unis","etats unis","united states","usa"], codes:[]}
 ];
 const UNSUPPORTED_PLACES=[
   {id:"tokyo", folded:["tokyo"], exact:["東京","トウキョウ"]},
@@ -72,7 +73,7 @@ function findFolded(folded,needle){
 }
 function parisQualifier(folded,end){
   const window=folded.slice(end,end+28);
-  const named=window.match(/^\s*,?\s*(texas|ontario|kentucky|tennessee|illinois|idaho|arkansas|maine|france|ile-de-france|ile de france)\b/);
+  const named=window.match(/^\s*,?\s*(texas|ontario|kentucky|tennessee|illinois|idaho|arkansas|maine|etats-unis|etats unis|united states|usa|france|ile-de-france|ile de france)\b/);
   if(named)return named[1];
   const coded=window.match(/^\s*,\s*(tx|on|ky|tn|il|id|ar|me)\b/)||window.match(/^\s+(tx|on|ky|tn|il|id|ar|me)(?=\s*$|[\s]*[,.;])/);
   return coded?coded[1]:"";
@@ -108,8 +109,71 @@ function describePlace(params){
   const area=scope.area==="montreal_island"&&scope.bounds
     ?"emprise de l'île de Montréal ("+scope.bounds.south+", "+scope.bounds.west+" → "+scope.bounds.north+", "+scope.bounds.east+")"
     :(scope.radiusM===1500?"rayon de 1,5 km":"rayon de 2,2 km");
-  const note=params.cityKey==="paris"?" Les autres Paris (Texas, Ontario et autres homonymes) ne sont pas recherchés.":"";
-  return industryLabel(params.industry)+" · "+city.city+", "+city.province+", "+city.country+" · centre "+city.lat+", "+city.lng+" · "+params.quantity+" résultats maximum · "+area+"."+note+" "+COVERAGE_NOTE+" Le nombre demandé n'est pas garanti.";
+  const note=params.cityKey==="paris"?" Les autres Paris (Texas, Ontario, États-Unis et autres homonymes) ne sont pas recherchés.":"";
+  const unknown=(params.unknownCriteria||[]).length?" Critères non disponibles, laissés inconnus : "+params.unknownCriteria.join(", ")+".":"";
+  const code=city.countryCode?" "+city.countryCode:"";
+  return industryLabel(params.industry)+" · "+city.city+", "+(city.region||city.province)+", "+city.country+code+" · centre "+city.lat+", "+city.lng+" · "+params.quantity+" résultats maximum · "+area+"."+note+unknown+" "+COVERAGE_NOTE+" Le géocodage mondial n'est pas branché. Le nombre demandé n'est pas garanti.";
+}
+function asksWiderThanCircle(raw){
+  return /\b(province|pays|country|countries|etat feder|state of|toute la ville|ville entiere|entire city|whole city)\b/.test(foldText(raw));
+}
+function unknownCriteriaIn(raw){
+  const low=foldText(raw);
+  const found=[];
+  if(/chiffre d.?affaires|revenu annuel|annual revenue/.test(low))found.push("chiffre d'affaires");
+  if(/\bindependan/.test(low))found.push("indépendance");
+  if(/effectif exact|nombre d.employ/.test(low))found.push("effectif");
+  return found;
+}
+function finiteCoord(value, min, max){
+  return typeof value==="number"&&Number.isFinite(value)&&value>=min&&value<=max;
+}
+function validateSearchScope(scope){
+  const errors=[];
+  const input=scope||{};
+  if(input.lat!=null||input.lng!=null){
+    if(!finiteCoord(input.lat,-90,90))errors.push("latitude");
+    if(!finiteCoord(input.lng,-180,180))errors.push("longitude");
+  }
+  if(input.radiusM!=null&&(!Number.isFinite(input.radiusM)||input.radiusM<=0||input.radiusM>2200))errors.push("rayon");
+  if(input.polygon!=null){
+    const ring=input.polygon;
+    const closed=Array.isArray(ring)&&ring.length>=4&&ring[0]&&ring[ring.length-1]&&ring[0][0]===ring[ring.length-1][0]&&ring[0][1]===ring[ring.length-1][1];
+    if(!closed)errors.push("polygone");
+    else{
+      for(const point of ring){
+        if(!Array.isArray(point)||!finiteCoord(point[1],-90,90)||!finiteCoord(point[0],-180,180))errors.push("polygone");
+      }
+    }
+  }
+  return {ok:errors.length===0, errors:[...new Set(errors)]};
+}
+function readGeocoderConfig(env){
+  const provider=String((env&&env.SEARCH_GEOCODER_PROVIDER)||"").trim();
+  return {enabled:false, provider:provider||null, reason:"Géocodage mondial désactivé : aucun fournisseur sous licence n'est validé."};
+}
+function createGeocoder(options){
+  const provider=options&&options.provider;
+  const enabled=!!(options&&options.enabled===true&&options.licenseAccepted===true&&provider&&typeof provider.lookup==="function");
+  const cache=new Map();
+  return {
+    enabled,
+    async lookup(query){
+      const text=String(query||"");
+      if(!enabled)return {status:"disabled", query:text, matches:[], cached:false, message:"Géocodage mondial indisponible : aucun fournisseur validé."};
+      const key=foldText(text);
+      if(cache.has(key))return {...cache.get(key), cached:true};
+      const found=await provider.lookup(text);
+      const matches=Array.isArray(found)?found:[];
+      const result=matches.length===1
+        ?{status:"resolved", query:text, matches, cached:false}
+        :matches.length>1
+          ?{status:"ambiguous", query:text, matches, cached:false, message:"Plusieurs lieux. Aucun n'est choisi automatiquement."}
+          :{status:"not_found", query:text, matches:[], cached:false};
+      cache.set(key, result);
+      return result;
+    }
+  };
 }
 function collectPlaceHits(raw){
   const map=foldMap(raw);
@@ -178,6 +242,12 @@ function resolvePlace(raw){
   }
   const hit=hits[0];
   if(hit.kind==="unsupported")return blockedPlace("unsupported",hit.display);
+  if(hit.kind==="catalog"&&asksWiderThanCircle(raw)){
+    const wide=blockedPlace("unsupported",hit.display);
+    wide.title="Périmètre trop large";
+    wide.message="« "+hit.display+" » figure au catalogue, mais la formulation vise un pays, une province ou la ville entière. Seul un cercle autour du centre existe, et il n'a pas été recherché. "+COVERAGE_NOTE;
+    return wide;
+  }
   return {status:"supported",display:hit.display,title:"Lieu pris en charge",message:"",candidates:[placeCandidate(hit.cityKey)],cityKey:hit.cityKey};
 }
 function normalizeSearchParams(params,overrides={}){
@@ -273,7 +343,9 @@ function parseQuery(q){
     ||low.match(/^\s*(\d+)(?!\d|\s*[–-]\s*\d)(?:\s|$)/);
   if(m)qty=Number(m[1]);
   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
-  return normalizeSearchParams({industry,cityKey:place.cityKey,quantity:qty,size,raw:q,place});
+  const unknownCriteria=unknownCriteriaIn(q);
+  if(unknownCriteria.includes("effectif"))size=null;
+  return normalizeSearchParams({industry,cityKey:place.cityKey,quantity:qty,size,raw:q,place,unknownCriteria});
 }
 function seededRand(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
 function genProspects(params, qty){
@@ -395,9 +467,9 @@ function enrichWaterfall(p, active){
   p.enrichedFrom=prov;
   return {filled, chain};
 }
-window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,validateSearchScope,readGeocoderConfig,createGeocoder,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
 function aiAnalysis(p, params){
   const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
 }
-window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,validateSearchScope,readGeocoderConfig,createGeocoder,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};

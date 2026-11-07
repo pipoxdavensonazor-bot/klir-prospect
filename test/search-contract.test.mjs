@@ -265,7 +265,7 @@ test("un Paris homonyme attend une confirmation et ne cherche pas Montréal", as
 test("sans lieu dans la phrase, la ville choisie explicitement est affichée et utilisée", async () => {
   const { sandbox, fields, calls } = await harness({ query: "30 entreprises de rénovation", cityKey: "laval" });
   sandbox.updateSearchQuote();
-  assert.match(fields.searchSummary.textContent, /Laval, QC, Canada/);
+  assert.match(fields.searchSummary.textContent, /Laval, Québec, Canada/);
   assert.match(fields.searchSummary.textContent, /45\.6066, -73\.7124/);
   assert.match(fields.searchSummary.textContent, /Pas une couverture mondiale/);
   await sandbox.runSearch(fields.qInput.value);
