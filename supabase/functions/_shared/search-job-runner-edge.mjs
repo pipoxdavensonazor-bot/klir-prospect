@@ -1,0 +1,161 @@
+import { createGetUserVerifier } from "./search-job-auth.mjs";
+import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-job-edge.mjs";
+
+export const CONNECT_ROLE = "klir_job_connect_test";
+export const RUNNER_ROLE = "klir_job_runner";
+
+export const RUNNER_DIAGNOSTIC_SQL = Object.freeze({
+  assume: "set local role klir_job_runner",
+  identity: "select current_user as role_name, session_user as session_name",
+  flag: "select private.diagnose_search_job_connection() as jobs_enabled",
+  billingProbe: "select 1 from public.credit_accounts limit 0"
+});
+
+function reject(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
+function json(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8" }
+  });
+}
+
+function bearer(request) {
+  const header = request.headers.get("authorization") ?? "";
+  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+}
+
+export function assertRunnerDbConfig(env = {}) {
+  const host = String(env.KLIR_JOB_DB_HOST || "").trim().toLowerCase();
+  const port = Number(String(env.KLIR_JOB_DB_PORT || "").trim());
+  const database = String(env.KLIR_JOB_DB_NAME || "").trim();
+  const user = String(env.KLIR_JOB_DB_USER || "").trim();
+  const password = String(env.KLIR_JOB_DB_PASSWORD || "");
+  if (!host || !Number.isInteger(port) || !database || !user || !password) throw reject("connexion_serveur_absente");
+  if (host.includes(PROD_PROJECT_REF) || user.toLowerCase().includes(PROD_PROJECT_REF)) throw reject("production_refusee");
+  if (!host.endsWith(".pooler.supabase.com")) throw reject("hote_non_pooler");
+  if (port !== 6543) throw reject("port_non_transaction");
+  if (database !== "postgres") throw reject("base_refusee");
+  if (user !== `${CONNECT_ROLE}.${TEST_PROJECT_REF}`) throw reject("role_connexion_refuse");
+  return { host, port, database, user, password };
+}
+
+export function bindRunnerPostgres(postgres) {
+  if (typeof postgres !== "function") throw reject("connexion_non_branchee");
+  return async function connect(env) {
+    const config = assertRunnerDbConfig(env);
+    const sql = postgres({
+      host: config.host,
+      port: config.port,
+      database: config.database,
+      username: config.user,
+      password: config.password,
+      ssl: "require",
+      max: 1,
+      prepare: false
+    });
+    return {
+      begin: (fn) => sql.begin(fn),
+      close: () => sql.end({ timeout: 1 })
+    };
+  };
+}
+
+function userClient(createClient, auth, jwt, fetchImpl) {
+  return createClient(auth.url, auth.key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storage: { getItem() { return null; }, setItem() {}, removeItem() {} }
+    },
+    global: {
+      headers: { Authorization: `Bearer ${jwt}` },
+      ...(fetchImpl ? { fetch: fetchImpl } : {})
+    }
+  });
+}
+
+async function readDiagnosis(sql) {
+  await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
+  const who = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.identity);
+  const flag = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.flag);
+  const identity = who && who[0];
+  const jobsEnabled = flag && flag[0] ? flag[0].jobs_enabled === true : null;
+  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== CONNECT_ROLE) {
+    throw reject("role_exploitation_refuse");
+  }
+  return { jobsEnabled };
+}
+
+async function assertBillingDenied(sql) {
+  try {
+    await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
+    await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.billingProbe);
+  } catch (error) {
+    if (error && (error.code === "42501" || /permission denied/i.test(String(error.message || "")))) return;
+    throw reject("connexion_serveur_absente");
+  }
+  throw reject("role_trop_large");
+}
+
+export async function handleRunnerDiagnostic(request, options = {}) {
+  if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
+  const token = bearer(request);
+  if (!token || token.startsWith("local:")) return json(401, { error: "authentication_required" });
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json(400, { error: "invalid_request" });
+  }
+  let auth;
+  try {
+    auth = resolveTestAuth(options.env || {});
+  } catch (error) {
+    return json(503, { error: error.code || "configuration_absente" });
+  }
+  if (typeof options.createClient !== "function") return json(503, { error: "connexion_non_branchee" });
+
+  const supabase = userClient(options.createClient, auth, token, options.fetch);
+  const verifyJwt = createGetUserVerifier((jwt) => supabase.auth.getUser(jwt));
+  const user = await verifyJwt(token);
+  if (!user) return json(401, { error: "authentication_required" });
+  const admin = await supabase.rpc("is_admin");
+  if (admin.error || admin.data !== true) return json(403, { error: "autorisation_refusee" });
+  if (!body || body.action !== "diagnose") return json(403, { error: "fournisseur_absent" });
+  try {
+    assertRunnerDbConfig(options.env || {});
+  } catch (error) {
+    return json(503, { error: error.code || "configuration_absente" });
+  }
+  if (typeof options.connect !== "function") return json(503, { error: "connexion_non_branchee" });
+
+  let db;
+  try {
+    db = await options.connect(options.env);
+    const diagnosis = await db.begin((sql) => readDiagnosis(sql));
+    await db.begin((sql) => assertBillingDenied(sql));
+    return json(200, {
+      connected: true,
+      role: RUNNER_ROLE,
+      jobsEnabled: diagnosis.jobsEnabled,
+      billing: "refuse",
+      provider: "absent",
+      executed: false,
+      scheduler: "off"
+    });
+  } catch (error) {
+    const code = error && /^[a-z0-9_]+$/.test(String(error.code || "")) ? error.code : "connexion_serveur_absente";
+    return json(503, { error: code });
+  } finally {
+    if (db) {
+      try { await db.close(); } catch { /* fermeture */ }
+    }
+  }
+}
