@@ -22,7 +22,7 @@ Le client peut annuler son propre job : la réservation est alors libérée. Il 
 | `reserved_until` dépassé sans collecte | Libération, erreur `reservation_expired`. |
 | Rejeu du même règlement | Aucun second débit, aucun solde négatif. |
 
-L’ancien parcours, un reçu `debit_` ou `radar_` qui n’appartient pas à un job, continue d’utiliser `reserve_usage` et `settle_usage`.
+L’ancien parcours, un reçu `debit_` ou `radar_` qui n’appartient pas à un job, continue d’utiliser `reserve_usage` et `settle_usage` pour les rôles qui avaient déjà `EXECUTE`. Le remplacement de `settle_usage` ne donne pas ce droit à `authenticated`, `anon` ou `PUBLIC`. Une base où seuls le propriétaire et `service_role` règlent le reste ainsi. Un droit déjà présent n’est pas retiré.
 
 ## Revue des courses
 
