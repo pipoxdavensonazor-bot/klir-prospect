@@ -193,6 +193,25 @@ test("PostgreSQL durci : C ne rouvre pas la facturation, expiration et règlemen
     assert.equal(after, before);
     assert.equal(after.includes("authenticated"), false);
     assert.equal(after.includes("service_role"), true);
+    try {
+      await access(new URL(runtimeFile, root));
+      const { splitSql } = await import("../tools/search-job-local-db.mjs");
+      for (const statement of splitSql(await sql(runtimeFile))) await db.query(statement);
+      const afterRuntime = await grantees((text, params) => db.query(text, params), "settle_usage");
+      const reserveRuntime = await grantees((text, params) => db.query(text, params), "reserve_usage");
+      assert.equal(afterRuntime, before);
+      assert.equal(reserveRuntime.includes("authenticated"), false);
+      assert.equal(reserveRuntime.includes("service_role"), true);
+      const runner = await db.query("select rolcanlogin, rolsuper from pg_roles where rolname = 'klir_job_runner'");
+      assert.equal(runner.rows[0].rolcanlogin, false);
+      assert.equal(runner.rows[0].rolsuper, false);
+    } catch (error) {
+      if (error && error.code === "ENOENT") {
+        /* branche C : pas de migration runtime */
+      } else {
+        throw error;
+      }
+    }
 
     await db.query("select set_config('request.jwt.claim.sub', $1, false)", [ada]);
     await db.query("set role authenticated");
