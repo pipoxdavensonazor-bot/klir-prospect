@@ -260,6 +260,30 @@ test("une réponse JSON valide sans fiche n'est pas une erreur", async () => {
   assert.deepEqual(http.calls, [200]);
 });
 
+test("un HTTP 429 sur tous les serveurs échoue sans inventer de fiche", async () => {
+  const { sandbox, waits } = clockedSandbox();
+  const http = scriptedFetch([{ status: 429, body: "", headers: { "Retry-After": "0" } }]);
+  sandbox.fetch = http.fetch;
+  const sources = await loadSources(sandbox);
+  await assert.rejects(sources.osm.search(params(), 8), /Recherche échouée : OpenStreetMap a répondu 429/);
+  assert.deepEqual(http.calls, [429, 429, 429, 429]);
+  assert.deepEqual(http.urls, listed(sources));
+  assert.deepEqual(waits, []);
+});
+
+test("un HTTP 200 tronqué est une panne, sans reprise ni fiche partielle", async () => {
+  const { sandbox, waits } = clockedSandbox();
+  const http = scriptedFetch([{ status: 200, body: '{"elements":[{"type":"node","id":1' }]);
+  sandbox.fetch = http.fetch;
+  const sources = await loadSources(sandbox);
+  await assert.rejects(sources.osm.search(params(), 8), /Recherche échouée : réponse OpenStreetMap invalide/);
+  assert.deepEqual(http.calls, [200]);
+  assert.deepEqual(waits, []);
+  assert.equal(sources.osm.limits.requestMs, 18000);
+  assert.equal(sources.osm.limits.queryTimeoutSec, 15);
+  assert.equal(sources.osm.limits.retryAfterCapMs, 30000);
+});
+
 test("un JSON mal formé échoue sans reprise", async () => {
   const { sandbox, waits } = clockedSandbox();
   const http = scriptedFetch([{ status: 200, body: "<html>pas du json</html>" }]);

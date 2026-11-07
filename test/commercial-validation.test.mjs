@@ -94,10 +94,14 @@ test("Montréal et Québec sont reconnus avec ou sans accent", async () => {
     assert.equal(params.size, null, query);
   }
   const unnamed = engine.parseQuery("30 entreprises de rénovation");
-  assert.equal(unnamed.cityKey, "default");
-  assert.equal(unnamed.city.city, "Montréal");
+  assert.equal(unnamed.place.status, "absent");
+  assert.equal(unnamed.cityKey, null);
+  assert.equal(unnamed.city, null);
+  assert.equal(JSON.stringify(unnamed).includes("45.5017"), false);
   const last = engine.parseQuery("entreprises de Montréal vers Québec");
-  assert.equal(last.city.city, "Québec");
+  assert.equal(last.place.status, "ambiguous");
+  assert.equal(last.city, null);
+  assert.equal(last.place.candidates.map((item) => item.cityKey).join(","), "montréal,québec");
 });
 
 test("une taille absente reste Non renseigné", async () => {

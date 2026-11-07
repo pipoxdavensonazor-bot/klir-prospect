@@ -14,6 +14,172 @@ function industryKeys(params){
   return Object.keys(KlirData.INDUSTRIES);
 }
 const SEARCH_LIMITS=Object.freeze({min:10,max:40,defaultQuantity:40});
+const COVERAGE_NOTE="Périmètre actuel : Montréal, Laval, Québec, Toronto, Paris et Lyon. Pas une couverture mondiale.";
+const PARIS_OTHER=[
+  {id:"paris-texas", label:"Paris, Texas, États-Unis", names:["texas"], codes:["tx"]},
+  {id:"paris-ontario", label:"Paris, Ontario, Canada", names:["ontario"], codes:["on"]},
+  {id:"paris-kentucky", label:"Paris, Kentucky, États-Unis", names:["kentucky"], codes:["ky"]},
+  {id:"paris-tennessee", label:"Paris, Tennessee, États-Unis", names:["tennessee"], codes:["tn"]},
+  {id:"paris-illinois", label:"Paris, Illinois, États-Unis", names:["illinois"], codes:["il"]},
+  {id:"paris-idaho", label:"Paris, Idaho, États-Unis", names:["idaho"], codes:["id"]},
+  {id:"paris-arkansas", label:"Paris, Arkansas, États-Unis", names:["arkansas"], codes:["ar"]},
+  {id:"paris-maine", label:"Paris, Maine, États-Unis", names:["maine"], codes:["me"]}
+];
+const UNSUPPORTED_PLACES=[
+  {id:"tokyo", folded:["tokyo"], exact:["東京","トウキョウ"]},
+  {id:"sao-paulo", folded:["sao paulo"], exact:[]},
+  {id:"casablanca", folded:["casablanca"], exact:["الدار البيضاء"]}
+];
+function supportedCityKeys(){return (KlirData.SUPPORTED_CITY_KEYS||[]).slice();}
+function supportedCity(key){
+  if(!supportedCityKeys().includes(key))return null;
+  const city=KlirData.CITIES[key];
+  return city&&city.supported!==false?city:null;
+}
+function supportedCityKeyByName(name){
+  const wanted=foldText(name);
+  if(!wanted)return null;
+  return supportedCityKeys().find(key=>foldText(key)===wanted||foldText(KlirData.CITIES[key].city)===wanted)||null;
+}
+function foldText(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function foldMap(value){
+  const chars=Array.from(String(value||""));
+  let folded="";
+  const starts=[];
+  chars.forEach((ch,index)=>{
+    const piece=foldText(ch);
+    for(let i=0;i<piece.length;i++)starts.push(index);
+    folded+=piece;
+  });
+  return {chars,folded,starts};
+}
+function originalSlice(map,start,end){
+  const from=start<=0?0:(map.starts[start]??map.chars.length);
+  const to=end>=map.starts.length?map.chars.length:(map.starts[end]??map.chars.length);
+  return map.chars.slice(from,to).join("");
+}
+function findFolded(folded,needle){
+  const hits=[];
+  const escaped=needle.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const re=new RegExp("(^|[^a-z0-9])("+escaped+")(?![a-z0-9])","g");
+  let match;
+  while((match=re.exec(folded))){
+    const start=match.index+match[1].length;
+    hits.push({start,end:start+match[2].length});
+    if(!match[0].length)re.lastIndex++;
+  }
+  return hits;
+}
+function parisQualifier(folded,end){
+  const window=folded.slice(end,end+28);
+  const named=window.match(/^\s*,?\s*(texas|ontario|kentucky|tennessee|illinois|idaho|arkansas|maine|france|ile-de-france|ile de france)\b/);
+  if(named)return named[1];
+  const coded=window.match(/^\s*,\s*(tx|on|ky|tn|il|id|ar|me)\b/)||window.match(/^\s+(tx|on|ky|tn|il|id|ar|me)(?=\s*$|[\s]*[,.;])/);
+  return coded?coded[1]:"";
+}
+function placeCandidate(cityKey){
+  const city=supportedCity(cityKey);
+  return {id:cityKey,cityKey,status:"supported",label:city.city+", "+city.province+", "+city.country};
+}
+function blockedPlace(status,display,candidates){
+  const shown=String(display||"");
+  const title={unsupported:"Lieu non pris en charge",ambiguous:"Lieu ambigu",not_found:"Lieu introuvable",absent:"Lieu absent"}[status]||"Lieu non recherché";
+  let message;
+  if(status==="unsupported")message="« "+shown+" » est reconnu, mais n'est pas pris en charge. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. La ville affichée dans la liste n'est pas interrogée. Aucun crédit n'est réservé.";
+  else if(status==="ambiguous")message="Plusieurs lieux correspondent : "+(candidates||[]).map(item=>item.label).join(" ; ")+". Confirmez un seul lieu. Aucune recherche n'est lancée et aucun crédit n'est réservé tant que le choix n'est pas confirmé. La ville affichée dans la liste n'est pas interrogée. "+COVERAGE_NOTE;
+  else if(status==="absent")message="Aucun lieu n'est indiqué. Choisissez une des six villes prises en charge. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. Aucun crédit n'est réservé.";
+  else message=(shown?"« "+shown+" » n'a pas été reconnu. ":"Ce lieu n'a pas été reconnu. ")+"Choisissez Montréal, Laval, Québec, Toronto, Paris ou Lyon. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. La ville affichée dans la liste n'est pas interrogée. Aucun crédit n'est réservé.";
+  return {status,display:shown,title,message,candidates:candidates||[],cityKey:null};
+}
+function scopeFor(cityKey,industry,area){
+  const limits=KlirData.SEARCH_SCOPE||{radiusAllM:1500,radiusSectorM:2200,montrealIsland:null};
+  const island=area==="montreal_island"&&cityKey==="montréal";
+  return {
+    area:island?"montreal_island":"radius",
+    radiusM:island?null:(industry==="all"?limits.radiusAllM:limits.radiusSectorM),
+    bounds:island?limits.montrealIsland:null
+  };
+}
+function describePlace(params){
+  const place=params&&params.place||{};
+  if(!params||place.status!=="supported"||!params.city)return place.message||"";
+  const city=params.city;
+  const scope=scopeFor(params.cityKey,params.industry,params.area);
+  const area=scope.area==="montreal_island"&&scope.bounds
+    ?"emprise de l'île de Montréal ("+scope.bounds.south+", "+scope.bounds.west+" → "+scope.bounds.north+", "+scope.bounds.east+")"
+    :(scope.radiusM===1500?"rayon de 1,5 km":"rayon de 2,2 km");
+  const note=params.cityKey==="paris"?" Les autres Paris (Texas, Ontario et autres homonymes) ne sont pas recherchés.":"";
+  return industryLabel(params.industry)+" · "+city.city+", "+city.province+", "+city.country+" · centre "+city.lat+", "+city.lng+" · "+params.quantity+" résultats maximum · "+area+"."+note+" "+COVERAGE_NOTE+" Le nombre demandé n'est pas garanti.";
+}
+function collectPlaceHits(raw){
+  const map=foldMap(raw);
+  const hits=[];
+  for(const key of supportedCityKeys()){
+    const needle=foldText(key);
+    for(const span of findFolded(map.folded,needle)){
+      if(key==="paris"){
+        const qualifier=parisQualifier(map.folded,span.end);
+        const other=PARIS_OTHER.find(item=>item.names.includes(qualifier)||item.codes.includes(qualifier));
+        if(other){
+          const display=originalSlice(map,span.start,span.end)+" "+qualifier;
+          hits.push({kind:"homonym",cityKey:key,id:other.id,label:other.label,display,start:span.start,end:span.end});
+          continue;
+        }
+      }
+      hits.push({kind:"catalog",cityKey:key,id:key,label:placeCandidate(key).label,display:originalSlice(map,span.start,span.end),start:span.start,end:span.end});
+    }
+  }
+  for(const place of UNSUPPORTED_PLACES){
+    for(const needle of place.folded){
+      for(const span of findFolded(map.folded,needle)){
+        hits.push({kind:"unsupported",id:place.id,label:originalSlice(map,span.start,span.end),display:originalSlice(map,span.start,span.end),start:span.start,end:span.end});
+      }
+    }
+    for(const exact of place.exact){
+      let from=0;
+      while(raw.indexOf(exact,from)>=0){
+        const at=raw.indexOf(exact,from);
+        hits.push({kind:"unsupported",id:place.id,label:exact,display:exact,start:at,end:at+exact.length,exact:true});
+        from=at+exact.length;
+      }
+    }
+  }
+  hits.sort((a,b)=>a.start-b.start||b.end-a.end);
+  const kept=[];
+  for(const hit of hits){
+    if(kept.some(prev=>hit.start<prev.end&&hit.end>prev.start))continue;
+    kept.push(hit);
+  }
+  return kept;
+}
+function trailingPlace(raw){
+  const match=String(raw||"").match(/(?:^|[\s,;(])(?:autour de|around|near|vers|dans|aux|au|en|in|à|a)\s+([^,.;\n]{2,80})\s*$/iu);
+  return match?match[1].trim():"";
+}
+function resolvePlace(raw){
+  const hits=collectPlaceHits(raw);
+  if(!hits.length){
+    const named=trailingPlace(raw);
+    return named?blockedPlace("not_found",named):blockedPlace("absent","");
+  }
+  if(hits.length>1||hits[0].kind==="homonym"){
+    const candidates=[];
+    for(const hit of hits){
+      if(hit.kind==="homonym"){
+        candidates.push(placeCandidate(hit.cityKey),{id:hit.id,cityKey:null,status:"unsupported",label:hit.label});
+      }else if(hit.kind==="catalog")candidates.push(placeCandidate(hit.cityKey));
+      else candidates.push({id:hit.id,cityKey:null,status:"unsupported",label:hit.display});
+    }
+    const unique=[];
+    for(const candidate of candidates){
+      if(!unique.some(item=>item.id===candidate.id&&item.label===candidate.label))unique.push(candidate);
+    }
+    return blockedPlace("ambiguous",hits.map(hit=>hit.display).join(" · "),unique);
+  }
+  const hit=hits[0];
+  if(hit.kind==="unsupported")return blockedPlace("unsupported",hit.display);
+  return {status:"supported",display:hit.display,title:"Lieu pris en charge",message:"",candidates:[placeCandidate(hit.cityKey)],cityKey:hit.cityKey};
+}
 function normalizeSearchParams(params,overrides={}){
   const next={...params,...overrides};
   const quantity=Number(next.quantity);
@@ -21,34 +187,93 @@ function normalizeSearchParams(params,overrides={}){
     ?Math.min(SEARCH_LIMITS.max,Math.max(SEARCH_LIMITS.min,Math.floor(quantity)))
     :SEARCH_LIMITS.defaultQuantity;
   if(!KlirData.INDUSTRIES[next.industry])next.industry="all";
-  if(!Object.hasOwn(KlirData.CITIES,next.cityKey))next.cityKey="default";
-  next.city=KlirData.CITIES[next.cityKey];
+  const keyProvided=Object.prototype.hasOwnProperty.call(overrides,"cityKey");
+  const key=keyProvided?overrides.cityKey:next.cityKey;
+  const city=supportedCity(key);
+  next.cityKey=city?key:null;
+  next.city=city;
+  if(!next.place||typeof next.place!=="object")next.place=city?{status:"supported",cityKey:key,display:city.city,title:"Lieu pris en charge",message:"",candidates:[placeCandidate(key)]}:blockedPlace("not_found","");
+  if(!city&&next.place.status==="supported")next.place=blockedPlace("not_found",next.place.display||"");
   next.area=next.area==="montreal_island"&&next.cityKey==="montréal"?"montreal_island":"radius";
   next.size=["1–10","11–50","51–200","201–500","500+"].includes(next.size)?next.size:null;
+  if(next.place.status==="supported"&&city)next.place={...next.place,status:"supported",cityKey:next.cityKey,message:""};
   return next;
 }
+function attachControls(parsed,explicit){
+  return {
+    industry:explicit.industry!=null?explicit.industry:parsed.industry,
+    quantity:explicit.quantity!=null?explicit.quantity:parsed.quantity,
+    size:Object.prototype.hasOwnProperty.call(explicit,"size")?explicit.size:parsed.size,
+    area:explicit.area||parsed.area,
+    raw:parsed.raw
+  };
+}
+function withSupportedCity(parsed,controls,cityKey){
+  const next=normalizeSearchParams({...parsed,...controls,place:{...parsed.place,status:"supported",cityKey}},{cityKey});
+  next.place.message="";
+  return next;
+}
+function withBlockedPlace(parsed,controls,place){
+  const next=normalizeSearchParams({...parsed,...controls,place},{cityKey:null});
+  next.place=place;
+  next.cityKey=null;
+  next.city=null;
+  return next;
+}
+function contradictionCandidates(place,explicit){
+  if(!place||place.status!=="supported"||!supportedCity(place.cityKey))return null;
+  const selected=explicit&&supportedCity(explicit.cityKey)?explicit.cityKey:null;
+  if(!selected||selected===place.cityKey)return null;
+  return [placeCandidate(place.cityKey),placeCandidate(selected)];
+}
+function contradictionPlace(candidates){
+  const place=blockedPlace("ambiguous",candidates.map(item=>item.label).join(" · "),candidates);
+  place.title="Lieux en contradiction";
+  place.message="Le texte indique "+candidates[0].label+" et la sélection indique "+candidates[1].label+". Confirmez un seul lieu. Aucune recherche n'est lancée et aucun crédit n'est réservé tant que le choix n'est pas confirmé. "+COVERAGE_NOTE;
+  return place;
+}
+function confirmedCandidate(candidates,explicit){
+  const confirmation=explicit&&explicit.placeConfirmation;
+  if(!confirmation)return null;
+  return (candidates||[]).find(item=>item.cityKey===confirmation||item.id===confirmation)||null;
+}
+function applyExplicitPlace(parsed,explicit){
+  const source=parsed&&parsed.place?parsed:parseQuery(parsed&&parsed.raw||"");
+  const controls=attachControls(source,explicit||{});
+  const place=source.place;
+  if(place.status==="unsupported"||place.status==="not_found")return withBlockedPlace(source,controls,place);
+  if(place.status==="ambiguous"){
+    const chosen=confirmedCandidate(place.candidates,explicit);
+    if(!chosen)return withBlockedPlace(source,controls,place);
+    if(chosen.status!=="supported")return withBlockedPlace(source,controls,blockedPlace("unsupported",chosen.label));
+    return withSupportedCity(source,controls,chosen.cityKey);
+  }
+  const conflict=contradictionCandidates(place,explicit);
+  if(conflict){
+    const chosen=confirmedCandidate(conflict,explicit);
+    if(!chosen)return withBlockedPlace(source,controls,contradictionPlace(conflict));
+    return withSupportedCity(source,controls,chosen.cityKey);
+  }
+  if(place.status==="supported")return withSupportedCity(source,controls,place.cityKey);
+  if(supportedCity(explicit&&explicit.cityKey))return withSupportedCity({...source,place:{status:"supported",cityKey:explicit.cityKey,display:supportedCity(explicit.cityKey).city,title:"Lieu pris en charge",message:"",candidates:[placeCandidate(explicit.cityKey)]}},controls,explicit.cityKey);
+  return withBlockedPlace(source,controls,blockedPlace("not_found",""));
+}
 function parseQuery(q){
-  q=(q||""); const low=q.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  q=(q||""); const low=foldText(q);
   const allAsked=/tous les (domaines|secteurs|industries)|toutes les (industries|activites)|tous secteurs|multi[- ]secteurs/.test(low);
   let industry="all", score=0;
   if(!allAsked){
-    for(const [k,v] of Object.entries(KlirData.INDUSTRIES)){let s=0;const label=(v.label||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(label&&low.includes(label))s+=3;for(const kw of v.keywords){if(low.includes(kw.normalize("NFD").replace(/[\u0300-\u036f]/g,"")))s++;}if(s>score){score=s;industry=k;}}
+    for(const [k,v] of Object.entries(KlirData.INDUSTRIES)){let s=0;const label=foldText(v.label||"");if(label&&low.includes(label))s+=3;for(const kw of v.keywords){if(low.includes(foldText(kw)))s++;}if(s>score){score=s;industry=k;}}
     if(!score)industry="all";
   }
-  let cityKey="default", cityAt=-1, cityLen=0;
-  for(const k of Object.keys(KlirData.CITIES)){
-    if(k==="default")continue;
-    const folded=k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-    const at=folded?low.lastIndexOf(folded):-1;
-    if(at>cityAt||(at===cityAt&&at>=0&&folded.length>cityLen)){cityKey=k;cityAt=at;cityLen=folded.length;}
-  }
+  const place=resolvePlace(q);
   let qty=SEARCH_LIMITS.defaultQuantity;
   // A quantity must describe prospects, not a year or a company-size range.
   const m=low.match(/(?:^|[^\d–-])(\d+)\s*(?:entreprises?|prospects?|boites?|companies|restaurants?|cliniques?|artisans?)\b/)
     ||low.match(/^\s*(\d+)(?!\d|\s*[–-]\s*\d)(?:\s|$)/);
   if(m)qty=Number(m[1]);
   let size=null; if(/1-10|tpe|artisan/i.test(q))size="1–10"; else if(/11-50|pme/i.test(q))size="11–50";
-  return normalizeSearchParams({industry,cityKey,quantity:qty,size,raw:q});
+  return normalizeSearchParams({industry,cityKey:place.cityKey,quantity:qty,size,raw:q,place});
 }
 function seededRand(seed){let s=seed;return()=>{s=(s*1103515245+12345)%2147483648;return s/2147483648;};}
 function genProspects(params, qty){
@@ -148,7 +373,7 @@ function scoreProspect(p, params, W){
 function icpFit(p, icp){
   if(!icp)return null; let s=0,max=0;
   const chk=(cond,w)=>{max+=w;if(cond)s+=w;};
-  chk(!icp.industry||icp.industry==="all"||p.industry_key===icp.industry,30); chk(normStr(p.city)===normStr(icp.city||"montreal"),20);
+  chk(!icp.industry||icp.industry==="all"||p.industry_key===icp.industry,30); chk(!!icp.city&&normStr(p.city)===normStr(icp.city),20);
   chk(!icp.size||p.employee_range===icp.size,15); chk(p.website?true:false,10);
   chk((icp.signals||[]).some(sg=>p.signals.includes(sg)),15); chk(p.public_email?true:false,10);
   return Math.round(s);
@@ -170,9 +395,9 @@ function enrichWaterfall(p, active){
   p.enrichedFrom=prov;
   return {filled, chain};
 }
-window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
 function aiAnalysis(p, params){
   const fit=!params.industry||params.industry==="all"||p.industry_key===params.industry?"son secteur correspond au profil recherché":"son secteur est proche du profil recherché";
   return `Cette entreprise semble correspondre au profil recherché en raison de ${fit} et de sa localisation (${p.city}). ${p.signals.length?"Signaux détectés : "+p.signals.join(", ")+".":""} Score de pertinence à considérer comme une estimation, pas une garantie.`;
 }
-window.KlirEngine={SEARCH_LIMITS,normalizeSearchParams,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
+window.KlirEngine={SEARCH_LIMITS,COVERAGE_NOTE,normalizeSearchParams,applyExplicitPlace,resolvePlace,describePlace,supportedCity,supportedCityKeys,supportedCityKeyByName,normStr,normPhone,normDomain,fingerprint,parseQuery,genProspects,dedup,identitiesConflict,identitiesCorroborate,scoreProspect,aiAnalysis,icpFit,intentOf,oppOf,ensureScores,enrichWaterfall,WATERFALL,industryLabel,industryKeys};
