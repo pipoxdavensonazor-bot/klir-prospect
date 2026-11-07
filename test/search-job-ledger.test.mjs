@@ -280,3 +280,83 @@ test("un second job ne passe pas le solde sous zéro et l'ancien reçu reste ré
   assert.equal(finalAccount.balance, 14);
   assert.ok(finalAccount.balance >= 0);
 });
+
+test("les fonctions privées ne sont pas exécutables par PUBLIC, anon, authenticated ni admin", async () => {
+  const db = await database();
+  const names = [
+    "private.apply_usage_outcome(uuid, text, text)",
+    "private.record_search_collection(uuid, text, integer)",
+    "private.reconcile_search_job(uuid)"
+  ];
+  for (const signature of names) {
+    for (const role of ["public", "anon", "authenticated"]) {
+      const privilege = await db.query("select has_function_privilege($1, $2, 'EXECUTE') as allowed", [role, signature]);
+      assert.equal(privilege.rows[0].allowed, false, role + " " + signature);
+    }
+  }
+  const usage = await db.query("select has_schema_privilege('authenticated', 'private', 'USAGE') as allowed");
+  assert.equal(usage.rows[0].allowed, false);
+  await asUser(db, bea);
+  const admin = await db.query("select public.is_admin() as admin");
+  assert.equal(admin.rows[0].admin, true);
+  await assert.rejects(
+    db.query("select private.reconcile_search_job('11111111-1111-4111-8111-111111111111'::uuid)"),
+    /permission denied/i
+  );
+  await assert.rejects(
+    db.query("select private.record_search_collection('11111111-1111-4111-8111-111111111111'::uuid, 'complete', 1)"),
+    /permission denied/i
+  );
+});
+
+test("expiration, collecte et annulation ne règlent qu'une fois, dans les deux ordres", async () => {
+  const db = await database();
+  const ledger = createSearchJobLedger((text, params) => db.query(text, params));
+
+  await asUser(db, ada);
+  const collectedFirst = await enqueue(db, "receipt-c-order-collect", 10);
+  await db.exec("reset role");
+  await db.exec(`update public.search_jobs set reserved_until = now() - interval '1 minute' where id = '${collectedFirst.id}'`);
+  await ledger.record(collectedFirst.id, "complete", 2);
+  const charged = await ledger.reconcile(collectedFirst.id);
+  assert.equal(charged.status, "succeeded");
+  assert.equal(charged.replayed, false);
+  const chargedAgain = await ledger.reconcile(collectedFirst.id);
+  assert.equal(chargedAgain.replayed, true);
+  let state = await account(db, ada);
+  assert.equal(state.balance, 194);
+  assert.equal(state.searches_used, 1);
+
+  await asUser(db, ada);
+  const expiredFirst = await enqueue(db, "receipt-c-order-expire", 10);
+  await db.exec("reset role");
+  await db.exec(`update public.search_jobs set reserved_until = now() - interval '1 minute' where id = '${expiredFirst.id}'`);
+  const expired = await ledger.reconcile(expiredFirst.id);
+  assert.equal(expired.last_error, "reservation_expired");
+  await assert.rejects(ledger.record(expiredFirst.id, "complete", 2), /job_clos/);
+  const expiredReplay = await ledger.reconcile(expiredFirst.id);
+  assert.equal(expiredReplay.replayed, true);
+  state = await account(db, ada);
+  assert.equal(state.balance, 194);
+  assert.equal(state.searches_used, 1);
+
+  await asUser(db, ada);
+  const toCancel = await enqueue(db, "receipt-c-order-cancel", 10);
+  const cancelled = await db.query("select public.cancel_search_job($1::uuid) as row", [toCancel.id]);
+  assert.equal(cancelled.rows[0].row.ledger_status, "released");
+  await db.exec("reset role");
+  await assert.rejects(ledger.record(toCancel.id, "complete", 1), /job_clos/);
+  const afterCancel = await ledger.reconcile(toCancel.id);
+  assert.equal(afterCancel.replayed, true);
+  state = await account(db, ada);
+  assert.equal(state.balance, 194);
+  assert.equal(state.searches_used, 1);
+
+  await db.exec("reset role");
+  const same = await ledger.record(collectedFirst.id, "complete", 2);
+  assert.equal(same.recorded, false);
+  await assert.rejects(ledger.record(collectedFirst.id, "empty", 0), /deja_regle/);
+  state = await account(db, ada);
+  assert.equal(state.balance, 194);
+  assert.equal(state.searches_used, 1);
+});

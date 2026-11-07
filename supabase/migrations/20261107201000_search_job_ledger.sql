@@ -312,19 +312,20 @@ begin
   if not found then
     raise exception 'job_not_found' using errcode = '42501';
   end if;
+  if existing.collection_outcome is not null
+     and existing.collection_outcome = p_outcome
+     and existing.result_count = p_count then
+    return jsonb_build_object('id', existing.id, 'collection_outcome', existing.collection_outcome, 'result_count', existing.result_count, 'recorded', false);
+  end if;
   if existing.ledger_status = 'complete' then
     raise exception 'deja_regle' using errcode = '42501';
   end if;
-  if existing.collection_outcome is not null then
-    if existing.collection_outcome = p_outcome and existing.result_count = p_count then
-      return jsonb_build_object('id', existing.id, 'collection_outcome', existing.collection_outcome, 'result_count', existing.result_count, 'recorded', false);
-    end if;
-    raise exception 'collection_figee' using errcode = '42501';
-  end if;
-  if existing.status not in ('queued', 'running') then
+  if existing.ledger_status <> 'open' or existing.status not in ('queued', 'running') then
     raise exception 'job_clos' using errcode = '42501';
   end if;
-
+  if existing.collection_outcome is not null then
+    raise exception 'collection_figee' using errcode = '42501';
+  end if;
   update public.search_jobs as job
   set collection_outcome = p_outcome,
       result_count = p_count,
@@ -373,7 +374,10 @@ begin
     );
   end if;
 
-  if existing.collection_outcome is null and existing.reserved_until is not null and existing.reserved_until < pg_catalog.now() then
+  if existing.status = 'queued'
+     and existing.collection_outcome is null
+     and existing.reserved_until is not null
+     and existing.reserved_until < pg_catalog.now() then
     if existing.ledger_status = 'open' and existing.ledger_receipt is not null then
       perform private.apply_usage_outcome(existing.user_id, existing.ledger_receipt, 'release');
     end if;
@@ -420,6 +424,9 @@ begin
 end;
 $$;
 
+revoke all on function private.apply_usage_outcome(uuid, text, text) from PUBLIC;
+revoke all on function private.record_search_collection(uuid, text, integer) from PUBLIC;
+revoke all on function private.reconcile_search_job(uuid) from PUBLIC;
 revoke all on function private.record_search_collection(uuid, text, integer) from public, anon, authenticated;
 revoke all on function private.reconcile_search_job(uuid) from public, anon, authenticated;
 

@@ -24,6 +24,18 @@ Le client peut annuler son propre job : la réservation est alors libérée. Il 
 
 L’ancien parcours, un reçu `debit_` ou `radar_` qui n’appartient pas à un job, continue d’utiliser `reserve_usage` et `settle_usage`.
 
+## Revue des courses
+
+`FOR UPDATE` sérialise le job. Les deux ordres sont testés, sur une session PGlite : ce n’est pas deux sockets concurrents.
+
+- Collecte enregistrée avant l’expiration : le règlement suit la collecte, une seule fois.
+- Expiration commitée d’abord : la collecte suivante est refusée (`job_clos`), pas de second mouvement.
+- Annulation d’abord : même refus, solde rendu une seule fois.
+- Le même constat rejoué après succès ne change rien. Un constat différent est refusé.
+- L’expiration ne vise que `queued` sans collecte. Une collecte déjà écrite n’est pas annulée par la date.
+
+`PUBLIC`, `anon` et `authenticated` n’ont pas `EXECUTE` sur les fonctions `private`, y compris un compte `is_admin()`. Le propriétaire de la migration (rôle serveur) les exécute. Aucun secret n’est dans le dépôt.
+
 `createSearchJobLedger(query)` est la frontière que le serveur appellera. Le test branche `query` sur PGlite, donc sur les vraies fonctions et les vrais verrous, pas sur un solde en mémoire.
 
 ## Ce qui manque pour une recette Test
