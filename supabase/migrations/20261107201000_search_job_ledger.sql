@@ -130,8 +130,10 @@ begin
 end;
 $$;
 
+-- CREATE OR REPLACE conserve les ACL déjà en place. Ne pas accorder
+-- settle_usage à authenticated, anon ou PUBLIC : une base durcie
+-- (propriétaire et service_role seulement) ne doit pas être rouverte.
 revoke all on function public.settle_usage(text, text) from public, anon;
-grant execute on function public.settle_usage(text, text) to authenticated;
 
 create or replace function public.enqueue_search_job(p_key text, p_payload jsonb)
 returns jsonb
@@ -433,4 +435,4 @@ revoke all on function private.reconcile_search_job(uuid) from public, anon, aut
 comment on function private.reconcile_search_job(uuid) is
   'Règle ou libère le reçu du job. Réservé au rôle du serveur. Idempotent. jobs_enabled n''est pas modifié.';
 comment on function public.settle_usage(text, text) is
-  'Règle un reçu du parcours actuel. Refuse un reçu lié à un job v2 : seul le serveur le règle.';
+  'Règle un reçu du parcours actuel si l''appelant a déjà EXECUTE. Refuse un reçu lié à un job v2. N''ajoute aucun droit.';
