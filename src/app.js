@@ -401,20 +401,29 @@ ${window.KlirProjects?window.KlirProjects.dashCard():""}
 <div class="cols"><div class="card"><h3>🎯 Votre ICP</h3>${icp?`<p><small>${sectorLabel(icp.industry)} • ${hx(icp.city)} • ${hx(icp.size)} employés</small></p><button class="cta" data-nav="#/prospecting/new">Trouver des prospects</button>`:`<p><small>Non défini.</small></p><button class="cta" data-nav="#/icp">Construire mon ICP</button>`}</div>
 <div class="card"><h3>🤖 Klir AI</h3><p><small>« Que dois-je faire aujourd'hui ? »</small></p><div class="rowb"><button id="copilotBtn">Analyser mon pipeline</button><button data-nav="#/copilot">Ouvrir Copilot</button></div><div id="copilotOut"></div></div></div>
 <div class="card"><h3>Activité récente</h3>${KS.S.activities.slice(0,5).map(a=>`<div class="row">• ${hx(a.t)} <small>${a.at}</small></div>`).join("")||"<p>Aucune activité.</p>"}</div>`;}
+function pilotCityKey(value){
+  return {montreal:"montréal",laval:"laval",quebec:"québec",toronto:"toronto",paris:"paris",lyon:"lyon"}[String(value||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")]||"";
+}
 function formSearchParams(text,savedParams){
   const parsed=E.parseQuery(text||"");
   if(savedParams&&typeof savedParams==="object")return E.normalizeSearchParams(parsed,savedParams);
   const field=id=>document.getElementById(id);
   if(!field("aQty"))return parsed;
-  return E.normalizeSearchParams(parsed,{
-    industry:field("aInd").value,cityKey:field("aCity").value,
+  const selected=field("aCity").value;
+  const fromList=pilotCityKey(selected);
+  const fromText=pilotCityKey(parsed.cityKey);
+  const overrides={
+    industry:field("aInd").value,
     quantity:field("aQty").value,size:field("aSize").value||null,area:field("aArea").value
-  });
+  };
+  if(fromList||fromText)overrides.cityKey=fromList||fromText;
+  return E.normalizeSearchParams(parsed,overrides);
 }
 function quotedSearchCost(text,params){const qty=E.normalizeSearchParams(params||E.parseQuery(text||"")).quantity;return 5+Math.ceil(qty/10);}
 function syncSearchFields(params){
   if(trialPreview())params={...params,industry:"restauration",size:null,area:"radius"};
-  const values={aInd:params.industry,aCity:params.cityKey,aQty:params.quantity,aSize:params.size||"",aArea:params.area};
+  const values={aInd:params.industry,aQty:params.quantity,aSize:params.size||"",aArea:params.area};
+  if(pilotCityKey(params.cityKey))values.aCity=pilotCityKey(params.cityKey);
   for(const [id,value] of Object.entries(values)){const el=document.getElementById(id);if(el)el.value=String(value);}
 }
 function updateSearchQuote(){
@@ -431,7 +440,7 @@ function vNew(){return `<h1>Trouver des prospects</h1><div class="card demoB">${
 ${osmSearchAllowed()?"":'<p id="searchAccessNotice">La démonstration permet de régler les paramètres. Connectez-vous à un compte du pilote pour lancer une recherche réelle. <a href="#/login">Connexion</a></p>'}
 <div id="advBox" hidden><div class="grid4">
 <label>Industrie<select id="aInd"><option value="all" selected>Tous les secteurs</option>${Object.entries(KlirData.INDUSTRIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("")}</select></label>
-<label>Ville<select id="aCity">${Object.keys(KlirData.CITIES).map(k=>`<option>${k}</option>`).join("")}</select></label>
+<label>Ville<select id="aCity">${["montréal","laval","québec","toronto","paris","lyon"].map(k=>`<option value="${k}">${KlirData.CITIES[k].city}</option>`).join("")}</select></label>
 <label>Quantité maximale<input id="aQty" type="number" value="${E.SEARCH_LIMITS.defaultQuantity}" min="${E.SEARCH_LIMITS.min}" max="${E.SEARCH_LIMITS.max}" step="1"></label>
 <label>Taille<select id="aSize"><option value="" selected>Non renseigné</option><option>1–10</option><option>11–50</option><option>51–200</option><option>201–500</option><option>500+</option></select></label>
 <label>Zone<select id="aArea"><option value="radius" selected>Rayon fixe autour du centre</option><option value="montreal_island">Emprise de l'île de Montréal</option></select></label></div><p><small>${trialPreview()?"Trois cercles de 2,2 km seulement, centrés aux coordonnées affichées ci-dessus.":"Le rayon fixe reste 2,2 km (1,5 km tous secteurs). L’emprise de l’île ne s’applique qu’à Montréal."}</small></p></div>
@@ -514,7 +523,7 @@ function bind(){
     document.querySelectorAll("[data-webf],[data-oppf]").forEach(el=>{el.checked=false;el.disabled=true;});
     for(const id of ["aSize","aArea","aInd","oppSort","svcFilter","campBtn","msgBtn","enrichBtn","webCheckBtn"]){const el=document.getElementById(id);if(el){el.disabled=true;el.title="Indisponible pendant cet essai accompagné";}}
     const ind=document.getElementById("aInd");if(ind)ind.innerHTML='<option value="restauration">Restaurants et cafés</option>';
-    const city=document.getElementById("aCity");if(city)city.innerHTML=['montréal','laval','québec'].map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+    const city=document.getElementById("aCity");if(city)city.innerHTML=["montréal","laval","québec","toronto","paris","lyon"].map(c=>'<option value="'+c+'">'+KlirData.CITIES[c].city+'</option>').join('');
     const size=document.getElementById("aSize");if(size)size.innerHTML='<option value="">Inconnue — aucun filtre</option>';
     const area=document.getElementById("aArea");if(area)area.innerHTML='<option value="radius">Cercle de 2 200 m uniquement</option>';
     const hint=document.getElementById("webProgCard");if(hint)hint.hidden=true;

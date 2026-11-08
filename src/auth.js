@@ -456,7 +456,11 @@ const PILOT_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "pa
 async function enqueuePilotSearch(body) {
   if (!overturePreview()) return { ok: false, outcome: "environnement_refuse" };
   if (!currentUser) return { ok: false, outcome: "session_requise" };
-  const cityKey = String(body && body.cityKey || "");
+  const folded = String(body && body.cityKey || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const cityKey = {
+    montreal: "montréal", laval: "laval", quebec: "québec",
+    toronto: "toronto", paris: "paris", lyon: "lyon"
+  }[folded] || "";
   const quantity = Number(body && body.quantity);
   if (!PILOT_CITY_KEYS.has(cityKey)) return { ok: false, outcome: "lieu_hors_pilote" };
   if (!Number.isInteger(quantity) || quantity < 10 || quantity > 40) return { ok: false, outcome: "quantite_invalide" };
