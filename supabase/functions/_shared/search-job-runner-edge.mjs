@@ -2,7 +2,6 @@ import { createGetUserVerifier } from "./search-job-auth.mjs";
 import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-job-edge.mjs";
 import { runWorkerCycle } from "./search-job-worker.mjs";
 import { createOverturePilotProvider } from "./search-job-overture-pilot.mjs";
-import pilotSnapshot from "../../../test/fixtures/overture-places-six-centers.json" with { type: "json" };
 
 export const CONNECT_ROLE = "klir_job_connect_test";
 export const RUNNER_ROLE = "klir_job_runner";
@@ -183,9 +182,14 @@ async function diagnose(request, options) {
   try {
     db = await options.connect(options.env);
     if (body.action === "cycle") {
-      const provider = options.provider || createOverturePilotProvider(pilotSnapshot);
       const cycle = await db.begin(async (sql) => {
         await sql.unsafe("set local role klir_job_runner");
+        let provider = options.provider;
+        if (!provider) {
+          const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
+          const snapshot = loaded && loaded[0] ? loaded[0].document : null;
+          provider = createOverturePilotProvider(snapshot);
+        }
         const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
         return runWorkerCycle(query, provider);
       });

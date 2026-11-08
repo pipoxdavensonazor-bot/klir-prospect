@@ -242,5 +242,9 @@ test("la migration crée le login sans secret et sans droit de facturation", asy
   assert.doesNotMatch(sql, /grant klir_job_api to klir_job_connect_test/);
   assert.match(entry, /KLIR_JOB_DB_PASSWORD/);
   assert.doesNotMatch(entry, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_DB_URL|local:/);
+  const snapshotSql = await readFile(new URL("../supabase/migrations/20261108163000_search_pilot_snapshot.sql", import.meta.url), "utf8");
+  assert.match(snapshotSql, /grant execute on function private\.pilot_snapshot\(\) to klir_job_runner/);
+  assert.doesNotMatch(snapshotSql, /jobs_enabled\s*=\s*true/);
+  assert.doesNotMatch(snapshotSql, /grant execute on function public\.(reserve_usage|settle_usage)/i);
   assert.equal(JSON.stringify(RUNNER_DIAGNOSTIC_SQL).includes("claim_search_jobs"), false);
 });
