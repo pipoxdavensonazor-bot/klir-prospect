@@ -91,6 +91,8 @@ test("session expirée, refus admin du serveur et panne restent distincts", asyn
   assert.equal((await down.diagnose()).outcome, "panne");
   const gateway = harness({ response: { data: null, error: true, status: 503 } });
   assert.equal((await gateway.diagnose()).outcome, "panne");
+  const coded = harness({ response: { data: { error: "connexion_serveur_absente" }, error: true, status: 503 } });
+  assert.equal((await coded.diagnose()).outcome, "panne");
   const broad = harness({ response: { data: { error: "role_trop_large", password: "secret" }, error: true, status: 503 } });
   const broadResult = await broad.diagnose();
   assert.equal(broadResult.outcome, "role_trop_large");
@@ -126,6 +128,7 @@ test("le client passe par functions.invoke et le bouton reste hors des réglages
   const auth = await readFile(new URL("../src/auth.js", import.meta.url), "utf8");
   const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
   assert.match(auth, /functions\.invoke\("search-job-runner", \{ body: \{ action: "diagnose" \} \}\)/);
+  assert.equal(auth.includes("publicDiagnosticBody"), false);
   assert.equal(auth.includes("access_token"), false);
   assert.equal(auth.includes("localStorage"), false);
   const card = app.slice(app.indexOf("function serverDiagnosticCard"), app.indexOf("function vTrialSettings"));

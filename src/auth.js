@@ -16,7 +16,7 @@ import {
   passwordMessage,
   workspaceForMigration
 } from "./auth-policy.js";
-import { createServerDiagnostic, publicDiagnosticBody } from "./server-diagnostic.js";
+import { createServerDiagnostic } from "./server-diagnostic.js";
 
 const CALLBACK_KEY = "klir-auth-callback";
 let currentAdmin = false;
@@ -465,10 +465,11 @@ window.KlirAuth.diagnoseServerConnection = createServerDiagnostic({
     const status = result.error && result.error.context && typeof result.error.context.status === "number"
       ? result.error.context.status
       : 0;
-    let data = publicDiagnosticBody(result.data);
+    let data = result.data && typeof result.data === "object" ? result.data : null;
     if (!data && result.error && result.error.context && typeof result.error.context.clone === "function") {
       try {
-        data = publicDiagnosticBody(await result.error.context.clone().json());
+        const body = await result.error.context.clone().json();
+        data = body && typeof body === "object" ? body : null;
       } catch {
         data = null;
       }

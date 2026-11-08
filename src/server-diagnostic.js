@@ -53,7 +53,7 @@ export function interpretServerDiagnostic(result) {
     scheduler: data.scheduler === EXPECTED.scheduler ? EXPECTED.scheduler : ""
   };
   const ready = summary.connected && summary.role && summary.jobsEnabled && summary.billing && summary.provider && summary.executed && summary.scheduler;
-  if (!ready) return { ok: false, outcome: "reponse_inattendue" };
+  if (!ready) return { ok: false, outcome: status >= 500 ? "panne" : "reponse_inattendue" };
   return {
     ok: true,
     outcome: "connecte",
