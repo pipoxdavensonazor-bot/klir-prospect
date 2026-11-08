@@ -3,7 +3,7 @@ import http from "node:http";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
-import { handleSearchJobRequest, resolveTestAuth, searchJobExecutionPlan, TEST_SUPABASE_URL, PREVIEW_ORIGIN } from "../supabase/functions/_shared/search-job-edge.mjs";
+import { handleSearchJobRequest, resolveTestAuth, searchJobExecutionPlan, TEST_SUPABASE_URL, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
 const publishable = "sb_publishable_test_fixture";
@@ -185,6 +185,10 @@ test("la prévisualisation Test peut appeler l'API jobs, le site public non", as
   const allowed = await handleSearchJobRequest(preview, { env: env() });
   assert.equal(allowed.status, 204);
   assert.equal(allowed.headers.get("access-control-allow-origin"), PREVIEW_ORIGIN);
+  const pilot = new Request("http://127.0.0.1/search-jobs", { method: "OPTIONS", headers: { origin: PILOT_UI_ORIGIN } });
+  const pilotAllowed = await handleSearchJobRequest(pilot, { env: env() });
+  assert.equal(pilotAllowed.status, 204);
+  assert.equal(pilotAllowed.headers.get("access-control-allow-origin"), PILOT_UI_ORIGIN);
   const foreign = new Request("http://127.0.0.1/search-jobs", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } });
   const refused = await handleSearchJobRequest(foreign, { env: env() });
   assert.equal(refused.status, 403);
