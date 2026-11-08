@@ -9,6 +9,7 @@ import {
   importPlaces,
   readPlaceCategory
 } from "../tools/overture-places-import.mjs";
+import { CITY_PROBES, probeBbox } from "../tools/overture-city-probes.mjs";
 
 function feature(partial = {}) {
   return {
@@ -127,5 +128,29 @@ test("un extrait public local, s'il a été déposé, reste distinct d'une fixtu
     assert.equal(row.contactsVerified, false);
     assert.ok(row.gersId);
     assert.equal(row.name, row.name.normalize("NFC"));
+  }
+});
+
+test("les six centres réels restent des sondes, avec catégories lues et sans géocodeur", async () => {
+  const payload = JSON.parse(await readFile(new URL("./fixtures/overture-places-six-centers.json", import.meta.url), "utf8"));
+  assert.equal(payload.operational, false);
+  assert.equal(payload.geocoder, null);
+  assert.equal(payload.release, RELEASE_PIN);
+  assert.equal(payload.bytes <= MAX_BYTES, true);
+  const serialized = JSON.stringify(payload);
+  assert.equal(serialized.includes("@gmail.com"), false);
+  assert.equal(serialized.includes("@yahoo.com"), false);
+  assert.equal(payload.cities.length, CITY_PROBES.length);
+  for (const city of payload.cities) {
+    const expected = CITY_PROBES.find((item) => item.key === city.key);
+    const bbox = probeBbox(expected);
+    assert.equal(city.bbox.west, bbox.west);
+    assert.equal(city.bbox.north, bbox.north);
+    const result = importPlaces(city);
+    assert.equal(result.operational, false);
+    assert.equal(result.contactsVerified, false);
+    assert.equal(result.kept.length > 0, true);
+    assert.ok(result.kept.every((row) => row.categoryObserved === "basic_category" || row.categoryObserved === "taxonomy"));
+    assert.ok(result.kept.every((row) => row.contactsVerified === false));
   }
 });
