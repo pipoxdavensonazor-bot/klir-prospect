@@ -674,6 +674,7 @@ async function runPilotJob(q,savedParams){
     if(!q||!q.trim())throw new Error("Décrivez les entreprises recherchées.");
     const params=formSearchParams(q,savedParams);
     const result=await window.KlirAuth.enqueuePilotSearch({cityKey:params.cityKey,quantity:params.quantity});
+    const settled=!!(result&&result.cycle&&result.cycle.executed===true);
     const text={
       jobs_disabled:"Le moteur est éteint. Aucune recherche lancée, aucun crédit réservé. Huit lieux autour de chaque centre sont une sonde, pas la ville.",
       lieu_hors_pilote:"Ce lieu n’est pas l’un des six centres du contrat. Aucune recherche lancée.",
@@ -681,9 +682,10 @@ async function runPilotJob(q,savedParams){
       session_requise:"Connectez-vous. Aucune recherche lancée.",
       quantite_invalide:"La quantité doit rester entre 10 et 40. Aucune recherche lancée.",
       jobs_injoignable:"Le serveur de jobs n’a pas encore accepté cette prévisualisation. Aucune recherche lancée, aucun crédit réservé.",
-      enfile:"La demande a été acceptée par le serveur. Ce n’est pas une recherche terminée et le moteur reste à vérifier."
+      enfile:settled?"Le moteur Test a pris la demande. La sonde donne au plus huit lieux autour du centre, pas la ville entière. Le reçu du serveur règle les crédits.":"La demande est acceptée. Le cycle n’a pas encore confirmé la sonde."
     }[result&&result.outcome]||"Aucune recherche lancée, aucun crédit réservé.";
-    if(prog)prog.innerHTML='<div class="card"><b>Pilote — moteur éteint</b><p>'+text+'</p></div>';
+    const title=result&&result.outcome==="jobs_disabled"?"Pilote — moteur éteint":"Pilote Test";
+    if(prog)prog.innerHTML='<div class="card"><b>'+title+'</b><p>'+text+'</p></div>';
   }catch(error){if(prog)prog.innerHTML='<div class="card"><b>Demande interrompue</b><p>'+esc(error.message||"Réponse indisponible")+'</p></div>';}
   finally{searchRunning=false;}
 }

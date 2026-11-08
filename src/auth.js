@@ -477,7 +477,9 @@ async function enqueuePilotSearch(body) {
   const data = result.data && typeof result.data === "object" ? result.data : null;
   if (data && data.error === "jobs_disabled") return { ok: false, outcome: "jobs_disabled" };
   if (result.error || !data || (data.created !== true && data.created !== false)) return { ok: false, outcome: "jobs_injoignable" };
-  return { ok: true, outcome: "enfile", created: data.created === true };
+  const ran = await supabase.functions.invoke("search-job-runner", { body: { action: "cycle" } });
+  const cycle = ran.data && typeof ran.data === "object" ? ran.data : null;
+  return { ok: true, outcome: "enfile", created: data.created === true, cycle };
 }
 
 window.KlirAuth.enqueuePilotSearch = enqueuePilotSearch;
