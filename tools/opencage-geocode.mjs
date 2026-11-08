@@ -150,7 +150,7 @@ export function createOpenCageGeocoder(options = {}) {
       const keyName = cacheKey(query, countryCode, language);
       if (entries.has(keyName)) {
         const cached = entries.get(keyName);
-        return finish(query, countryCode, language, cached.candidates, input.confirmation, true, language);
+        return finish(query, countryCode, language, cached.candidates, input.confirmation, true);
       }
       if (spent >= budget) return refuse("budget_local_atteint");
       const wait = MIN_INTERVAL_MS - (clock() - lastNetworkAt);
@@ -187,12 +187,22 @@ export function createOpenCageGeocoder(options = {}) {
         candidates
       };
       entries.set(keyName, stored);
-      return finish(query, countryCode, language, candidates, input.confirmation, false, language);
+      return finish(query, countryCode, language, candidates, input.confirmation, false, quotaOf(response.body));
     }
   };
 }
 
-function finish(query, countryCode, language, candidates, confirmation, cached) {
+function quotaOf(body) {
+  const rate = body && body.rate;
+  if (!rate || !Number.isInteger(rate.limit) || !Number.isInteger(rate.remaining)) return null;
+  return {
+    limit: rate.limit,
+    remaining: rate.remaining,
+    reset: Number.isInteger(rate.reset) ? rate.reset : null
+  };
+}
+
+function finish(query, countryCode, language, candidates, confirmation, cached, quota) {
   const base = {
     ok: true,
     operational: false,
@@ -206,6 +216,7 @@ function finish(query, countryCode, language, candidates, confirmation, cached) 
     attributionFr: OSM_ATTRIBUTION_FR,
     candidates
   };
+  if (quota && Number.isInteger(quota.limit) && Number.isInteger(quota.remaining)) base.quota = quota;
   if (candidates.length === 0) return { ...base, ok: false, outcome: "introuvable" };
   if (candidates.length > 1 && !confirmation) return { ...base, outcome: "ambigu" };
   const confirmed = matchConfirmation(candidates, confirmation, language);
