@@ -3,6 +3,7 @@ import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-jo
 
 export const CONNECT_ROLE = "klir_job_connect_test";
 export const RUNNER_ROLE = "klir_job_runner";
+export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
 
 export const RUNNER_DIAGNOSTIC_SQL = Object.freeze({
   assume: "set local role klir_job_runner",
@@ -17,11 +18,30 @@ function reject(code) {
   return error;
 }
 
+function corsHeaders(request) {
+  const origin = request.headers.get("origin") || "";
+  if (origin !== PREVIEW_ORIGIN) return {};
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+    "access-control-allow-methods": "POST, OPTIONS",
+    "vary": "origin"
+  };
+}
+
 function json(status, body) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json; charset=utf-8" }
   });
+}
+
+function withCors(request, response) {
+  const extra = corsHeaders(request);
+  if (!extra["access-control-allow-origin"]) return response;
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(extra)) headers.set(name, value);
+  return new Response(response.body, { status: response.status, headers });
 }
 
 function bearer(request) {
@@ -104,6 +124,14 @@ async function assertBillingDenied(sql) {
 }
 
 export async function handleRunnerDiagnostic(request, options = {}) {
+  if (request.method === "OPTIONS") {
+    if (!corsHeaders(request)["access-control-allow-origin"]) return json(403, { error: "origine_refusee" });
+    return new Response(null, { status: 204, headers: corsHeaders(request) });
+  }
+  return withCors(request, await diagnose(request, options));
+}
+
+async function diagnose(request, options) {
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
   const token = bearer(request);
   if (!token || token.startsWith("local:")) return json(401, { error: "authentication_required" });

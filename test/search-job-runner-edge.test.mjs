@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRunnerDiagnostic, assertRunnerDbConfig, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
+import { handleRunnerDiagnostic, assertRunnerDbConfig, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
 import { TEST_PROJECT_REF, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
@@ -152,6 +152,47 @@ test("le diagnostic admin lit le moteur éteint et refuse la facturation sans ex
   assert.equal(options.max, 1);
   assert.equal(options.ssl, "require");
   assert.equal(options.port, 6543);
+});
+
+test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {
+  const preview = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: PREVIEW_ORIGIN } });
+  const allowed = await handleRunnerDiagnostic(preview, { env: env() });
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get("access-control-allow-origin"), PREVIEW_ORIGIN);
+  assert.match(allowed.headers.get("access-control-allow-methods"), /POST/);
+  const foreign = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } });
+  const refused = await handleRunnerDiagnostic(foreign, { env: env() });
+  assert.equal(refused.status, 403);
+  assert.equal(refused.headers.get("access-control-allow-origin"), null);
+  const auth = fakeAuth({ admin: true });
+  const db = fakeDb();
+  const posted = new Request("http://127.0.0.1/search-job-runner", {
+    method: "POST",
+    headers: { authorization: "Bearer jeton-opaque", "content-type": "application/json", origin: PREVIEW_ORIGIN },
+    body: JSON.stringify({ action: "diagnose" })
+  });
+  const response = await handleRunnerDiagnostic(posted, {
+    env: env(),
+    createClient: auth.createClient,
+    connect: async (source) => {
+      const sql = db.postgres({
+        host: source.KLIR_JOB_DB_HOST,
+        port: Number(source.KLIR_JOB_DB_PORT),
+        database: source.KLIR_JOB_DB_NAME,
+        username: source.KLIR_JOB_DB_USER,
+        password: source.KLIR_JOB_DB_PASSWORD,
+        ssl: "require",
+        max: 1,
+        prepare: false
+      });
+      return { begin: sql.begin, close: sql.end };
+    }
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("access-control-allow-origin"), PREVIEW_ORIGIN);
+  const body = await response.json();
+  assert.equal(body.connected, true);
+  assert.equal(body.executed, false);
 });
 
 test("la migration crée le login sans secret et sans droit de facturation", async () => {
