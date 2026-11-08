@@ -16,8 +16,10 @@ import {
   passwordMessage,
   workspaceForMigration
 } from "./auth-policy.js";
+import { createServerDiagnostic, publicDiagnosticBody } from "./server-diagnostic.js";
 
 const CALLBACK_KEY = "klir-auth-callback";
+let currentAdmin = false;
 const config = window.__KLIR_CONFIG__ || {};
 const configured = Boolean(config.supabaseUrl && config.supabasePublishableKey);
 const storage = {
@@ -84,16 +86,27 @@ async function requireClient() {
   return client;
 }
 
+async function readAdminFlag(supabase) {
+  try {
+    const result = await supabase.rpc("is_admin");
+    return !result.error && result.data === true;
+  } catch {
+    return false;
+  }
+}
+
 async function hydrate() {
   if (!client) return state();
   const { data: { user }, error } = await client.auth.getUser();
   if (error && error.name !== "AuthSessionMissingError") throw error;
   currentUser = user || null;
   currentProfile = null;
+  currentAdmin = false;
   if (currentUser) {
     const result = await client.from("profiles").select("id, display_name, demo_migrated_at, created_at, updated_at").eq("id", currentUser.id).single();
     if (result.error) throw result.error;
     currentProfile = result.data;
+    currentAdmin = await readAdminFlag(client);
   }
   return state();
 }
@@ -103,6 +116,7 @@ function state() {
     configured,
     user: currentUser,
     profile: currentProfile,
+    admin: currentAdmin === true,
     passwordRecovery,
     callbackError,
     pending: readPending(),
@@ -158,6 +172,7 @@ async function signOut() {
   if (!result.error) {
     currentUser = null;
     currentProfile = null;
+    currentAdmin = false;
     passwordRecovery = false;
     sessionStorage.removeItem(CALLBACK_KEY);
   }
@@ -247,6 +262,7 @@ async function deleteAccount(confirmation, password) {
   if (!result.error && result.data?.deleted) {
     currentUser = null;
     currentProfile = null;
+    currentAdmin = false;
     passwordRecovery = false;
     sessionStorage.clear();
   }
@@ -374,6 +390,7 @@ async function initialize() {
       if (event === "SIGNED_OUT") {
         currentUser = null;
         currentProfile = null;
+        currentAdmin = false;
         passwordRecovery = false;
       }
       queueMicrotask(async () => {
@@ -433,3 +450,29 @@ window.KlirAuth = {
   completeCallback,
   dismissCallback
 };
+
+window.KlirAuth.diagnoseServerConnection = createServerDiagnostic({
+  config: () => config,
+  session: () => ({ user: currentUser }),
+  isAdmin: async () => {
+    const supabase = await requireClient();
+    currentAdmin = await readAdminFlag(supabase);
+    return currentAdmin;
+  },
+  invoke: async () => {
+    const supabase = await requireClient();
+    const result = await supabase.functions.invoke("search-job-runner", { body: { action: "diagnose" } });
+    const status = result.error && result.error.context && typeof result.error.context.status === "number"
+      ? result.error.context.status
+      : 0;
+    let data = publicDiagnosticBody(result.data);
+    if (!data && result.error && result.error.context && typeof result.error.context.clone === "function") {
+      try {
+        data = publicDiagnosticBody(await result.error.context.clone().json());
+      } catch {
+        data = null;
+      }
+    }
+    return { data, error: Boolean(result.error), status };
+  }
+});
