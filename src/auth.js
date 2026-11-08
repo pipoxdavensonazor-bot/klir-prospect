@@ -451,6 +451,36 @@ window.KlirAuth = {
   dismissCallback
 };
 
+const PILOT_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
+
+async function enqueuePilotSearch(body) {
+  if (!overturePreview()) return { ok: false, outcome: "environnement_refuse" };
+  if (!currentUser) return { ok: false, outcome: "session_requise" };
+  const cityKey = String(body && body.cityKey || "");
+  const quantity = Number(body && body.quantity);
+  if (!PILOT_CITY_KEYS.has(cityKey)) return { ok: false, outcome: "lieu_hors_pilote" };
+  if (!Number.isInteger(quantity) || quantity < 10 || quantity > 40) return { ok: false, outcome: "quantite_invalide" };
+  const supabase = await requireClient();
+  const result = await supabase.functions.invoke("search-jobs", {
+    body: {
+      action: "enqueue",
+      idempotencyKey: `pilot-${cityKey}-${quantity}`,
+      payload: {
+        place_status: "supported",
+        cityKey,
+        quantity,
+        source: "overture-places-pilot",
+        coverage: "sonde_centre"
+      }
+    }
+  });
+  const data = result.data && typeof result.data === "object" ? result.data : null;
+  if (data && data.error === "jobs_disabled") return { ok: false, outcome: "jobs_disabled" };
+  if (result.error || !data || (data.created !== true && data.created !== false)) return { ok: false, outcome: "jobs_injoignable" };
+  return { ok: true, outcome: "enfile", created: data.created === true };
+}
+
+window.KlirAuth.enqueuePilotSearch = enqueuePilotSearch;
 window.KlirAuth.diagnoseServerConnection = createServerDiagnostic({
   config: () => config,
   session: () => ({ user: currentUser }),
