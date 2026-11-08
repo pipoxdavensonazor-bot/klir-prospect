@@ -1,15 +1,20 @@
-import { handleSearchJob } from "../_shared/search-job-http.mjs";
+import { createClient } from "npm:@supabase/supabase-js@2.117.2";
+import { handleSearchJobRequest } from "../_shared/search-job-edge.mjs";
 
-// Porte fermée. jobsEnabled est fixé à false dans ce fichier : un déploiement
-// de la fonction ne lance pas la file et ne règle aucun crédit. Le branchement
-// JWT, base et drapeau réel appartient au lot C, après le règlement serveur.
-Deno.serve((request: Request) => handleSearchJob(request, {
-  jobsEnabled: async () => false,
-  verifyJwt: async () => null,
-  rateLimit: async () => false,
-  readJob: async () => null,
-  cancelJob: async () => null,
-  enqueue: async () => {
-    throw new Error("search_jobs_not_wired");
-  }
+const NAMES = [
+  "SUPABASE_URL",
+  "SUPABASE_PUBLISHABLE_KEYS",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_ANON_KEY"
+] as const;
+
+function edgeEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const name of NAMES) env[name] = Deno.env.get(name) ?? "";
+  return env;
+}
+
+Deno.serve((request: Request) => handleSearchJobRequest(request, {
+  env: edgeEnv(),
+  createClient
 }));

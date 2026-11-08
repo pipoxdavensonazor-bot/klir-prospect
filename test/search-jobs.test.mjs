@@ -168,8 +168,10 @@ test("l'entrée HTTP exige un JWT, le drapeau, le plafond et le propriétaire", 
 
   const entry = await readFile(new URL("../supabase/functions/search-jobs/index.ts", import.meta.url), "utf8");
   const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
-  assert.match(entry, /jobsEnabled: async \(\) => false/);
+  assert.match(entry, /handleSearchJobRequest/);
   assert.equal(entry.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+  assert.equal(entry.includes("SUPABASE_DB_URL"), false);
+  assert.equal(entry.includes("local:"), false);
   assert.equal(app.includes("search-jobs"), false);
   assert.equal(app.includes("enqueue_search_job"), false);
 });

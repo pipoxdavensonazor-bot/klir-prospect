@@ -47,3 +47,5 @@ L’ancien parcours, un reçu `debit_` ou `radar_` qui n’appartient pas à un 
 5. Laisser `jobs_enabled` à `false` jusqu’à une décision d’activation séparée. L’allumage n’est pas dans la migration.
 
 Ce lot ne rend pas la recherche mondiale, ni le produit, prêt pour la production.
+
+La reprise exécutable, le rôle d’exploitation distinct du propriétaire des migrations, et l’essai PostgreSQL à deux connexions sont dans `docs/lot-runtime-local.md`. Cette page-ci ne les déclarait pas faites.
