@@ -49,6 +49,17 @@ async function finishJob(query, ledger, adapter, job) {
     const observed = await adapter.run(job.payload, { attempt: job.attempt, isCancelled: () => false });
     const count = Number(observed && observed.count) || 0;
     const outcome = count > 0 ? "complete" : "empty";
+    const records = Array.isArray(observed && observed.records) ? observed.records.slice(0, 40) : [];
+    if (outcome === "complete" && records.length) {
+      await query("select private.record_search_places($1::uuid, $2::jsonb) as row", [
+        job.id,
+        JSON.stringify(records.map((row) => ({
+          name: row && row.name ? String(row.name).slice(0, 160) : "",
+          basicCategory: row && row.basicCategory ? String(row.basicCategory).slice(0, 80) : "",
+          release: row && row.release ? String(row.release).slice(0, 40) : ""
+        })))
+      ]);
+    }
     await ledger.record(job.id, outcome, outcome === "complete" ? count : 0);
     const reconciled = await ledger.reconcile(job.id);
     return { id: job.id, status: reconciled.status, ledger_status: reconciled.ledger_status, attempt: job.attempt };
