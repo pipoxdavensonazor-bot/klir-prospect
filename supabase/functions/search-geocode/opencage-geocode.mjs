@@ -60,6 +60,7 @@ export function publicCandidate(result, licenses) {
     latitude,
     longitude,
     confidence: Number.isInteger(result.confidence) ? result.confidence : null,
+    placeType: typeof components._type === "string" ? components._type : "",
     licenses: Array.isArray(licenses) ? licenses.filter((item) => item && item.name).map((item) => ({ name: String(item.name), url: String(item.url || "") })) : [],
     attribution: OSM_ATTRIBUTION,
     attributionFr: OSM_ATTRIBUTION_FR,
@@ -109,18 +110,18 @@ export function createOpenCageGeocoder(options = {}) {
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       const response = await fetchImpl(url, { signal: controller.signal });
-      const status = response.status;
-      if ((status === 429 || status >= 500) && attempt === 0) {
-        await sleep(MIN_INTERVAL_MS);
-        return request(url, 1);
-      }
       let body = null;
       try {
         body = await response.json();
       } catch {
         body = null;
       }
-      return { status, body };
+      const coded = body && body.status && Number.isInteger(body.status.code) ? body.status.code : response.status;
+      if ((coded === 429 || coded >= 500) && attempt === 0) {
+        await sleep(MIN_INTERVAL_MS);
+        return request(url, 1);
+      }
+      return { status: coded, body };
     } catch (error) {
       if (error && error.name === "AbortError") return { status: 0, body: null, outcome: "delai_depasse" };
       return { status: 0, body: null, outcome: "panne", detail: redact(error && error.message, key) };
@@ -140,7 +141,7 @@ export function createOpenCageGeocoder(options = {}) {
       const usage = String(input.usage || "ponctuel");
       if (usage !== "ponctuel") return refuse("geocodage_systematique_refuse");
       const query = String(input.query || "").normalize("NFC").trim();
-      if (query.length < 2 || query.length > MAX_QUERY) return refuse("requete_invalide");
+      if (query.length < 3 || query.length > MAX_QUERY) return refuse("requete_incomplete");
       if (!key) return refuse("cle_absente", { secret: OPENCAGE_SECRET });
       const countryCode = String(input.countryCode || "").trim().toLowerCase();
       const language = String(input.language || "").trim().toLowerCase();
@@ -167,12 +168,15 @@ export function createOpenCageGeocoder(options = {}) {
       lastNetworkAt = clock();
       const response = await request(`${OPENCAGE_ENDPOINT}?${params.toString()}`, 0);
       if (response.outcome) return refuse(response.outcome, response.detail ? { detail: response.detail } : {});
-      if (response.status === 402) return refuse("quota_fournisseur");
-      if (response.status === 401 || response.status === 403) return refuse("acces_refuse");
-      if (response.status === 429) return refuse("limite_debit");
-      if (response.status >= 400 || response.status === 0) return refuse("reponse_inattendue");
+      const providerCode = response.status;
+      if (providerCode === 402) return refuse("quota_fournisseur");
+      if (providerCode === 401 || providerCode === 403) return refuse("acces_refuse");
+      if (providerCode === 429) return refuse("limite_debit");
+      if (providerCode === 400) return refuse("requete_invalide");
+      if (providerCode !== 200) return refuse("reponse_inattendue");
+      const reported = response.body && Number.isInteger(response.body.total_results) ? response.body.total_results : null;
       const licenses = response.body && response.body.licenses;
-      const results = response.body && Array.isArray(response.body.results) ? response.body.results : [];
+      const results = reported === 0 ? [] : response.body && Array.isArray(response.body.results) ? response.body.results : [];
       const candidates = results.map((item) => publicCandidate(item, licenses)).filter(Boolean).slice(0, RESULT_LIMIT);
       const stored = {
         query,
