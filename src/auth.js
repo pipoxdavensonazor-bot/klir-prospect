@@ -479,7 +479,13 @@ async function enqueuePilotSearch(body) {
   if (result.error || !data || (data.created !== true && data.created !== false)) return { ok: false, outcome: "jobs_injoignable" };
   const ran = await supabase.functions.invoke("search-job-runner", { body: { action: "cycle" } });
   const cycle = ran.data && typeof ran.data === "object" ? ran.data : null;
-  return { ok: true, outcome: "enfile", created: data.created === true, cycle };
+  const jobId = cycle && Array.isArray(cycle.jobs) && cycle.jobs[0] ? cycle.jobs[0].id : "";
+  let places = [];
+  if (jobId) {
+    const listed = await supabase.from("search_job_places").select("name, basic_category").eq("job_id", jobId);
+    places = Array.isArray(listed.data) ? listed.data : [];
+  }
+  return { ok: true, outcome: "enfile", created: data.created === true, cycle, places };
 }
 
 window.KlirAuth.enqueuePilotSearch = enqueuePilotSearch;

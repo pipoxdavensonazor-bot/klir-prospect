@@ -685,7 +685,9 @@ async function runPilotJob(q,savedParams){
       enfile:settled?"Le moteur Test a pris la demande. La sonde donne au plus huit lieux autour du centre, pas la ville entière. Le reçu du serveur règle les crédits.":"La demande est acceptée. Le cycle n’a pas encore confirmé la sonde."
     }[result&&result.outcome]||"Aucune recherche lancée, aucun crédit réservé.";
     const title=result&&result.outcome==="jobs_disabled"?"Pilote — moteur éteint":"Pilote Test";
-    if(prog)prog.innerHTML='<div class="card"><b>'+title+'</b><p>'+text+'</p></div>';
+    const names=result&&Array.isArray(result.places)?result.places.map(row=>esc(row.name||"")).filter(Boolean):[];
+    const list=names.length?'<ul>'+names.map(name=>'<li>'+name+'</li>').join("")+'</ul>':"";
+    if(prog)prog.innerHTML='<div class="card"><b>'+title+'</b><p>'+text+'</p>'+list+'</div>';
   }catch(error){if(prog)prog.innerHTML='<div class="card"><b>Demande interrompue</b><p>'+esc(error.message||"Réponse indisponible")+'</p></div>';}
   finally{searchRunning=false;}
 }
