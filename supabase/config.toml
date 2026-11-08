@@ -417,6 +417,11 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [functions.search-jobs]
 verify_jwt = true
 
+# Diagnostic runner. JWT plateforme, puis allowlist public.is_admin().
+# Pas de cron. Le moteur n'est pas allumé ici.
+[functions.search-job-runner]
+verify_jwt = true
+
 # pg-delta is the schema diff engine for db diff / db pull / db remote commit.
 # Set enabled = false to fall back to the legacy migra engine.
 [experimental.pgdelta]
