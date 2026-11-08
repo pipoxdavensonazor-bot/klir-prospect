@@ -112,12 +112,22 @@ async function readDiagnosis(sql) {
   return { jobsEnabled };
 }
 
-async function assertBillingDenied(sql) {
+function permissionDenied(error) {
+  if (!error || typeof error !== "object") return false;
+  if (error.code === "42501" || /permission denied/i.test(String(error.message || ""))) return true;
+  return permissionDenied(error.cause);
+}
+
+async function assertBillingDenied(db) {
   try {
-    await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
-    await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.billingProbe);
+    await db.begin(async (sql) => {
+      await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
+      await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.billingProbe);
+      throw reject("role_trop_large");
+    });
   } catch (error) {
-    if (error && (error.code === "42501" || /permission denied/i.test(String(error.message || "")))) return;
+    if (error && error.code === "role_trop_large") throw error;
+    if (permissionDenied(error)) return;
     throw reject("connexion_serveur_absente");
   }
   throw reject("role_trop_large");
@@ -168,7 +178,7 @@ async function diagnose(request, options) {
   try {
     db = await options.connect(options.env);
     const diagnosis = await db.begin((sql) => readDiagnosis(sql));
-    await db.begin((sql) => assertBillingDenied(sql));
+    await assertBillingDenied(db);
     return json(200, {
       connected: true,
       role: RUNNER_ROLE,
