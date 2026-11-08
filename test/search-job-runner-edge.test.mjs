@@ -154,6 +154,37 @@ test("le diagnostic admin lit le moteur éteint et refuse la facturation sans ex
   assert.equal(options.port, 6543);
 });
 
+test("un admin lance un seul cycle local, un autre rôle ne touche pas la base", async () => {
+  const stranger = fakeAuth({ admin: false });
+  const closed = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: env(),
+    createClient: stranger.createClient,
+    connect: async () => { throw new Error("ne_pas_connecter"); }
+  });
+  assert.equal(closed.status, 403);
+
+  const auth = fakeAuth({ admin: true });
+  const db = fakeDb();
+  let ran = 0;
+  const response = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: env(),
+    createClient: auth.createClient,
+    connect: async () => ({ begin: db.postgres().begin, close: async () => {} }),
+    provider: { async run() { ran += 1; return { count: 8 }; } }
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.executed, true);
+  assert.equal(body.provider, "overture-places-pilot");
+  assert.equal(body.operational, false);
+  assert.equal(body.scheduler, "off");
+  assert.equal(body.jobs.length, 0);
+  assert.equal(ran, 0);
+  assert.equal(db.calls.some((text) => text.includes("set local role klir_job_runner")), true);
+  assert.equal(db.calls.some((text) => text.includes("claim_search_jobs")), true);
+  assert.equal(JSON.stringify(body).includes(password), false);
+});
+
 test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {
   const preview = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: PREVIEW_ORIGIN } });
   const allowed = await handleRunnerDiagnostic(preview, { env: env() });
@@ -211,5 +242,9 @@ test("la migration crée le login sans secret et sans droit de facturation", asy
   assert.doesNotMatch(sql, /grant klir_job_api to klir_job_connect_test/);
   assert.match(entry, /KLIR_JOB_DB_PASSWORD/);
   assert.doesNotMatch(entry, /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_DB_URL|local:/);
+  const snapshotSql = await readFile(new URL("../supabase/migrations/20261108163000_search_pilot_snapshot.sql", import.meta.url), "utf8");
+  assert.match(snapshotSql, /grant execute on function private\.pilot_snapshot\(\) to klir_job_runner/);
+  assert.doesNotMatch(snapshotSql, /jobs_enabled\s*=\s*true/);
+  assert.doesNotMatch(snapshotSql, /grant execute on function public\.(reserve_usage|settle_usage)/i);
   assert.equal(JSON.stringify(RUNNER_DIAGNOSTIC_SQL).includes("claim_search_jobs"), false);
 });

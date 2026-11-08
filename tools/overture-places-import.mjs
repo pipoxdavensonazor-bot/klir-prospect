@@ -1,4 +1,11 @@
-import { fold } from "./catalog-ingest.mjs";
+function fold(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 // Import local d'un extrait Places déjà borné. Pas de téléchargement planète,
 // pas de recherche utilisateur, pas de débit. La release est épinglée ; les

@@ -1,5 +1,7 @@
 import { createGetUserVerifier } from "./search-job-auth.mjs";
 import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-job-edge.mjs";
+import { runWorkerCycle } from "./search-job-worker.mjs";
+import { createOverturePilotProvider } from "./search-job-overture-pilot.mjs";
 
 export const CONNECT_ROLE = "klir_job_connect_test";
 export const RUNNER_ROLE = "klir_job_runner";
@@ -168,7 +170,7 @@ async function diagnose(request, options) {
   if (!user) return json(401, { error: "authentication_required" });
   const admin = await supabase.rpc("is_admin");
   if (admin.error || admin.data !== true) return json(403, { error: "autorisation_refusee" });
-  if (!body || body.action !== "diagnose") return json(403, { error: "fournisseur_absent" });
+  if (!body || (body.action !== "diagnose" && body.action !== "cycle")) return json(403, { error: "fournisseur_absent" });
   try {
     assertRunnerDbConfig(options.env || {});
   } catch (error) {
@@ -179,6 +181,36 @@ async function diagnose(request, options) {
   let db;
   try {
     db = await options.connect(options.env);
+    if (body.action === "cycle") {
+      const cycle = await db.begin(async (sql) => {
+        await sql.unsafe("set local role klir_job_runner");
+        let provider = options.provider;
+        if (!provider) {
+          const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
+          const snapshot = loaded && loaded[0] ? loaded[0].document : null;
+          provider = createOverturePilotProvider(snapshot);
+        }
+        const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
+        return runWorkerCycle(query, provider);
+      });
+      const jobs = Array.isArray(cycle && cycle.results) ? cycle.results : [];
+      return json(200, {
+        connected: true,
+        role: RUNNER_ROLE,
+        provider: "overture-places-pilot",
+        coverage: "sonde_centre",
+        operational: false,
+        contactsVerified: false,
+        executed: true,
+        scheduler: "off",
+        expired: cycle && cycle.expired ? cycle.expired : 0,
+        jobs: jobs.map((row) => ({
+          id: row.id,
+          status: row.status,
+          ledger_status: row.ledger_status || null
+        }))
+      });
+    }
     const diagnosis = await db.begin((sql) => readDiagnosis(sql));
     await assertBillingDenied(db);
     return json(200, {
