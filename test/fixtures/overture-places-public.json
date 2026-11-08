@@ -1,0 +1,453 @@
+{
+  "kind": "local-extract",
+  "release": "2026-10-21.0",
+  "fetchedAt": "2026-11-08",
+  "bbox": {
+    "name": "montréal-centre-sonde",
+    "west": -73.5695,
+    "south": 45.5008,
+    "east": -73.5651,
+    "north": 45.5027,
+    "note": "Sonde autour du centre Montréal déjà utilisé (45.5017, -73.5673). Ce rectangle n'est pas la ville."
+  },
+  "partition": "part-00006",
+  "partitionBytes": 755632071,
+  "categoriesColumn": false,
+  "features": [
+    {
+      "type": "Feature",
+      "id": "e2e82ec1-72b5-46dd-b106-4c5fae5130bb",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5687484741211,
+          45.502685546875
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "Stationnement Indigo Montreal M211 - Altitude Montreal"
+        },
+        "basic_category": "parking",
+        "taxonomy": {
+          "primary": "parking",
+          "hierarchy": [
+            "travel_and_transportation",
+            "parking"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montreal",
+            "country": "CA",
+            "freeform": "1225 Boulevard Robert-Bourassa"
+          }
+        ],
+        "phones": [
+          "5143958531"
+        ],
+        "emails": [],
+        "websites": [
+          "https://ca.parkindigo.com/fr/car-park/m211-altitude-montreal?utm_source=bing&utm_media=yext"
+        ],
+        "sources": [
+          {
+            "dataset": "Microsoft",
+            "property": "",
+            "record_id": "562949966861301",
+            "update_time": "2025-02-25T17:03:32.727Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "a9c70e45-7a4e-4c73-b00a-8673c2b7dafd",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56935119628906,
+          45.5026741027832
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "Défense Nationale"
+        },
+        "basic_category": "community_and_government",
+        "taxonomy": {
+          "primary": "community_and_government",
+          "hierarchy": [
+            "community_and_government"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montréal",
+            "country": "CA",
+            "freeform": "691 Rue Cathcart"
+          }
+        ],
+        "phones": [
+          "+15142834920"
+        ],
+        "emails": [],
+        "websites": [
+          "http://forces.gc.ca"
+        ],
+        "sources": [
+          {
+            "dataset": "meta",
+            "property": "",
+            "record_id": "962584827170815",
+            "update_time": "2026-10-12T00:00:00.000Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "273ecdaa-549d-4537-a232-3ad3d5ae12d0",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56938934326172,
+          45.50236511230469
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "TD Canada Trust ATM"
+        },
+        "basic_category": "atm",
+        "taxonomy": {
+          "primary": "atm",
+          "hierarchy": [
+            "services_and_business",
+            "financial_service",
+            "atm"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "MONTREAL",
+            "country": "CA",
+            "freeform": "733 RUE CATHCART"
+          }
+        ],
+        "phones": [
+          "8662223456"
+        ],
+        "emails": [],
+        "websites": [
+          "http://www.tdcanadatrust.com/externalBranchLocator/getBranchDetail.form?lang=en&branchID=18071"
+        ],
+        "sources": [
+          {
+            "dataset": "Microsoft",
+            "property": "",
+            "record_id": "281474977633176",
+            "update_time": "2015-04-10T16:40:05.770Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "dbb6912c-10b4-4d34-9d9c-a77d92fe0942",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56935119628906,
+          45.50236892700195
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "Sel&Ciel pâtisserie "
+        },
+        "basic_category": null,
+        "taxonomy": {
+          "primary": null,
+          "hierarchy": []
+        },
+        "addresses": [
+          {
+            "locality": "Montréal",
+            "country": "CA",
+            "freeform": "Rue Cathcart "
+          }
+        ],
+        "phones": [],
+        "emails": [],
+        "websites": [],
+        "sources": [
+          {
+            "dataset": "meta",
+            "property": "",
+            "record_id": "1074132212460415",
+            "update_time": "2026-08-24T00:00:00.000Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "d116de4e-23a7-480e-ae42-34b7bb96a4c6",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56886291503906,
+          45.502540588378906
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "WeWork"
+        },
+        "basic_category": "event_or_party_service",
+        "taxonomy": {
+          "primary": "party_and_event_planning",
+          "hierarchy": [
+            "services_and_business",
+            "event_or_party_service",
+            "party_and_event_planning"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montréal",
+            "country": "CA",
+            "freeform": "3 Pl. Ville-Marie Ste 400"
+          }
+        ],
+        "phones": [
+          "+15145659742"
+        ],
+        "emails": [
+          "placevillemarie@wework.com"
+        ],
+        "websites": [
+          "https://www.wework.com/buildings/place-ville-marie--montreal--QC?utm_source=Facebook&utm_campaign=Organic&utm_medium=Listings"
+        ],
+        "sources": [
+          {
+            "dataset": "meta",
+            "property": "",
+            "record_id": "694583147379680",
+            "update_time": "2026-10-12T00:00:00.000Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "9ec40dff-a66e-472b-a7a8-440e5b456ec3",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56890869140625,
+          45.50258255004883
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "NextDestination Canada"
+        },
+        "basic_category": "travel_service",
+        "taxonomy": {
+          "primary": "passport_and_visa_service",
+          "hierarchy": [
+            "travel_and_transportation",
+            "travel_service",
+            "passport_and_visa_service"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montréal",
+            "country": "CA",
+            "freeform": "3 Place, Ste 400"
+          }
+        ],
+        "phones": [
+          "+18009290762"
+        ],
+        "emails": [],
+        "websites": [
+          "https://www.nextdestinationcanada.com/"
+        ],
+        "sources": [
+          {
+            "dataset": "meta",
+            "property": "",
+            "record_id": "254580658272644",
+            "update_time": "2026-10-12T00:00:00.000Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "f68a67fd-424c-4802-9764-ff5a8b6c5b53",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56837463378906,
+          45.50249099731445
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "Moxies Grill and Bar"
+        },
+        "basic_category": "lounge",
+        "taxonomy": {
+          "primary": "lounge",
+          "hierarchy": [
+            "food_and_drink",
+            "alcoholic_beverage_venue",
+            "lounge"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montreal",
+            "country": "CA",
+            "freeform": "1207 Blvd Robert Bourassa"
+          }
+        ],
+        "phones": [
+          "5143931207"
+        ],
+        "emails": [],
+        "websites": [
+          "https://moxies.com/restaurant-locations/qc/montreal-restaurant/montreal"
+        ],
+        "sources": [
+          {
+            "dataset": "Microsoft",
+            "property": "",
+            "record_id": "1125899909700821",
+            "update_time": "2025-09-09T20:00:12.783Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "c20bf9f0-2fd4-4e34-8b44-7af0124d42aa",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.56836700439453,
+          45.5025749206543
+        ]
+      },
+      "properties": {
+        "names": {
+          "primary": "Centre de Micro Endodontie et de Parodontie"
+        },
+        "basic_category": "dental_clinic",
+        "taxonomy": {
+          "primary": "periodontics",
+          "hierarchy": [
+            "health_care",
+            "outpatient_care_facility",
+            "dental_clinic",
+            "periodontics"
+          ]
+        },
+        "addresses": [
+          {
+            "locality": "Montréal",
+            "country": "CA",
+            "freeform": "1211 Blvd Robert-Bourassa Ste 600"
+          }
+        ],
+        "phones": [
+          "+15146731111"
+        ],
+        "emails": [],
+        "websites": [
+          "http://www.microendoperio.com/"
+        ],
+        "sources": [
+          {
+            "dataset": "meta",
+            "property": "",
+            "record_id": "125139744484815",
+            "update_time": "2026-10-12T00:00:00.000Z",
+            "license": "CDLA-Permissive-2.0"
+          },
+          {
+            "dataset": "Overture",
+            "property": "/properties/confidence",
+            "record_id": "",
+            "update_time": "2026-10-15T18:00:21Z",
+            "license": "CDLA-Permissive-2.0"
+          }
+        ]
+      }
+    }
+  ],
+  "emailsOmittedFromRepo": 1,
+  "emailsOmittedReason": "boite_webmail_publique_non_recopiee",
+  "bytes": 11933
+}
