@@ -1,4 +1,5 @@
 import http from "node:http";
+import { readFile } from "node:fs/promises";
 import { Client } from "pg";
 import { pathToFileURL } from "node:url";
 import { createGetUserVerifier } from "../supabase/functions/_shared/search-job-auth.mjs";
@@ -6,6 +7,7 @@ import { assertLocalAuthTarget, createSupabaseGetUser } from "../supabase/functi
 import { handleSearchJob } from "../supabase/functions/_shared/search-job-http.mjs";
 import { createSearchJobStore } from "../supabase/functions/_shared/search-job-store.mjs";
 import { createLocalSimulatedProvider, runWorkerCycle } from "../supabase/functions/_shared/search-job-worker.mjs";
+import { createOverturePilotProvider } from "../supabase/functions/_shared/search-job-overture-pilot.mjs";
 
 const API_ROLE = "klir_job_api";
 const RUNNER_ROLE = "klir_job_runner";
@@ -153,7 +155,7 @@ export async function startSearchJobRuntime(env = process.env) {
   const runnerWho = await become(runner, RUNNER_ROLE);
   const onApi = gate();
   const onRunner = gate();
-  const adapter = createLocalSimulatedProvider();
+  const adapter = await pilotAdapter(env);
   const verifyJwt = createGetUserVerifier(createRuntimeGetUser(env));
 
   async function withUser(userId, fn) {
@@ -264,6 +266,17 @@ export async function startSearchJobRuntime(env = process.env) {
     try { await runner.end(); } catch { /* client non ouvert */ }
     throw error;
   }
+}
+
+async function pilotAdapter(env) {
+  if (env.SEARCH_JOBS_PROVIDER !== "overture-pilot") return createLocalSimulatedProvider();
+  const path = String(env.SEARCH_JOBS_PILOT_SNAPSHOT || "");
+  if (!path || /^[a-z][a-z0-9+.-]*:/i.test(path)) {
+    const error = new Error("instantane_local_requis");
+    error.code = "instantane_local_requis";
+    throw error;
+  }
+  return createOverturePilotProvider(JSON.parse(await readFile(path, "utf8")));
 }
 
 async function main() {

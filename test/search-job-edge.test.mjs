@@ -3,7 +3,7 @@ import http from "node:http";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
-import { handleSearchJobRequest, resolveTestAuth, searchJobExecutionPlan, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
+import { handleSearchJobRequest, resolveTestAuth, searchJobExecutionPlan, TEST_SUPABASE_URL, PREVIEW_ORIGIN } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
 const publishable = "sb_publishable_test_fixture";
@@ -178,6 +178,17 @@ test("la lecture reste un SELECT sous le JWT et le client réel appelle getUser"
   assert.equal(seen.length, 1);
   assert.equal(seen[0].host, "pwakjxjjxswdjsapsbxn.supabase.co");
   assert.equal(seen[0].path, "/auth/v1/user");
+});
+
+test("la prévisualisation Test peut appeler l'API jobs, le site public non", async () => {
+  const preview = new Request("http://127.0.0.1/search-jobs", { method: "OPTIONS", headers: { origin: PREVIEW_ORIGIN } });
+  const allowed = await handleSearchJobRequest(preview, { env: env() });
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get("access-control-allow-origin"), PREVIEW_ORIGIN);
+  const foreign = new Request("http://127.0.0.1/search-jobs", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } });
+  const refused = await handleSearchJobRequest(foreign, { env: env() });
+  assert.equal(refused.status, 403);
+  assert.equal(refused.headers.get("access-control-allow-origin"), null);
 });
 
 test("l'entrée déployable n'embarque ni secret ni runner", async () => {

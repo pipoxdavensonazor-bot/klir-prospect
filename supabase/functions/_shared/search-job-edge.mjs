@@ -4,6 +4,26 @@ import { handleSearchJob } from "./search-job-http.mjs";
 export const TEST_PROJECT_REF = "pwakjxjjxswdjsapsbxn";
 export const PROD_PROJECT_REF = "cbklwmjudobqwbkbxqgy";
 export const TEST_SUPABASE_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
+export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
+
+function previewCors(request) {
+  const origin = request.headers.get("origin") || "";
+  if (origin !== PREVIEW_ORIGIN) return {};
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    vary: "origin"
+  };
+}
+
+function withPreviewCors(request, response) {
+  const extra = previewCors(request);
+  if (!extra["access-control-allow-origin"]) return response;
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(extra)) headers.set(name, value);
+  return new Response(response.body, { status: response.status, headers });
+}
 
 function reject(code) {
   const error = new Error(code);
@@ -169,6 +189,14 @@ function depsFor(supabase, verifyJwt) {
 }
 
 export async function handleSearchJobRequest(request, options = {}) {
+  if (request.method === "OPTIONS") {
+    if (!previewCors(request)["access-control-allow-origin"]) return json(403, { error: "origine_refusee" });
+    return new Response(null, { status: 204, headers: previewCors(request) });
+  }
+  return withPreviewCors(request, await handleSearchJobRequestBody(request, options));
+}
+
+async function handleSearchJobRequestBody(request, options = {}) {
   const plan = searchJobExecutionPlan();
   let config;
   try {
