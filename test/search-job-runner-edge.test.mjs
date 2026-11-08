@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRunnerDiagnostic, assertRunnerDbConfig, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
+import { handleRunnerDiagnostic, assertRunnerDbConfig, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
 import { TEST_PROJECT_REF, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
@@ -159,6 +159,10 @@ test("la prévisualisation Test peut demander le diagnostic, une autre origine n
   const allowed = await handleRunnerDiagnostic(preview, { env: env() });
   assert.equal(allowed.status, 204);
   assert.equal(allowed.headers.get("access-control-allow-origin"), PREVIEW_ORIGIN);
+  const pilot = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: PILOT_UI_ORIGIN } });
+  const pilotAllowed = await handleRunnerDiagnostic(pilot, { env: env() });
+  assert.equal(pilotAllowed.status, 204);
+  assert.equal(pilotAllowed.headers.get("access-control-allow-origin"), PILOT_UI_ORIGIN);
   assert.match(allowed.headers.get("access-control-allow-methods"), /POST/);
   const foreign = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } });
   const refused = await handleRunnerDiagnostic(foreign, { env: env() });

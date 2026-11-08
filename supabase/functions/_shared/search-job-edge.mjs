@@ -5,10 +5,12 @@ export const TEST_PROJECT_REF = "pwakjxjjxswdjsapsbxn";
 export const PROD_PROJECT_REF = "cbklwmjudobqwbkbxqgy";
 export const TEST_SUPABASE_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
 export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
+export const PILOT_UI_ORIGIN = "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca";
+const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN]);
 
 function previewCors(request) {
   const origin = request.headers.get("origin") || "";
-  if (origin !== PREVIEW_ORIGIN) return {};
+  if (!PREVIEW_ORIGINS.has(origin)) return {};
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",

@@ -4,6 +4,8 @@ import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-jo
 export const CONNECT_ROLE = "klir_job_connect_test";
 export const RUNNER_ROLE = "klir_job_runner";
 export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
+export const PILOT_UI_ORIGIN = "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca";
+const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN]);
 
 export const RUNNER_DIAGNOSTIC_SQL = Object.freeze({
   assume: "set local role klir_job_runner",
@@ -20,7 +22,7 @@ function reject(code) {
 
 function corsHeaders(request) {
   const origin = request.headers.get("origin") || "";
-  if (origin !== PREVIEW_ORIGIN) return {};
+  if (!PREVIEW_ORIGINS.has(origin)) return {};
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
