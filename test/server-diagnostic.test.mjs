@@ -140,4 +140,7 @@ test("le client passe par functions.invoke et le bouton reste hors des réglages
   assert.equal(settings.includes("serverDiagnosticBtn"), false);
   assert.equal(settings.includes("serverDiagnosticCard"), false);
   assert.equal(app.includes("enqueue_search_job"), false);
+  const runSearch = app.slice(app.indexOf("async function runSearch"), app.indexOf("async function runSearch") + 280);
+  assert.match(runSearch, /return runPilotJob/);
+  assert.equal(runSearch.includes("runOvertureSearch"), false);
 });

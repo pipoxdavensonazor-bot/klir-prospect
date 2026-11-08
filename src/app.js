@@ -666,8 +666,29 @@ async function runOvertureSearch(q,savedParams){
   }catch(error){if(prog)prog.innerHTML='<div class="card"><b>Recherche interrompue</b><p>'+esc(error.message||"Réponse indisponible")+'</p></div>';}
   finally{searchRunning=false;}
 }
+async function runPilotJob(q,savedParams){
+  if(searchRunning)return;
+  searchRunning=true;
+  const prog=document.getElementById("prog");
+  try{
+    if(!q||!q.trim())throw new Error("Décrivez les entreprises recherchées.");
+    const params=formSearchParams(q,savedParams);
+    const result=await window.KlirAuth.enqueuePilotSearch({cityKey:params.cityKey,quantity:params.quantity});
+    const text={
+      jobs_disabled:"Le moteur est éteint. Aucune recherche lancée, aucun crédit réservé. Huit lieux autour de chaque centre sont une sonde, pas la ville.",
+      lieu_hors_pilote:"Ce lieu n’est pas l’un des six centres du contrat. Aucune recherche lancée.",
+      environnement_refuse:"Ce parcours n’existe que sur la prévisualisation Test.",
+      session_requise:"Connectez-vous. Aucune recherche lancée.",
+      quantite_invalide:"La quantité doit rester entre 10 et 40. Aucune recherche lancée.",
+      jobs_injoignable:"Le serveur de jobs n’a pas encore accepté cette prévisualisation. Aucune recherche lancée, aucun crédit réservé.",
+      enfile:"La demande a été acceptée par le serveur. Ce n’est pas une recherche terminée et le moteur reste à vérifier."
+    }[result&&result.outcome]||"Aucune recherche lancée, aucun crédit réservé.";
+    if(prog)prog.innerHTML='<div class="card"><b>Pilote — moteur éteint</b><p>'+text+'</p></div>';
+  }catch(error){if(prog)prog.innerHTML='<div class="card"><b>Demande interrompue</b><p>'+esc(error.message||"Réponse indisponible")+'</p></div>';}
+  finally{searchRunning=false;}
+}
 async function runSearch(q,savedParams){
-  if(window.KlirAuth&&window.KlirAuth.overturePreview())return runOvertureSearch(q,savedParams);
+  if(window.KlirAuth&&window.KlirAuth.overturePreview())return runPilotJob(q,savedParams);
   if(searchRunning)return;
   searchRunning=true;
   try{
