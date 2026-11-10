@@ -53,6 +53,28 @@ function bearer(request) {
   return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 }
 
+const CLIENT_TARGET_KEYS = Object.freeze(["jobId", "job_id", "targetJobId", "target"]);
+const TEST_JOB_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function clientSuppliedTarget(body) {
+  if (!body || typeof body !== "object") return false;
+  return CLIENT_TARGET_KEYS.some((key) => Object.prototype.hasOwnProperty.call(body, key));
+}
+
+// La cible vient de l'environnement du serveur de prévisualisation Test.
+// Un corps HTTP, même administrateur, ne peut pas la fournir.
+export function authorizedTestJobId(env = {}) {
+  const raw = String(env.KLIR_JOB_TEST_JOB_ID || "").trim();
+  if (!raw) return "";
+  if (String(env.KLIR_ENV || "") !== "preview") return "";
+  const host = String(env.KLIR_JOB_DB_HOST || "").toLowerCase();
+  const user = String(env.KLIR_JOB_DB_USER || "").toLowerCase();
+  if (host.includes(PROD_PROJECT_REF) || user.includes(PROD_PROJECT_REF)) return "";
+  if (!user.endsWith(`.${TEST_PROJECT_REF}`)) return "";
+  if (!TEST_JOB_UUID.test(raw)) throw reject("cible_invalide");
+  return raw.toLowerCase();
+}
+
 export function assertRunnerDbConfig(env = {}) {
   const host = String(env.KLIR_JOB_DB_HOST || "").trim().toLowerCase();
   const port = Number(String(env.KLIR_JOB_DB_PORT || "").trim());
@@ -170,7 +192,14 @@ async function diagnose(request, options) {
   if (!user) return json(401, { error: "authentication_required" });
   const admin = await supabase.rpc("is_admin");
   if (admin.error || admin.data !== true) return json(403, { error: "autorisation_refusee" });
+  if (clientSuppliedTarget(body)) return json(400, { error: "cible_refusee" });
   if (!body || (body.action !== "diagnose" && body.action !== "cycle")) return json(403, { error: "fournisseur_absent" });
+  let targetJobId = "";
+  try {
+    targetJobId = authorizedTestJobId(options.env || {});
+  } catch (error) {
+    return json(400, { error: error.code || "cible_invalide" });
+  }
   try {
     assertRunnerDbConfig(options.env || {});
   } catch (error) {
@@ -191,7 +220,7 @@ async function diagnose(request, options) {
           provider = createOverturePilotProvider(snapshot);
         }
         const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
-        return runWorkerCycle(query, provider);
+        return runWorkerCycle(query, provider, { targetJobId });
       });
       const jobs = Array.isArray(cycle && cycle.results) ? cycle.results : [];
       return json(200, {
