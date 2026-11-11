@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRunnerDiagnostic, assertRunnerDbConfig, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
+import { handleRunnerDiagnostic, assertRunnerDbConfig, authorizedTestJobId, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
 import { TEST_PROJECT_REF, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
@@ -182,7 +182,37 @@ test("un admin lance un seul cycle local, un autre rôle ne touche pas la base",
   assert.equal(ran, 0);
   assert.equal(db.calls.some((text) => text.includes("set local role klir_job_runner")), true);
   assert.equal(db.calls.some((text) => text.includes("claim_search_jobs")), true);
+  assert.equal(db.calls.some((text) => text.includes("claim_authorized_test_job")), false);
   assert.equal(JSON.stringify(body).includes(password), false);
+});
+
+test("un corps HTTP ne choisit pas le job, et seule une cible serveur de prévisualisation est acceptée", async () => {
+  const jobId = "44444444-4444-4444-8444-444444444444";
+  const auth = fakeAuth({ admin: true });
+  let connected = 0;
+  const refused = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle", jobId }), {
+    env: env({ KLIR_ENV: "preview" }),
+    createClient: auth.createClient,
+    connect: async () => { connected += 1; throw new Error("ne_pas_connecter"); }
+  });
+  assert.equal(refused.status, 400);
+  assert.equal((await refused.json()).error, "cible_refusee");
+  assert.equal(connected, 0);
+
+  assert.equal(authorizedTestJobId(env({ KLIR_ENV: "production", KLIR_JOB_TEST_JOB_ID: jobId })), "");
+  assert.throws(() => authorizedTestJobId(env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: "pas-un-uuid" })), (error) => error.code === "cible_invalide");
+
+  const db = fakeDb();
+  const accepted = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: jobId }),
+    createClient: auth.createClient,
+    connect: async () => ({ begin: db.postgres().begin, close: async () => {} }),
+    provider: { async run() { return { count: 0 }; } }
+  });
+  assert.equal(accepted.status, 200);
+  assert.equal(db.calls.some((text) => text.includes("claim_authorized_test_job")), true);
+  assert.equal(db.calls.some((text) => text.includes("claim_search_jobs")), false);
+  assert.equal(JSON.stringify(await accepted.json()).includes(jobId), false);
 });
 
 test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {

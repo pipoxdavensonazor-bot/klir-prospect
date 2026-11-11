@@ -83,7 +83,7 @@ async function finishJob(query, ledger, adapter, job) {
   }
 }
 
-export async function runWorkerCycle(query, adapter) {
+export async function runWorkerCycle(query, adapter, options = {}) {
   if (typeof query !== "function") {
     const error = new Error("query_required");
     error.code = "query_required";
@@ -96,7 +96,10 @@ export async function runWorkerCycle(query, adapter) {
   }
   const ledger = createSearchJobLedger(query);
   const expired = await query("select private.expire_due_search_jobs() as row");
-  const claimed = await query("select private.claim_search_jobs(1) as row");
+  const targetJobId = options && options.targetJobId ? String(options.targetJobId) : "";
+  const claimed = targetJobId
+    ? await query("select private.claim_authorized_test_job($1::uuid) as row", [targetJobId])
+    : await query("select private.claim_search_jobs(1) as row");
   const jobs = asJobs(claimed.rows[0] && claimed.rows[0].row);
   const results = [];
   for (const job of jobs) results.push(await finishJob(query, ledger, adapter, job));

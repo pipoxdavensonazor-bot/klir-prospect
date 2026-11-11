@@ -24,10 +24,8 @@ test("la sonde réelle des six centres alimente un fournisseur local non opérat
   assert.equal(/fetch\s*\(/.test(source), false);
 });
 
-test("un cycle local enregistre le nombre de la sonde une seule fois", async () => {
-  const provider = createOverturePilotProvider(snapshot);
+function probeQuery(jobId, payload, handlers) {
   const calls = [];
-  const jobId = "44444444-4444-4444-8444-444444444444";
   let claimed = false;
   const query = async (sql, params) => {
     calls.push(sql);
@@ -35,22 +33,67 @@ test("un cycle local enregistre le nombre de la sonde une seule fois", async () 
     if (sql.includes("claim_search_jobs")) {
       if (claimed) return { rows: [{ row: [] }] };
       claimed = true;
-      return { rows: [{ row: [{ id: jobId, attempt: 1, payload: { place_status: "supported", cityKey: "laval", quantity: 10 } }] }] };
+      return { rows: [{ row: [{ id: jobId, attempt: 1, payload }] }] };
     }
-    if (sql.includes("record_search_collection")) {
+    if (sql.includes("record_search_places")) return handlers.places(params);
+    if (sql.includes("record_search_collection")) return handlers.collection(params);
+    if (sql.includes("reconcile_search_job")) return handlers.reconcile();
+    throw new Error(sql);
+  };
+  return { calls, query };
+}
+
+test("un cycle local enregistre le nombre de la sonde une seule fois", async () => {
+  const provider = createOverturePilotProvider(snapshot);
+  const jobId = "44444444-4444-4444-8444-444444444444";
+  const probe = probeQuery(jobId, { place_status: "supported", cityKey: "laval", quantity: 10 }, {
+    places(params) {
+      const places = JSON.parse(params[1]);
+      assert.equal(params[0], jobId);
+      assert.equal(places.length, 8);
+      assert.ok(places.every((row) => row.name && row.release));
+      return { rows: [{ row: { recorded: places.length, replayed: false } }] };
+    },
+    collection(params) {
       assert.equal(params[1], "complete");
       assert.equal(params[2], 8);
       return { rows: [{ row: { id: jobId, collection_outcome: "complete", result_count: 8, recorded: true } }] };
-    }
-    if (sql.includes("reconcile_search_job")) {
+    },
+    reconcile() {
       return { rows: [{ row: { status: "succeeded", ledger_status: "settled" } }] };
     }
-    throw new Error(sql);
-  };
-  const first = await runWorkerCycle(query, provider);
-  const second = await runWorkerCycle(query, provider);
+  });
+  const first = await runWorkerCycle(probe.query, provider);
+  const second = await runWorkerCycle(probe.query, provider);
+  const placesAt = probe.calls.findIndex((sql) => sql.includes("record_search_places"));
+  const collectionAt = probe.calls.findIndex((sql) => sql.includes("record_search_collection"));
   assert.equal(first.results[0].status, "succeeded");
-  assert.equal(calls.filter((sql) => sql.includes("record_search_collection")).length, 1);
+  assert.equal(probe.calls.filter((sql) => sql.includes("record_search_places")).length, 1);
+  assert.equal(probe.calls.filter((sql) => sql.includes("record_search_collection")).length, 1);
+  assert.ok(placesAt >= 0 && placesAt < collectionAt);
   assert.equal(second.results.length, 0);
-  assert.equal(calls.some((sql) => /reserve_usage|settle_usage/.test(sql)), false);
+  assert.equal(probe.calls.some((sql) => /reserve_usage|settle_usage/.test(sql)), false);
+});
+
+test("une écriture de fiches refusée clôt la sonde en failed sans débit direct", async () => {
+  const provider = createOverturePilotProvider(snapshot);
+  const jobId = "55555555-5555-4555-8555-555555555555";
+  const probe = probeQuery(jobId, { place_status: "supported", cityKey: "laval", quantity: 10 }, {
+    places() {
+      throw new Error("places_invalides");
+    },
+    collection(params) {
+      assert.equal(params[1], "failed");
+      assert.equal(params[2], 0);
+      return { rows: [{ row: { id: jobId, collection_outcome: "failed", result_count: 0, recorded: true } }] };
+    },
+    reconcile() {
+      return { rows: [{ row: { status: "failed", ledger_status: "released" } }] };
+    }
+  });
+  const cycle = await runWorkerCycle(probe.query, provider);
+  assert.equal(cycle.results[0].status, "failed");
+  assert.equal(cycle.results[0].ledger_status, "released");
+  assert.equal(probe.calls.filter((sql) => sql.includes("record_search_collection")).length, 1);
+  assert.equal(probe.calls.some((sql) => /reserve_usage|settle_usage/.test(sql)), false);
 });
