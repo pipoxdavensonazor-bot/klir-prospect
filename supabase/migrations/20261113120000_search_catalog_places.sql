@@ -36,7 +36,15 @@ comment on table private.search_catalog_places is
   'Fiches Overture Places des six centres, une ligne par lieu. Lecture runner seulement.';
 
 revoke all on table private.search_catalog_places
-  from public, anon, authenticated, klir_job_api, klir_job_runner, klir_job_connect_test;
+  from public, anon, authenticated, klir_job_api, klir_job_runner;
+-- Rôle de connexion Test absent en Prod : révocation seulement s'il existe.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'klir_job_connect_test') then
+    execute 'revoke all on table private.search_catalog_places from klir_job_connect_test';
+  end if;
+end
+$$;
 
 alter table private.search_catalog_places enable row level security;
 alter table private.search_catalog_places force row level security;
@@ -84,7 +92,14 @@ as $$
 $$;
 
 revoke all on function private.search_catalog_industry_tokens(text)
-  from public, anon, authenticated, klir_job_api, klir_job_runner, klir_job_connect_test;
+  from public, anon, authenticated, klir_job_api, klir_job_runner;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'klir_job_connect_test') then
+    execute 'revoke all on function private.search_catalog_industry_tokens(text) from klir_job_connect_test';
+  end if;
+end
+$$;
 
 create or replace function private.search_catalog_lookup(
   p_city_key text,
@@ -198,7 +213,14 @@ end;
 $$;
 
 revoke all on function private.search_catalog_lookup(text, text, integer)
-  from public, anon, authenticated, klir_job_api, klir_job_connect_test;
+  from public, anon, authenticated, klir_job_api;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'klir_job_connect_test') then
+    execute 'revoke all on function private.search_catalog_lookup(text, text, integer) from klir_job_connect_test';
+  end if;
+end
+$$;
 grant execute on function private.search_catalog_lookup(text, text, integer) to klir_job_runner;
 
 comment on function private.search_catalog_lookup(text, text, integer) is

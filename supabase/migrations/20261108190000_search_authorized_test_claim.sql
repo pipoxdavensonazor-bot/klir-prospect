@@ -26,7 +26,15 @@ alter table private.search_test_job_approvals enable row level security;
 alter table private.search_test_job_approvals force row level security;
 
 revoke all on table private.search_test_job_approvals
-  from public, anon, authenticated, klir_job_api, klir_job_runner, klir_job_connect_test;
+  from public, anon, authenticated, klir_job_api, klir_job_runner;
+-- Rôle de connexion Test absent en Prod : révocation seulement s'il existe.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'klir_job_connect_test') then
+    execute 'revoke all on table private.search_test_job_approvals from klir_job_connect_test';
+  end if;
+end
+$$;
 
 create or replace function private.claim_authorized_test_job(p_job_id uuid)
 returns jsonb

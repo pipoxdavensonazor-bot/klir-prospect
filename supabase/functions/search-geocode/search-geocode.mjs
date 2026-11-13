@@ -1,9 +1,12 @@
 import { createOpenCageGeocoder, OPENCAGE_SECRET } from "./opencage-geocode.mjs";
+import { resolveProject } from "../_shared/search-job-projects.mjs";
 
 export { OPENCAGE_SECRET };
 export const PREVIEW_ORIGINS = new Set([
   "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca",
-  "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca"
+  "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca",
+  "https://cursor-search-targeted-claim-2f07.klirprospect.klirline.ca",
+  "https://klirprospect.klirline.ca"
 ]);
 
 function json(status, body, origin) {
@@ -47,9 +50,11 @@ export async function handleSearchGeocode(request, options = {}) {
   }
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" }, origin);
   const env = options.env || {};
-  const url = String(env.SUPABASE_URL || "").replace(/\/+$/, "");
-  if (!url || url.includes("cbklwmjudobqwbkbxqgy") || url !== "https://pwakjxjjxswdjsapsbxn.supabase.co") {
-    return json(503, { error: "hote_non_test", operational: false }, origin);
+  let url = "";
+  try {
+    url = resolveProject(env).url; // liste blanche : Test ou Prod, rien d'autre
+  } catch (error) {
+    return json(503, { error: error.code || "projet_refuse", operational: false }, origin);
   }
   const header = request.headers.get("authorization") || "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";

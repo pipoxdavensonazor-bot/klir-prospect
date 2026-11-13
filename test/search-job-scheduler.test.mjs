@@ -230,8 +230,12 @@ test("Edge planifié : sans le bon secret, rien ne se connecte", async () => {
     [secret, { KLIR_JOB_SCHEDULER_SECRET: "" }, 503, "planificateur_inactif"],
     [secret, { KLIR_JOB_SCHEDULER_SECRET: "court" }, 503, "planificateur_inactif"],
     [secret, { KLIR_ENV: "production" }, 401, "environnement_refuse"],
-    [secret, { SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co" }, 401, "production_refusee"],
-    [secret, { KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" }, 401, "hote_test_refuse"],
+    // URL Prod avec l'environnement Test : incohérence refusée.
+    [secret, { SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co" }, 401, "environnement_refuse"],
+    [secret, { SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" }, 401, "projet_refuse"],
+    // URL et environnement Prod, mais rôle de connexion Test : refusé.
+    [secret, { SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co", KLIR_ENV: "production" }, 401, "role_connexion_refuse"],
+    [secret, { KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" }, 401, "hote_pooler_refuse"],
     [secret, { KLIR_JOB_TEST_JOB_ID: ada }, 409, "cible_active"]
   ]) {
     const db = fakeConnect();

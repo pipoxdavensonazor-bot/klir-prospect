@@ -67,7 +67,7 @@ function fakeClient(behavior) {
   };
 }
 
-test("sans URL Test, ou avec la production, rien n'est appelé", async () => {
+test("sans URL, ou avec un projet hors liste blanche, rien n'est appelé", async () => {
   let called = false;
   const createClientSpy = () => {
     called = true;
@@ -79,12 +79,23 @@ test("sans URL Test, ou avec la production, rien n'est appelé", async () => {
   });
   assert.equal(missing.status, 503);
   assert.equal((await missing.json()).error, "configuration_absente");
+  for (const foreignUrl of ["https://abcdefghijklmnopqrst.supabase.co", "https://cbklwmjudobqwbkbxqgy.supabase.co.evil.com", "http://cbklwmjudobqwbkbxqgy.supabase.co"]) {
+    const foreign = await handleSearchJobRequest(request("GET", "", null, "/healthz"), {
+      env: { SUPABASE_URL: foreignUrl, SUPABASE_PUBLISHABLE_KEY: publishable },
+      createClient: createClientSpy
+    });
+    assert.equal(foreign.status, 503, foreignUrl);
+    assert.equal((await foreign.json()).error, "projet_refuse");
+  }
+  // La production est dans la liste blanche : healthz la décrit, sans appeler de client.
   const prod = await handleSearchJobRequest(request("GET", "", null, "/healthz"), {
     env: { SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co", SUPABASE_PUBLISHABLE_KEY: publishable },
     createClient: createClientSpy
   });
-  assert.equal(prod.status, 503);
-  assert.equal((await prod.json()).error, "production_refusee");
+  assert.equal(prod.status, 200);
+  const prodBody = await prod.json();
+  assert.equal(prodBody.target, "production");
+  assert.equal(prodBody.project, "cbklwmjudobqwbkbxqgy");
   assert.equal(called, false);
   assert.throws(() => resolveTestAuth({
     SUPABASE_URL: TEST_SUPABASE_URL,

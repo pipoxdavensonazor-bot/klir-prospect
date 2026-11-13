@@ -1,8 +1,9 @@
 import { createGetUserVerifier } from "./search-job-auth.mjs";
 import { handleSearchJob } from "./search-job-http.mjs";
 
-export const TEST_PROJECT_REF = "pwakjxjjxswdjsapsbxn";
-export const PROD_PROJECT_REF = "cbklwmjudobqwbkbxqgy";
+import { resolveProject, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-job-projects.mjs";
+
+export { TEST_PROJECT_REF, PROD_PROJECT_REF };
 export const TEST_SUPABASE_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
 export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
 export const PILOT_UI_ORIGIN = "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca";
@@ -66,18 +67,16 @@ function assertPublicKey(key) {
   ) {
     throw reject("cle_secrete_refusee");
   }
-  if (lower.includes(PROD_PROJECT_REF)) throw reject("production_refusee");
   const publishable = /^sb_publishable_[A-Za-z0-9_-]+$/.test(key);
   const legacyPublic = key.split(".").length === 3;
   if (!publishable && !legacyPublic) throw reject("cle_publique_requise");
   return key;
 }
 
-export function resolveTestAuth(env = {}) {
-  const url = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
-  if (!url) throw reject("configuration_absente");
-  if (url.toLowerCase().includes(PROD_PROJECT_REF)) throw reject("production_refusee");
-  if (url !== TEST_SUPABASE_URL) throw reject("hote_non_test");
+// Projet servi : seulement l'un des deux projets de la liste blanche (Test, Prod).
+export function resolveProjectAuth(env = {}) {
+  const project = resolveProject(env);
+  const url = project.url;
 
   let key = "";
   let source = "";
@@ -103,8 +102,10 @@ export function resolveTestAuth(env = {}) {
   } else {
     throw reject("configuration_absente");
   }
-  return { url, key: assertPublicKey(key), source };
+  return { url, key: assertPublicKey(key), source, project };
 }
+
+export const resolveTestAuth = resolveProjectAuth;
 
 export function searchJobExecutionPlan() {
   return {
@@ -213,8 +214,8 @@ async function handleSearchJobRequestBody(request, options = {}) {
   const url = new URL(request.url || "/", "http://127.0.0.1");
   if (request.method === "GET" && (url.pathname === "/healthz" || url.pathname.endsWith("/healthz"))) {
     return json(200, {
-      target: "test",
-      project: TEST_PROJECT_REF,
+      target: config.project.target,
+      project: config.project.ref,
       auth: "getUser",
       database: plan.database,
       jobsFlag: "enforce_par_enqueue_search_job",

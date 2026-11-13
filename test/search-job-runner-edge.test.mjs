@@ -79,7 +79,13 @@ test("la configuration du runner échoue fermée et ne répète pas le secret", 
     assert.equal(String(error.message).includes(password), false);
     return true;
   });
-  assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_HOST: "db.cbklwmjudobqwbkbxqgy.supabase.co" })), /production_refusee/);
+  assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_HOST: "db.cbklwmjudobqwbkbxqgy.supabase.co" })), /hote_non_pooler/);
+  assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" })), /hote_pooler_refuse/);
+  assert.throws(() => assertRunnerDbConfig(env({ SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co" })), /projet_refuse/);
+  // Rôle de connexion d'un projet utilisé sur l'autre projet : refusé.
+  assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_USER: "klir_job_runner_prod.pwakjxjjxswdjsapsbxn" })), /role_connexion_refuse/);
+  assert.throws(() => assertRunnerDbConfig(env({ SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co" })), /role_connexion_refuse/);
+  assert.equal(assertRunnerDbConfig(env({ SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co", KLIR_JOB_DB_USER: "klir_job_runner_prod.cbklwmjudobqwbkbxqgy" })).user, "klir_job_runner_prod.cbklwmjudobqwbkbxqgy");
   assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_PORT: "5432" })), /port_non_transaction/);
   assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_USER: "postgres.pwakjxjjxswdjsapsbxn" })), /role_connexion_refuse/);
   assert.throws(() => assertRunnerDbConfig(env({ KLIR_JOB_DB_USER: "service_role.pwakjxjjxswdjsapsbxn" })), /role_connexion_refuse/);
@@ -361,12 +367,14 @@ test("non-régression : sans cible, le cycle de production garde expiration puis
   }
 });
 
-test("l'aperçu de la branche du cycle ciblé passe la prévérification, pas la production", async () => {
+test("l'aperçu de la branche et le site de production passent la prévérification, une autre origine non", async () => {
   const allowed = await handleRunnerDiagnostic(new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: TARGETED_UI_ORIGIN } }), { env: env() });
   assert.equal(allowed.status, 204);
   assert.equal(allowed.headers.get("access-control-allow-origin"), TARGETED_UI_ORIGIN);
   const prod = await handleRunnerDiagnostic(new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } }), { env: env() });
-  assert.equal(prod.status, 403);
+  assert.equal(prod.status, 204);
+  const other = await handleRunnerDiagnostic(new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://autre.klirline.ca" } }), { env: env() });
+  assert.equal(other.status, 403);
 });
 
 test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {
@@ -379,7 +387,7 @@ test("la prévisualisation Test peut demander le diagnostic, une autre origine n
   assert.equal(pilotAllowed.status, 204);
   assert.equal(pilotAllowed.headers.get("access-control-allow-origin"), PILOT_UI_ORIGIN);
   assert.match(allowed.headers.get("access-control-allow-methods"), /POST/);
-  const foreign = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } });
+  const foreign = new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://autre.klirline.ca" } });
   const refused = await handleRunnerDiagnostic(foreign, { env: env() });
   assert.equal(refused.status, 403);
   assert.equal(refused.headers.get("access-control-allow-origin"), null);

@@ -1,14 +1,17 @@
 import { createGetUserVerifier } from "./search-job-auth.mjs";
-import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF, TEST_SUPABASE_URL } from "./search-job-edge.mjs";
+import { resolveProjectAuth, TEST_PROJECT_REF, PROD_PROJECT_REF, TEST_SUPABASE_URL } from "./search-job-edge.mjs";
+import { ALLOWED_PROJECTS, assertProjectRunnerIdentity, resolveProject } from "./search-job-projects.mjs";
 import { runWorkerCycle } from "./search-job-worker.mjs";
 import { createCatalogQueryProvider } from "./search-job-overture-pilot.mjs";
 
-export const CONNECT_ROLE = "klir_job_connect_test";
+export const CONNECT_ROLE = ALLOWED_PROJECTS[TEST_PROJECT_REF].connectRole;
+export const PROD_CONNECT_ROLE = ALLOWED_PROJECTS[PROD_PROJECT_REF].connectRole;
 export const RUNNER_ROLE = "klir_job_runner";
 export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
 export const PILOT_UI_ORIGIN = "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca";
 export const TARGETED_UI_ORIGIN = "https://cursor-search-targeted-claim-2f07.klirprospect.klirline.ca";
-const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN, TARGETED_UI_ORIGIN]);
+export const PROD_SITE_ORIGIN = "https://klirprospect.klirline.ca";
+const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN, TARGETED_UI_ORIGIN, PROD_SITE_ORIGIN]);
 
 export const RUNNER_DIAGNOSTIC_SQL = Object.freeze({
   assume: "set local role klir_job_runner",
@@ -62,6 +65,11 @@ const TEST_JOB_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{
 export const TEST_DB_POOLER_HOSTS = Object.freeze([
   "aws-1-ca-central-1.pooler.supabase.com"
 ]);
+
+// Rôle de connexion attendu pour le projet servi (liste blanche).
+export function expectedConnectRole(env = {}) {
+  return resolveProject(env).connectRole;
+}
 export const TEST_ENV = "preview";
 export const SCHEDULER_HEADER = "x-klir-scheduler";
 export const SCHEDULER_ACTION = "scheduled";
@@ -117,22 +125,22 @@ function sameSecret(left, right) {
   return diff === 0;
 }
 
-// Planificateur Test : seul pg_cron (via pg_net) connaît le secret serveur dédié.
-// Aucun navigateur, aucun compte, aucune cible. Refus sans repli hors Test.
+// Planificateur : seul pg_cron (via pg_net) connaît le secret serveur dédié.
+// Aucun navigateur, aucun compte, aucune cible. Refus hors des projets de la liste blanche.
 export function authorizeScheduler(request, env = {}) {
   const secret = String(env.KLIR_JOB_SCHEDULER_SECRET || "");
   if (secret.length < SCHEDULER_SECRET_MIN) throw reject("planificateur_inactif");
-  assertStrictTestIdentity(env);
+  assertProjectRunnerIdentity(env);
   const presented = request.headers.get(SCHEDULER_HEADER) || "";
   if (!presented || !sameSecret(presented, secret)) throw reject("planificateur_refuse");
   if (String(env.KLIR_JOB_TEST_JOB_ID || "").trim()) throw reject("cible_active");
 }
 
 // Vérifie dans la session elle-même que la connexion est bien celle du runner Test.
-export async function assertTargetedSession(sql) {
+export async function assertTargetedSession(sql, connectRole = CONNECT_ROLE) {
   const who = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.identity);
   const identity = who && who[0];
-  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== CONNECT_ROLE) {
+  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== connectRole) {
     throw reject("role_exploitation_refuse");
   }
 }
@@ -144,11 +152,12 @@ export function assertRunnerDbConfig(env = {}) {
   const user = String(env.KLIR_JOB_DB_USER || "").trim();
   const password = String(env.KLIR_JOB_DB_PASSWORD || "");
   if (!host || !Number.isInteger(port) || !database || !user || !password) throw reject("connexion_serveur_absente");
-  if (host.includes(PROD_PROJECT_REF) || user.toLowerCase().includes(PROD_PROJECT_REF)) throw reject("production_refusee");
+  const project = resolveProject(env);
   if (!host.endsWith(".pooler.supabase.com")) throw reject("hote_non_pooler");
+  if (!project.poolerHosts.includes(host)) throw reject("hote_pooler_refuse");
   if (port !== 6543) throw reject("port_non_transaction");
   if (database !== "postgres") throw reject("base_refusee");
-  if (user !== `${CONNECT_ROLE}.${TEST_PROJECT_REF}`) throw reject("role_connexion_refuse");
+  if (user !== `${project.connectRole}.${project.ref}`) throw reject("role_connexion_refuse");
   return { host, port, database, user, password };
 }
 
@@ -188,13 +197,13 @@ function userClient(createClient, auth, jwt, fetchImpl) {
   });
 }
 
-async function readDiagnosis(sql) {
+async function readDiagnosis(sql, connectRole = CONNECT_ROLE) {
   await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
   const who = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.identity);
   const flag = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.flag);
   const identity = who && who[0];
   const jobsEnabled = flag && flag[0] ? flag[0].jobs_enabled === true : null;
-  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== CONNECT_ROLE) {
+  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== connectRole) {
     throw reject("role_exploitation_refuse");
   }
   return { jobsEnabled };
@@ -246,7 +255,7 @@ async function diagnose(request, options) {
   if (request.headers.get(SCHEDULER_HEADER)) return json(400, { error: "planificateur_refuse" });
   let auth;
   try {
-    auth = resolveTestAuth(options.env || {});
+    auth = resolveProjectAuth(options.env || {});
   } catch (error) {
     return json(503, { error: error.code || "configuration_absente" });
   }
@@ -280,7 +289,7 @@ async function diagnose(request, options) {
     if (body.action === "cycle") {
       const cycle = await db.begin(async (sql) => {
         await sql.unsafe("set local role klir_job_runner");
-        if (targetJobId) await assertTargetedSession(sql);
+        if (targetJobId) await assertTargetedSession(sql, auth.project.connectRole);
         const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
         const provider = options.provider || createCatalogQueryProvider(query);
         return runWorkerCycle(query, provider, { targetJobId });
@@ -304,7 +313,7 @@ async function diagnose(request, options) {
         }))
       });
     }
-    const diagnosis = await db.begin((sql) => readDiagnosis(sql));
+    const diagnosis = await db.begin((sql) => readDiagnosis(sql, auth.project.connectRole));
     await assertBillingDenied(db);
     return json(200, {
       connected: true,
@@ -345,7 +354,7 @@ async function scheduled(request, body, options) {
     db = await options.connect(env);
     const cycle = await db.begin(async (sql) => {
       await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
-      await assertTargetedSession(sql);
+      await assertTargetedSession(sql, expectedConnectRole(env));
       const flag = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.flag);
       if (!(flag && flag[0] && flag[0].jobs_enabled === true)) return { skipped: "moteur_off" };
       const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
