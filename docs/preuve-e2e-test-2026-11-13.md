@@ -50,3 +50,21 @@ Projet Test `pwakjxjjxswdjsapsbxn` uniquement. Prod non touchée.
   `succeeded`, 10 fiches affichées, solde 188 → 182 affiché et en base, reçu unique.
 - Compte fictif B : ne lit aucune fiche, job, crédit, reçu ni espace de A ; toutes les écritures
   croisées et les RPC de débit direct sont refusées (403 / 404).
+
+## Correctifs du 13 nov., après-midi (feu vert « Oui feu vert », Test seulement)
+
+### 1. `overture_admin` ne rouvre plus le débit direct
+- Constat : `overture_admin('disable')` exécutait `grant execute … reserve_usage, settle_usage … to authenticated`.
+- Recherche : grep du dépôt (seules les migrations historiques 20261011221500, 20261022130000, 20261023010000 accordent ces droits) et lecture de `pg_proc` sur Test : `public.overture_admin` était la seule fonction applicative contenant un `grant` (hors fonctions Supabase `extensions.grant_pg_*`).
+- Migration `20261113170000_overture_admin_no_regrant.sql` : enable et disable basculent seulement le drapeau et révoquent les 4 RPC (`reserve_usage`, `settle_usage`, `overture_begin`, `overture_execute`) de PUBLIC, anon, authenticated. Appliquée sur Test.
+- Après application sur Test : aucune fonction hors `extensions` ne contient de `grant` ; authenticated/anon = refusé sur les 4 RPC et sur `overture_admin`.
+- Preuve sur Test en transaction annulée : `overture_admin('disable')` puis lecture des droits → les 4 RPC restent refusées (authenticated et anon) ; état Overture inchangé après l'annulation.
+- Preuve négative (PGlite, sans le correctif) : après `disable`, authenticated retrouvait `reserve_usage` = true.
+- Tests : `test/direct-debit-closed.test.mjs` (disable → enable → disable, 4 RPC refusées pour authenticated et anon, `enqueue_search_job` toujours ouvert).
+- HTTP compte fictif B : `reserve_usage` et `overture_begin` → 403 permission denied.
+
+### 2. En-tête des résultats de la file serveur
+- Avant (preview, compte fictif A, recherche existante 730b63a1) : « Version · révision historique · cache . »
+- Après (même page, nouveau app.js) : « Source : catalogue Overture (file serveur) · Version 2026-10-21.0 · Recherche du 11/13/2026. »
+- `overtureHeaderFacts` ne garde que les champs réels ; la version est lue sur les fiches pour les anciennes recherches. Test `test/overture-header.test.mjs`.
+- Aucune recherche lancée pendant le contrôle visuel (aucune requête search-jobs ni RPC de débit observée).
