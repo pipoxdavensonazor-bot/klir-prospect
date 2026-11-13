@@ -25,12 +25,28 @@ Projet Test `pwakjxjjxswdjsapsbxn` uniquement. Prod non touchée.
 ## Diagnostic crédits (lecture seule)
 
 - Débit de 6 crédits à 3:00 (08:00:02 UTC) sur le compte de Philippe : hold
-  `debit_7a32507a64910c7bdbab6e93`, aucun job ni opération Overture associés.
-  Il provient du chemin navigateur historique `reserve_usage`/`settle_usage`
-  (recherche OpenStreetMap de `src/app.js`), depuis la session Chrome/Windows
-  ouverte à 2:57:40. Débit légitime d'une recherche, mais hors file de jobs.
+  `debit_7a32507a64910c7bdbab6e93`, sans job. Correction : il figure dans
+  `public.overture_operations` (Laval, restauration, 10, complete). Il vient donc de
+  l'ancienne recherche Overture du navigateur (`overture_begin`/`overture_execute`),
+  depuis la session Chrome/Windows ouverte à 2:57:40. `reserve_usage`/`settle_usage`
+  étaient déjà fermées à authenticated sur Test.
 - 18 crédits bloqués (jobs `309fe934…` et `aacb0a8c…`, 9 + 9, 8 nov.) : déjà libérés
   le 13 nov. à 1:53 (`reservation_expired`), solde cohérent (200 − 62 débits complets = 138).
   Cause : `expire_due_search_jobs()` n'est appelée que par le runner, donc jamais
   moteur éteint. Correctif proposé, NON appliqué :
   `supabase/migrations/20261113150000_release_expired_reservations_engine_off.sql`.
+
+## Suite du 13 nov. (11:30–11:45, Toronto) — après accord de Philippe
+
+- Migration `20261113150000` appliquée sur Test : preuve en transaction annulée
+  (compte B : 200 → 194 réservé → tick moteur éteint → 200, job `failed/released/reservation_expired`) ;
+  aucune donnée persistée ; pg_cron : 20 ticks réussis, 0 échec.
+- Migration `20261113160000_revoke_direct_debit_rpcs.sql` appliquée sur Test :
+  `reserve_usage`, `settle_usage`, `overture_begin`, `overture_execute` refusées à authenticated.
+- `search-jobs` v12 déployée sur Test (CORS de la preview `cursor-search-targeted-claim-2f07`).
+- Preview redéployée automatiquement : `build.json` commit `cf86196`.
+- Parcours interface réel (Chrome sur la preview, compte fictif A) : moteur éteint → message
+  « Le moteur est éteint » (403) ; moteur allumé 25 s → job `730b63a1-aa9a-425c-9304-5381f6898bd5`
+  `succeeded`, 10 fiches affichées, solde 188 → 182 affiché et en base, reçu unique.
+- Compte fictif B : ne lit aucune fiche, job, crédit, reçu ni espace de A ; toutes les écritures
+  croisées et les RPC de débit direct sont refusées (403 / 404).
