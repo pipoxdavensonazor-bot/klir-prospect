@@ -53,7 +53,7 @@ async function finishJob(query, ledger, adapter, job) {
     const outcome = count > 0 ? "complete" : "empty";
     const records = Array.isArray(observed && observed.records) ? observed.records.slice(0, 40) : [];
     if (outcome === "complete" && records.length) {
-      await query("select private.record_search_places($1::uuid, $2::jsonb) as row", [
+      await query("select private.record_search_places($1::uuid, $2::text::jsonb) as row", [
         job.id,
         JSON.stringify(records.map((row) => ({
           name: row && row.name ? String(row.name).slice(0, 160) : "",

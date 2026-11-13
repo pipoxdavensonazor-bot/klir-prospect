@@ -17,6 +17,7 @@ const beforeEnqueue = [
 const afterEnqueue = [
   "20261107220000_search_job_runner_role.sql",
   "20261107233000_search_job_connect_test.sql",
+  "20261108170000_search_job_places.sql",
   claimFile
 ];
 const sql = {};
@@ -354,4 +355,50 @@ test("le worker ciblé refuse une réponse qui ne correspond pas à la cible", a
     (error) => error.code === "cible_divergente"
   );
   assert.deepEqual(calls, ["select private.claim_authorized_test_job($1::uuid) as row"]);
+});
+
+// postgres.js (runner Edge) sérialise en JSON tout paramètre dont le type
+// déduit est json/jsonb : une chaîne déjà JSON devient un scalaire jsonb.
+function postgresJsLike(raw) {
+  return async (text, params = []) => {
+    const encoded = params.map((value, index) => {
+      const n = index + 1;
+      const directJsonb = new RegExp(`\\$${n}::jsonb`).test(text) && !new RegExp(`\\$${n}::text::jsonb`).test(text);
+      return directJsonb && typeof value === "string" ? JSON.stringify(value) : value;
+    });
+    return raw(text, encoded);
+  };
+}
+
+test("cycle ciblé avec fiches : les fiches sont enregistrées malgré la sérialisation postgres.js", async () => {
+  const { db, jobs } = await database();
+  try {
+    await asRunner(db);
+    const provider = { async run() { return { count: 2, records: [{ name: "Café A", basicCategory: "cafe", release: "2026-10-21.0" }, { name: "Resto B", basicCategory: "restaurant", release: "2026-10-21.0" }] }; } };
+    const cycle = await inTransaction(db, (raw) => runWorkerCycle(postgresJsLike(raw), provider, { targetJobId: jobs.approved }));
+    assert.equal(cycle.results[0].id, jobs.approved);
+    await asOwner(db);
+    const places = await db.query("select name from public.search_job_places where job_id = $1 order by name", [jobs.approved]);
+    assert.deepEqual(places.rows.map((row) => row.name), ["Café A", "Resto B"]);
+    const job = await db.query("select status, ledger_status, collection_outcome from public.search_jobs where id = $1", [jobs.approved]);
+    assert.equal(job.rows[0].collection_outcome, "complete");
+    assert.equal(job.rows[0].ledger_status, "complete");
+    const others = await db.query("select count(*)::int as n from public.search_job_places where job_id <> $1", [jobs.approved]);
+    assert.equal(others.rows[0].n, 0);
+  } finally {
+    await db.close();
+  }
+});
+
+test("régression : un paramètre $2::jsonb direct échouerait avec places_invalides sous postgres.js", async () => {
+  const { db, jobs } = await database();
+  try {
+    await asOwner(db);
+    const query = postgresJsLike((text, params) => db.query(text, params));
+    await assert.rejects(query("select private.record_search_places($1::uuid, $2::jsonb) as row", [jobs.approved, JSON.stringify([{ name: "x" }])]), /places_invalides/);
+    const ok = await query("select private.record_search_places($1::uuid, $2::text::jsonb) as row", [jobs.approved, JSON.stringify([{ name: "x" }])]);
+    assert.equal(ok.rows[0].row.recorded, 1);
+  } finally {
+    await db.close();
+  }
 });
