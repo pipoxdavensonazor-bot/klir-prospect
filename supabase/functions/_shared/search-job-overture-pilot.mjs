@@ -1,7 +1,7 @@
 import { importPlaces } from "../../../tools/overture-places-import.mjs";
 import { matchIndustry } from "../../../tools/overture-places-bounds.mjs";
 
-const CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
+const CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon", "marseille"]);
 
 export const CATALOG_LOOKUP_SQL =
   "select gers_id, name, basic_category, licenses, release from private.search_catalog_lookup($1, $2, $3)";

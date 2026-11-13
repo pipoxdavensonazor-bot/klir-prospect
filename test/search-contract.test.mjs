@@ -98,7 +98,7 @@ async function harness({ query = "10 restaurants à Montréal", cityKey = "montr
   return { sandbox, fields, calls, waits };
 }
 
-test("le contrat distingue les six villes, sans repli vers Montréal", async () => {
+test("le contrat distingue les sept villes, sans repli vers Montréal", async () => {
   const engine = await loadEngine();
   for (const [query, key, city] of [
     ["30 entreprises de rénovation à Montréal", "montréal", "Montréal"],
@@ -111,7 +111,8 @@ test("le contrat distingue les six villes, sans repli vers Montréal", async () 
     ["10 restaurants à Paris", "paris", "Paris"],
     ["10 restaurants in Paris", "paris", "Paris"],
     ["10 restaurants à Paris, France", "paris", "Paris"],
-    ["10 restaurants à Lyon", "lyon", "Lyon"]
+    ["10 restaurants à Lyon", "lyon", "Lyon"],
+    ["10 restaurants à Marseille", "marseille", "Marseille"]
   ]) {
     const params = engine.parseQuery(query);
     assert.equal(params.place.status, "supported", query);

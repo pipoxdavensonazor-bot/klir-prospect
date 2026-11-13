@@ -41,6 +41,7 @@ CITY_CENTERS = [
     {"key": "toronto", "countryCode": "CA", "latitude": 43.6532, "longitude": -79.3832},
     {"key": "paris", "countryCode": "FR", "latitude": 48.8566, "longitude": 2.3522},
     {"key": "lyon", "countryCode": "FR", "latitude": 45.764, "longitude": 4.8357},
+    {"key": "marseille", "countryCode": "FR", "latitude": 43.2965, "longitude": 5.3698},
 ]
 
 # Aligné sur tools/overture-places-bounds.mjs — garder les deux listes identiques.
@@ -329,18 +330,24 @@ def open_places_files():
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Extrait borné Overture Places pour les six centres.")
+    parser = argparse.ArgumentParser(description="Extrait borné Overture Places pour les centres pris en charge.")
     parser.add_argument("--out", type=Path, required=True, help="Fichier JSON de l'instantané compact.")
     parser.add_argument("--radius-m", type=int, default=EXTRACT_RADIUS_M)
     parser.add_argument("--python-check-only", action="store_true")
+    parser.add_argument("--cities", default="", help="Clés de villes séparées par des virgules (défaut : toutes).")
     args = parser.parse_args(argv)
     if args.radius_m <= 0 or args.radius_m > EXTRACT_RADIUS_M:
         raise SystemExit("emprise_refusee")
     if args.python_check_only:
         print(json.dumps({"ok": True, "release": RELEASE_PIN, "radiusM": args.radius_m, "engine": "pyarrow"}))
         return 0
+    wanted = [item.strip() for item in args.cities.split(",") if item.strip()]
+    known = {city["key"] for city in CITY_CENTERS}
+    if any(item not in known for item in wanted):
+        raise SystemExit("ville_inconnue")
+    selected = [city for city in CITY_CENTERS if not wanted or city["key"] in wanted]
     files = open_places_files()
-    cities = [extract_city(files, city, args.radius_m) for city in CITY_CENTERS]
+    cities = [extract_city(files, city, args.radius_m) for city in selected]
     snapshot = {
         "release": RELEASE_PIN,
         "operational": False,
