@@ -338,7 +338,7 @@ async function confirmStripeTestCheckout(sessionId) {
   return { ok: true, outcome: data.outcome, active: data.active === true, balance: Number.isInteger(data.balance) ? data.balance : null };
 }
 
-const SEARCH_JOB_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
+const SEARCH_JOB_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon", "marseille"]);
 const SEARCH_JOB_TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
 
 async function functionReply(result) {

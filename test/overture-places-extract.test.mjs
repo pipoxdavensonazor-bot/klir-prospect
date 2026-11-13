@@ -33,7 +33,7 @@ function feature(id, name, lon, lat, tokens = ["restaurant"]) {
 }
 
 test("les rectangles de 2200 m restent sous le plafond d'emprise et ne prétendent pas être la ville", () => {
-  assert.equal(CITY_CENTERS.length, 6);
+  assert.equal(CITY_CENTERS.length, 7);
   for (const city of CITY_CENTERS) {
     const bbox = radiusBbox(city);
     assert.equal(bbox.radiusM, EXTRACT_RADIUS_M);

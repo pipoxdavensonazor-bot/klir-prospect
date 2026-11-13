@@ -9,7 +9,8 @@ export const CITY_CENTERS = Object.freeze([
   { key: "québec", countryCode: "CA", latitude: 46.8139, longitude: -71.208 },
   { key: "toronto", countryCode: "CA", latitude: 43.6532, longitude: -79.3832 },
   { key: "paris", countryCode: "FR", latitude: 48.8566, longitude: 2.3522 },
-  { key: "lyon", countryCode: "FR", latitude: 45.764, longitude: 4.8357 }
+  { key: "lyon", countryCode: "FR", latitude: 45.764, longitude: 4.8357 },
+  { key: "marseille", countryCode: "FR", latitude: 43.2965, longitude: 5.3698 }
 ]);
 
 export const ATTRIBUTION = Object.freeze({

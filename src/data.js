@@ -15,9 +15,10 @@ var CITIES = {
   "toronto": {city:"Toronto", province:"ON", country:"Canada", postal:["M5V","M4B"], phones:["416","647"], lat:43.6532, lng:-79.3832},
   "paris": {city:"Paris", province:"Île-de-France", country:"France", postal:["75001","75011"], phones:["01"], lat:48.8566, lng:2.3522},
   "lyon": {city:"Lyon", province:"Auvergne-Rhône-Alpes", country:"France", postal:["69001","69002"], phones:["04"], lat:45.764, lng:4.8357},
+  "marseille": {city:"Marseille", province:"Provence-Alpes-Côte d'Azur", country:"France", postal:["13001","13002"], phones:["04"], lat:43.2965, lng:5.3698},
   "default": {city:"Montréal", province:"QC", country:"Canada", postal:["H2X","H3A"], phones:["514","438"], lat:45.5017, lng:-73.5673, supported:false}
 };
-var SUPPORTED_CITY_KEYS = ["montréal","laval","québec","toronto","paris","lyon"];
+var SUPPORTED_CITY_KEYS = ["montréal","laval","québec","toronto","paris","lyon","marseille"];
 var SEARCH_SCOPE = Object.freeze({
   radiusAllM: 1500,
   radiusSectorM: 2200,
@@ -25,7 +26,7 @@ var SEARCH_SCOPE = Object.freeze({
   requestTimeoutMs: 18000,
   retryAfterCapMs: 30000,
   montrealIsland: Object.freeze({south:45.4102, west:-73.9744, north:45.7058, east:-73.4742}),
-  coverageLabel: "Montréal, Laval, Québec, Toronto, Paris et Lyon"
+  coverageLabel: "Montréal, Laval, Québec, Toronto, Paris, Lyon et Marseille"
 });
 var NAME_A = ["Nord","Klir","Pro","Expert","Premier","Atelier","Groupe","Alliance","Nova","Élite","Summit","Azur","Vantage","Onyx","Boréal"];
 var NAME_B = {"construction":["Rénovation","Construction","Toiture","Plomberie","Bâtiment"],"restauration":["Bistro"," saveurs".trim(),"Cuisine","Brasserie","Café"],"immobilier":["Courtage","Habitat","Propriétés","Immobilier"],"sante":["Clinique","Santé","Dentaire","Physio"],"technologie":["Web","Digital","Logiciels","Studio","Tech"],"commerce":["Boutique","Auto","Salon","Marché"],"finance":["Comptable","Assurance","Finance","Fiscalité"],"services":["Services","Conseil","Nettoyage","Juridique"]};

@@ -14,7 +14,7 @@ function industryKeys(params){
   return Object.keys(KlirData.INDUSTRIES);
 }
 const SEARCH_LIMITS=Object.freeze({min:10,max:40,defaultQuantity:40});
-const COVERAGE_NOTE="Périmètre actuel : Montréal, Laval, Québec, Toronto, Paris et Lyon. Pas une couverture mondiale.";
+const COVERAGE_NOTE="Périmètre actuel : Montréal, Laval, Québec, Toronto, Paris, Lyon et Marseille. Pas une couverture mondiale.";
 const PARIS_OTHER=[
   {id:"paris-texas", label:"Paris, Texas, États-Unis", names:["texas"], codes:["tx"]},
   {id:"paris-ontario", label:"Paris, Ontario, Canada", names:["ontario"], codes:["on"]},
@@ -87,8 +87,8 @@ function blockedPlace(status,display,candidates){
   let message;
   if(status==="unsupported")message="« "+shown+" » est reconnu, mais n'est pas pris en charge. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. La ville affichée dans la liste n'est pas interrogée. Aucun crédit n'est réservé.";
   else if(status==="ambiguous")message="Plusieurs lieux correspondent : "+(candidates||[]).map(item=>item.label).join(" ; ")+". Confirmez un seul lieu. Aucune recherche n'est lancée et aucun crédit n'est réservé tant que le choix n'est pas confirmé. La ville affichée dans la liste n'est pas interrogée. "+COVERAGE_NOTE;
-  else if(status==="absent")message="Aucun lieu n'est indiqué. Choisissez une des six villes prises en charge. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. Aucun crédit n'est réservé.";
-  else message=(shown?"« "+shown+" » n'a pas été reconnu. ":"Ce lieu n'a pas été reconnu. ")+"Choisissez Montréal, Laval, Québec, Toronto, Paris ou Lyon. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. La ville affichée dans la liste n'est pas interrogée. Aucun crédit n'est réservé.";
+  else if(status==="absent")message="Aucun lieu n'est indiqué. Choisissez une des sept villes prises en charge. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. Aucun crédit n'est réservé.";
+  else message=(shown?"« "+shown+" » n'a pas été reconnu. ":"Ce lieu n'a pas été reconnu. ")+"Choisissez Montréal, Laval, Québec, Toronto, Paris, Lyon ou Marseille. "+COVERAGE_NOTE+" Aucune autre ville n'est recherchée. La ville affichée dans la liste n'est pas interrogée. Aucun crédit n'est réservé.";
   return {status,display:shown,title,message,candidates:candidates||[],cityKey:null};
 }
 function scopeFor(cityKey,industry,area){
