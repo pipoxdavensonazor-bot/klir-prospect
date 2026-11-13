@@ -54,3 +54,15 @@ Seul un JWT dont `public.is_admin()` est vrai peut demander le diagnostic. Un au
 Réponse attendue tant que le moteur est éteint et que le rôle n’a pas les tables : `connected: true`, `role: klir_job_runner`, `jobsEnabled: false`, `billing: refuse`, `provider: absent`, `executed: false`, `scheduler: off`.
 
 Aucune ligne de crédit n’est lue. Si la sonde de facturation réussit, la fonction refuse : le rôle serait trop large. `{ "action": "run" }` ou toute autre action répond `fournisseur_absent` et n’ouvre pas la base.
+
+## Cycle ciblé Test (PR 56, migration non appliquée)
+
+But : exécuter un cycle sur **un seul** job approuvé pour un exercice, sans toucher la file ni les autres comptes.
+
+- La cible vient uniquement de la variable serveur `KLIR_JOB_TEST_JOB_ID` (UUID). Le corps HTTP ne peut jamais la fournir : toute clé de cible (`jobId`, `job_id`, `targetJobId`, `target`, `id`, `job`) répond `cible_refusee`, et en mode ciblé le corps doit être exactement `{ "action": "cycle" }` ou `{ "action": "diagnose" }`.
+- Variable absente : cycle normal inchangé (expiration de la file puis `claim_search_jobs(1)`).
+- Variable présente : la fonction exige, à l’identique, `KLIR_ENV=preview`, `SUPABASE_URL=https://pwakjxjjxswdjsapsbxn.supabase.co`, un hôte pooler exact de ca-central-1 (`aws-0-` ou `aws-1-ca-central-1.pooler.supabase.com`), l’utilisateur `klir_job_connect_test.pwakjxjjxswdjsapsbxn`, le port 6543 et la base `postgres`. Toute différence refuse le cycle avant connexion ; il n’y a jamais de repli sur la file globale.
+- Dans la transaction, la session doit répondre `current_user = klir_job_runner` et `session_user = klir_job_connect_test`, sinon `role_exploitation_refuse`.
+- Le cycle ciblé n’appelle pas `expire_due_search_jobs()`. Si la réservation du job ciblé est échue, la base répond `job_expire` sans rien écrire.
+- Côté base, `private.claim_authorized_test_job(uuid)` n’accepte qu’un job présent dans `private.search_test_job_approvals` (job + propriétaire, fenêtre d’au plus 24 h, RLS forcée, aucun droit pour le navigateur, l’API ou le runner). Elle refuse toute session autre que `klir_job_connect_test` (`role_non_autorise`).
+- L’approbation se pose par le propriétaire des migrations, hors navigateur, pour un exercice nommé. Rien n’est approuvé par cette PR.

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRunnerDiagnostic, assertRunnerDbConfig, authorizedTestJobId, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
+import { handleRunnerDiagnostic, assertRunnerDbConfig, authorizedTestJobId, bodyHasExtraKeys, TEST_DB_POOLER_HOSTS, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
 import { TEST_PROJECT_REF, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
@@ -186,33 +186,170 @@ test("un admin lance un seul cycle local, un autre rôle ne touche pas la base",
   assert.equal(JSON.stringify(body).includes(password), false);
 });
 
+const targetJob = "44444444-4444-4444-8444-444444444444";
+
+function targetedEnv(extra = {}) {
+  return env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: targetJob, ...extra });
+}
+
 test("un corps HTTP ne choisit pas le job, et seule une cible serveur de prévisualisation est acceptée", async () => {
-  const jobId = "44444444-4444-4444-8444-444444444444";
   const auth = fakeAuth({ admin: true });
   let connected = 0;
-  const refused = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle", jobId }), {
-    env: env({ KLIR_ENV: "preview" }),
+  const neverConnect = async () => { connected += 1; throw new Error("ne_pas_connecter"); };
+  for (const key of ["jobId", "job_id", "targetJobId", "target", "id", "job"]) {
+    for (const envValue of [env({ KLIR_ENV: "preview" }), targetedEnv(), env({ KLIR_ENV: "production" })]) {
+      const refused = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle", [key]: targetJob }), {
+        env: envValue,
+        createClient: auth.createClient,
+        connect: neverConnect
+      });
+      assert.equal(refused.status, 400, key);
+      assert.equal((await refused.json()).error, "cible_refusee", key);
+    }
+  }
+  // En mode ciblé, toute clé en plus de action est refusée.
+  const extra = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle", options: { jobId: targetJob } }), {
+    env: targetedEnv(),
     createClient: auth.createClient,
-    connect: async () => { connected += 1; throw new Error("ne_pas_connecter"); }
+    connect: neverConnect
   });
-  assert.equal(refused.status, 400);
-  assert.equal((await refused.json()).error, "cible_refusee");
+  assert.equal(extra.status, 400);
+  assert.equal((await extra.json()).error, "cible_refusee");
   assert.equal(connected, 0);
-
-  assert.equal(authorizedTestJobId(env({ KLIR_ENV: "production", KLIR_JOB_TEST_JOB_ID: jobId })), "");
-  assert.throws(() => authorizedTestJobId(env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: "pas-un-uuid" })), (error) => error.code === "cible_invalide");
+  assert.equal(bodyHasExtraKeys({ action: "cycle" }), false);
+  assert.equal(bodyHasExtraKeys({ action: "cycle", x: 1 }), true);
+  assert.equal(bodyHasExtraKeys([]), true);
 
   const db = fakeDb();
   const accepted = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
-    env: env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: jobId }),
+    env: targetedEnv(),
     createClient: auth.createClient,
     connect: async () => ({ begin: db.postgres().begin, close: async () => {} }),
     provider: { async run() { return { count: 0 }; } }
   });
   assert.equal(accepted.status, 200);
+  const acceptedBody = await accepted.json();
+  assert.equal(acceptedBody.mode, "cible_test");
+  assert.equal(acceptedBody.expired, 0);
   assert.equal(db.calls.some((text) => text.includes("claim_authorized_test_job")), true);
   assert.equal(db.calls.some((text) => text.includes("claim_search_jobs")), false);
-  assert.equal(JSON.stringify(await accepted.json()).includes(jobId), false);
+  assert.equal(db.calls.some((text) => text.includes("expire_due_search_jobs")), false);
+  assert.equal(db.calls.some((text) => text.includes("current_user")), true);
+  assert.equal(JSON.stringify(acceptedBody).includes(targetJob), false);
+  assert.equal(JSON.stringify(acceptedBody).includes(password), false);
+});
+
+test("identité Test stricte : environnement, URL, hôte, utilisateur, port, base", () => {
+  assert.equal(authorizedTestJobId(env({ KLIR_ENV: "preview" })), "");
+  assert.equal(authorizedTestJobId(env()), "");
+  assert.equal(authorizedTestJobId(targetedEnv()), targetJob);
+  assert.equal(authorizedTestJobId(targetedEnv({ KLIR_JOB_TEST_JOB_ID: targetJob.toUpperCase() })), targetJob);
+  for (const host of TEST_DB_POOLER_HOSTS) assert.equal(authorizedTestJobId(targetedEnv({ KLIR_JOB_DB_HOST: host })), targetJob);
+  const cases = [
+    [{ KLIR_ENV: "production" }, "environnement_refuse"],
+    [{ KLIR_ENV: "" }, "environnement_refuse"],
+    [{ KLIR_ENV: "Preview" }, "environnement_refuse"],
+    [{ KLIR_ENV: "preview " }, "environnement_refuse"],
+    [{ SUPABASE_URL: "https://cbklwmjudobqwbkbxqgy.supabase.co" }, "production_refusee"],
+    [{ SUPABASE_URL: "https://autre-projet.supabase.co" }, "hote_non_test"],
+    [{ SUPABASE_URL: `https://${TEST_PROJECT_REF}.supabase.co.evil.example` }, "hote_non_test"],
+    [{ SUPABASE_URL: `http://${TEST_PROJECT_REF}.supabase.co` }, "hote_non_test"],
+    [{ KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" }, "hote_test_refuse"],
+    [{ KLIR_JOB_DB_HOST: "evil.aws-0-ca-central-1.pooler.supabase.com" }, "hote_test_refuse"],
+    [{ KLIR_JOB_DB_HOST: `db.${TEST_PROJECT_REF}.supabase.co` }, "hote_test_refuse"],
+    [{ KLIR_JOB_DB_HOST: "db.cbklwmjudobqwbkbxqgy.supabase.co" }, "production_refusee"],
+    [{ KLIR_JOB_DB_USER: `postgres.${TEST_PROJECT_REF}` }, "utilisateur_test_refuse"],
+    [{ KLIR_JOB_DB_USER: `klir_job_runner.${TEST_PROJECT_REF}` }, "utilisateur_test_refuse"],
+    [{ KLIR_JOB_DB_USER: `${CONNECT_ROLE}.autreprojet` }, "utilisateur_test_refuse"],
+    [{ KLIR_JOB_DB_USER: `${CONNECT_ROLE}.cbklwmjudobqwbkbxqgy` }, "production_refusee"],
+    [{ KLIR_JOB_DB_PORT: "5432" }, "port_non_transaction"],
+    [{ KLIR_JOB_DB_NAME: "autre" }, "base_refusee"],
+    [{ KLIR_JOB_TEST_JOB_ID: "pas-un-uuid" }, "cible_invalide"],
+    [{ KLIR_JOB_TEST_JOB_ID: "00000000-0000-0000-0000-000000000000" }, "cible_invalide"],
+    [{ KLIR_JOB_TEST_JOB_ID: `${targetJob},55555555-5555-4555-8555-555555555555` }, "cible_invalide"],
+    [{ KLIR_JOB_TEST_JOB_ID: `${targetJob}' or true --` }, "cible_invalide"]
+  ];
+  for (const [extra, code] of cases) {
+    assert.throws(() => authorizedTestJobId(targetedEnv(extra)), (error) => error.code === code, JSON.stringify(extra));
+  }
+});
+
+test("une cible mal configurée refuse le cycle sans connexion ni repli sur la file globale", async () => {
+  const auth = fakeAuth({ admin: true });
+  for (const [extra, code] of [
+    [{ KLIR_ENV: "production" }, "environnement_refuse"],
+    [{ KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" }, "hote_test_refuse"],
+    [{ KLIR_JOB_TEST_JOB_ID: "pas-un-uuid" }, "cible_invalide"]
+  ]) {
+    let connected = 0;
+    const response = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+      env: targetedEnv(extra),
+      createClient: auth.createClient,
+      connect: async () => { connected += 1; throw new Error("ne_pas_connecter"); }
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error, code);
+    assert.equal(connected, 0);
+  }
+});
+
+test("rôles non autorisés : non-admin, sans jeton, session base inattendue", async () => {
+  let connected = 0;
+  const connect = async () => { connected += 1; throw new Error("ne_pas_connecter"); };
+  const nonAdmin = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: targetedEnv(), createClient: fakeAuth({ admin: false }).createClient, connect
+  });
+  assert.equal(nonAdmin.status, 403);
+  const anonymous = await handleRunnerDiagnostic(request("", { action: "cycle" }), {
+    env: targetedEnv(), createClient: fakeAuth({ admin: true }).createClient, connect
+  });
+  assert.equal(anonymous.status, 401);
+  const invalid = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: targetedEnv(), createClient: fakeAuth({ admin: true, user: null }).createClient, connect
+  });
+  assert.equal(invalid.status, 401);
+  assert.equal(connected, 0);
+
+  // La base répond avec une autre identité : rien n'est réclamé.
+  const calls = [];
+  const tx = {
+    async unsafe(text) {
+      calls.push(text);
+      if (text.includes("current_user")) return [{ role_name: "postgres", session_name: "postgres" }];
+      return [];
+    }
+  };
+  const wrong = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+    env: targetedEnv(),
+    createClient: fakeAuth({ admin: true }).createClient,
+    connect: async () => ({ begin: (fn) => fn(tx), close: async () => {} }),
+    provider: { async run() { throw new Error("ne_pas_executer"); } }
+  });
+  assert.equal(wrong.status, 503);
+  assert.equal((await wrong.json()).error, "role_exploitation_refuse");
+  assert.equal(calls.some((text) => text.includes("claim_")), false);
+  assert.equal(calls.some((text) => text.includes("expire_due_search_jobs")), false);
+});
+
+test("non-régression : sans cible, le cycle de production garde expiration puis file globale", async () => {
+  for (const extra of [{}, { KLIR_ENV: "production" }, { KLIR_ENV: "preview" }]) {
+    const db = fakeDb();
+    const response = await handleRunnerDiagnostic(request("jeton-ada", { action: "cycle" }), {
+      env: env(extra),
+      createClient: fakeAuth({ admin: true }).createClient,
+      connect: async () => ({ begin: db.postgres().begin, close: async () => {} }),
+      provider: { async run() { return { count: 0 }; } }
+    });
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.mode, undefined);
+    const expireAt = db.calls.findIndex((text) => text.includes("expire_due_search_jobs"));
+    const claimAt = db.calls.findIndex((text) => text.includes("claim_search_jobs(1)"));
+    assert.equal(expireAt >= 0 && claimAt > expireAt, true);
+    assert.equal(db.calls.some((text) => text.includes("claim_authorized_test_job")), false);
+    // Pas de contrôle d'identité ajouté au cycle normal.
+    assert.equal(db.calls.some((text) => text.includes("current_user")), false);
+  }
 });
 
 test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {

@@ -31,6 +31,8 @@ export function createLocalSimulatedProvider() {
   };
 }
 
+const TARGET_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 function asJobs(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -95,11 +97,27 @@ export async function runWorkerCycle(query, adapter, options = {}) {
     throw error;
   }
   const ledger = createSearchJobLedger(query);
+  const targetJobId = options && options.targetJobId ? String(options.targetJobId).toLowerCase() : "";
+  if (targetJobId) {
+    // Cycle ciblé Test : une seule ligne. Pas d'expiration globale, pas de file.
+    if (!TARGET_UUID.test(targetJobId)) {
+      const error = new Error("cible_invalide");
+      error.code = "cible_invalide";
+      throw error;
+    }
+    const claimed = await query("select private.claim_authorized_test_job($1::uuid) as row", [targetJobId]);
+    const jobs = asJobs(claimed.rows[0] && claimed.rows[0].row);
+    if (jobs.length > 1 || jobs.some((job) => String(job && job.id || "").toLowerCase() !== targetJobId)) {
+      const error = new Error("cible_divergente");
+      error.code = "cible_divergente";
+      throw error;
+    }
+    const results = [];
+    for (const job of jobs) results.push(await finishJob(query, ledger, adapter, job));
+    return { expired: 0, targeted: true, results };
+  }
   const expired = await query("select private.expire_due_search_jobs() as row");
-  const targetJobId = options && options.targetJobId ? String(options.targetJobId) : "";
-  const claimed = targetJobId
-    ? await query("select private.claim_authorized_test_job($1::uuid) as row", [targetJobId])
-    : await query("select private.claim_search_jobs(1) as row");
+  const claimed = await query("select private.claim_search_jobs(1) as row");
   const jobs = asJobs(claimed.rows[0] && claimed.rows[0].row);
   const results = [];
   for (const job of jobs) results.push(await finishJob(query, ledger, adapter, job));

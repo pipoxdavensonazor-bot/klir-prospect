@@ -1,5 +1,5 @@
 import { createGetUserVerifier } from "./search-job-auth.mjs";
-import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF } from "./search-job-edge.mjs";
+import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF, TEST_SUPABASE_URL } from "./search-job-edge.mjs";
 import { runWorkerCycle } from "./search-job-worker.mjs";
 import { createOverturePilotProvider } from "./search-job-overture-pilot.mjs";
 
@@ -53,26 +53,58 @@ function bearer(request) {
   return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
 }
 
-const CLIENT_TARGET_KEYS = Object.freeze(["jobId", "job_id", "targetJobId", "target"]);
+const CLIENT_TARGET_KEYS = Object.freeze(["jobId", "job_id", "jobID", "targetJobId", "target_job_id", "target", "id", "job"]);
 const TEST_JOB_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Hôtes exacts du pooler partagé de la région du projet Test (ca-central-1).
+// Toute autre valeur, même un sous-domaine voisin, refuse le mode ciblé.
+export const TEST_DB_POOLER_HOSTS = Object.freeze([
+  "aws-0-ca-central-1.pooler.supabase.com",
+  "aws-1-ca-central-1.pooler.supabase.com"
+]);
+export const TEST_ENV = "preview";
 
 export function clientSuppliedTarget(body) {
   if (!body || typeof body !== "object") return false;
   return CLIENT_TARGET_KEYS.some((key) => Object.prototype.hasOwnProperty.call(body, key));
 }
 
-// La cible vient de l'environnement du serveur de prévisualisation Test.
+// Le mode ciblé n'accepte qu'un corps { action } : aucune autre clé.
+export function bodyHasExtraKeys(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return true;
+  return Object.keys(body).some((key) => key !== "action");
+}
+
+// La cible vient seulement de l'environnement du serveur de prévisualisation Test.
 // Un corps HTTP, même administrateur, ne peut pas la fournir.
+// Variable absente : "" (cycle normal inchangé).
+// Variable présente : identité Test vérifiée à l'identique, sinon refus (jamais de repli sur la file).
 export function authorizedTestJobId(env = {}) {
   const raw = String(env.KLIR_JOB_TEST_JOB_ID || "").trim();
   if (!raw) return "";
-  if (String(env.KLIR_ENV || "") !== "preview") return "";
-  const host = String(env.KLIR_JOB_DB_HOST || "").toLowerCase();
-  const user = String(env.KLIR_JOB_DB_USER || "").toLowerCase();
-  if (host.includes(PROD_PROJECT_REF) || user.includes(PROD_PROJECT_REF)) return "";
-  if (!user.endsWith(`.${TEST_PROJECT_REF}`)) return "";
+  const values = [env.SUPABASE_URL, env.KLIR_JOB_DB_HOST, env.KLIR_JOB_DB_USER, env.KLIR_JOB_DB_NAME, raw]
+    .map((value) => String(value || "").toLowerCase());
+  if (values.some((value) => value.includes(PROD_PROJECT_REF))) throw reject("production_refusee");
+  if (String(env.KLIR_ENV || "") !== TEST_ENV) throw reject("environnement_refuse");
+  const url = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+  if (url !== TEST_SUPABASE_URL) throw reject("hote_non_test");
+  const host = String(env.KLIR_JOB_DB_HOST || "").trim();
+  if (!TEST_DB_POOLER_HOSTS.includes(host)) throw reject("hote_test_refuse");
+  const user = String(env.KLIR_JOB_DB_USER || "").trim();
+  if (user !== `${CONNECT_ROLE}.${TEST_PROJECT_REF}`) throw reject("utilisateur_test_refuse");
+  if (String(env.KLIR_JOB_DB_PORT || "").trim() !== "6543") throw reject("port_non_transaction");
+  if (String(env.KLIR_JOB_DB_NAME || "").trim() !== "postgres") throw reject("base_refusee");
   if (!TEST_JOB_UUID.test(raw)) throw reject("cible_invalide");
   return raw.toLowerCase();
+}
+
+// Vérifie dans la session elle-même que la connexion est bien celle du runner Test.
+export async function assertTargetedSession(sql) {
+  const who = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.identity);
+  const identity = who && who[0];
+  if (!identity || identity.role_name !== RUNNER_ROLE || identity.session_name !== CONNECT_ROLE) {
+    throw reject("role_exploitation_refuse");
+  }
 }
 
 export function assertRunnerDbConfig(env = {}) {
@@ -200,6 +232,7 @@ async function diagnose(request, options) {
   } catch (error) {
     return json(400, { error: error.code || "cible_invalide" });
   }
+  if (targetJobId && bodyHasExtraKeys(body)) return json(400, { error: "cible_refusee" });
   try {
     assertRunnerDbConfig(options.env || {});
   } catch (error) {
@@ -213,6 +246,7 @@ async function diagnose(request, options) {
     if (body.action === "cycle") {
       const cycle = await db.begin(async (sql) => {
         await sql.unsafe("set local role klir_job_runner");
+        if (targetJobId) await assertTargetedSession(sql);
         let provider = options.provider;
         if (!provider) {
           const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
@@ -232,6 +266,7 @@ async function diagnose(request, options) {
         contactsVerified: false,
         executed: true,
         scheduler: "off",
+        ...(targetJobId ? { mode: "cible_test" } : {}),
         expired: cycle && cycle.expired ? cycle.expired : 0,
         jobs: jobs.map((row) => ({
           id: row.id,
