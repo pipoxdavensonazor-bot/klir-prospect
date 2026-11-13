@@ -1,9 +1,8 @@
 """Extrait Overture Places borné aux six centres, depuis le S3 public.
 
 Aucun téléchargement de la planète, aucun secret, aucun appel OpenCage.
-Lecture anonyme PyArrow : seuls les row groups dont l'emprise intersecte
-les rectangles de 2 200 m sont lus. La release est épinglée. Les rectangles
-ne sont pas les limites administratives.
+La release est épinglée. Les rectangles couvrent un rayon de 2 200 m autour
+des centres déjà au contrat ; ce ne sont pas les limites administratives.
 """
 from __future__ import annotations
 
@@ -17,22 +16,7 @@ RELEASE_PIN = "2026-10-21.0"
 EXTRACT_RADIUS_M = 2200
 EARTH_M_PER_DEGREE = 111320
 MAX_FEATURES = 15_000
-INDUSTRY_FLOOR = 250
-S3_PREFIX = f"overturemaps-us-west-2/release/{RELEASE_PIN}/theme=places/type=place/"
-COLUMNS = [
-    "id",
-    "names",
-    "basic_category",
-    "taxonomy",
-    "addresses",
-    "phones",
-    "emails",
-    "websites",
-    "sources",
-    "confidence",
-    "operating_status",
-    "bbox",
-]
+S3_PATH = f"s3://overturemaps-us-west-2/release/{RELEASE_PIN}/theme=places/type=place/*"
 
 CITY_CENTERS = [
     {"key": "montréal", "countryCode": "CA", "latitude": 45.5017, "longitude": -73.5673},
@@ -42,39 +26,6 @@ CITY_CENTERS = [
     {"key": "paris", "countryCode": "FR", "latitude": 48.8566, "longitude": 2.3522},
     {"key": "lyon", "countryCode": "FR", "latitude": 45.764, "longitude": 4.8357},
 ]
-
-# Aligné sur tools/overture-places-bounds.mjs — garder les deux listes identiques.
-INDUSTRY_CATEGORY_TOKENS = {
-    "restauration": [
-        "food_and_drink", "restaurant", "casual_eatery", "cafe", "coffee_shop", "bar",
-        "pub", "bakery", "fast_food_restaurant", "pizzeria", "dessert_shop",
-        "ice_cream_shop", "meal_takeaway", "tea_room", "bistro", "brasserie",
-    ],
-    "construction": [
-        "building_or_construction_service", "contractor", "general_contractor",
-        "plumbing", "electrician", "roofing", "painting", "masonry_contractor",
-        "flooring_contractor", "carpentry", "construction", "hvac",
-    ],
-    "commerce": [
-        "shopping", "fashion_and_apparel_store", "grocery_store", "food_and_beverage_store",
-        "electronics_store", "hardware_home_and_garden_store", "specialty_store",
-        "shopping_mall", "books_music_and_video_store", "convenience_store",
-        "supermarket", "flowers_and_gifts_store", "sporting_goods_store",
-        "department_store",
-    ],
-    "immobilier": ["real_estate_service", "real_estate", "property_management"],
-    "sante": [
-        "health_care", "outpatient_care_facility", "dental_clinic", "dentist",
-        "general_dentistry", "physician", "pharmacy", "hospital", "physical_therapy",
-        "primary_care_or_general_clinic", "wellness_service",
-    ],
-    "technologie": ["technical_service", "software", "it_service", "computer_service", "web_service"],
-    "finance": ["financial_service", "bank_or_credit_union", "insurance", "accounting", "investment_service"],
-    "services": [
-        "professional_service", "attorney_or_law_firm", "home_service",
-        "design_service", "event_or_party_service", "legal_service",
-    ],
-}
 
 ATTRIBUTION = {
     "cdla": "Community Data License Agreement – Permissive, Version 2.0. Le partage des données exige de joindre le texte de cet accord. https://cdla.dev/permissive-2-0/",
@@ -112,99 +63,42 @@ def radius_bbox(city: dict, radius_m: int = EXTRACT_RADIUS_M) -> dict:
     }
 
 
-def row_group_bbox(row_group) -> tuple[float, float, float, float] | None:
-    stats = {}
-    for index in range(row_group.num_columns):
-        column = row_group.column(index)
-        path = column.path_in_schema
-        if path in {"bbox.xmin", "bbox.xmax", "bbox.ymin", "bbox.ymax"} and column.statistics and column.statistics.has_min_max:
-            stats[path] = (column.statistics.min, column.statistics.max)
-    if len(stats) < 4:
-        return None
-    return stats["bbox.xmin"][0], stats["bbox.ymin"][0], stats["bbox.xmax"][1], stats["bbox.ymax"][1]
-
-
-def overlaps(group_bbox, bbox: dict) -> bool:
-    xmin, ymin, xmax, ymax = group_bbox
-    return xmax >= bbox["west"] and xmin <= bbox["east"] and ymax >= bbox["south"] and ymin <= bbox["north"]
-
-
-def as_dict(value):
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    if hasattr(value, "as_py"):
-        converted = value.as_py()
-        return converted if isinstance(converted, dict) else {}
-    return {}
-
-
-def as_list(value):
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    if hasattr(value, "as_py"):
-        converted = value.as_py()
-        return converted if isinstance(converted, list) else []
-    return []
-
-
-def category_tokens(row: dict) -> list[str]:
-    taxonomy = as_dict(row.get("taxonomy"))
-    values = [row.get("basic_category") or "", taxonomy.get("primary") or ""]
-    values.extend(item for item in as_list(taxonomy.get("hierarchy")) if isinstance(item, str))
-    values.extend(item for item in as_list(taxonomy.get("alternates")) if isinstance(item, str))
-    return [item for item in values if item]
-
-
-def industry_of(row: dict) -> str:
-    tokens = set(category_tokens(row))
-    for industry, allowed in INDUSTRY_CATEGORY_TOKENS.items():
-        if tokens.intersection(allowed):
-            return industry
-    return "autre"
-
-
 def compact_feature(row: dict) -> dict:
-    names = as_dict(row.get("names"))
-    taxonomy = as_dict(row.get("taxonomy"))
-    addresses = as_list(row.get("addresses"))
-    address = as_dict(addresses[0] if addresses else {})
+    names = row.get("names") or {}
+    taxonomy = row.get("taxonomy") or {}
+    addresses = row.get("addresses") or []
+    address = addresses[0] if isinstance(addresses, list) and addresses else {}
     compact_address = {}
-    for key in ("freeform", "locality", "region", "postcode", "country"):
-        value = address.get(key)
-        if isinstance(value, str) and value.strip():
-            compact_address[key] = value.strip()
+    if isinstance(address, dict):
+        for key in ("freeform", "locality", "region", "postcode", "country"):
+            value = address.get(key)
+            if isinstance(value, str) and value.strip():
+                compact_address[key] = value.strip()
     sources = []
-    for source in as_list(row.get("sources")):
-        item = {}
+    for source in row.get("sources") or []:
         if not isinstance(source, dict):
             continue
+        item = {}
         for key in ("dataset", "property", "record_id", "update_time", "license"):
             value = source.get(key)
             if isinstance(value, str) and value:
                 item[key] = value
         if item:
             sources.append(item)
-    bbox = as_dict(row.get("bbox"))
-    lon = bbox.get("xmin")
-    lat = bbox.get("ymin")
     properties = {
-        "names": {"primary": names.get("primary") or ""},
+        "names": {"primary": (names.get("primary") if isinstance(names, dict) else "") or ""},
         "basic_category": row.get("basic_category") or "",
         "taxonomy": {
-            "primary": taxonomy.get("primary") or "",
-            "hierarchy": [item for item in as_list(taxonomy.get("hierarchy")) if isinstance(item, str)],
-            "alternates": [item for item in as_list(taxonomy.get("alternates")) if isinstance(item, str)],
+            "primary": taxonomy.get("primary") if isinstance(taxonomy, dict) else "",
+            "hierarchy": [item for item in (taxonomy.get("hierarchy") or []) if isinstance(item, str)] if isinstance(taxonomy, dict) else [],
+            "alternates": [item for item in (taxonomy.get("alternates") or []) if isinstance(item, str)] if isinstance(taxonomy, dict) else [],
         },
         "addresses": [compact_address] if compact_address else [],
         "sources": sources,
         "contactsVerified": False,
     }
     for key in ("phones", "emails", "websites"):
-        values = [item.strip() for item in as_list(row.get(key)) if isinstance(item, str) and item.strip()]
+        values = [item.strip() for item in (row.get(key) or []) if isinstance(item, str) and item.strip()]
         if values:
             properties[key] = values
     if row.get("confidence") is not None:
@@ -214,78 +108,60 @@ def compact_feature(row: dict) -> dict:
     return {
         "id": row["id"],
         "type": "Feature",
-        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "geometry": {"type": "Point", "coordinates": [row["lon"], row["lat"]]},
         "properties": properties,
     }
 
 
-def keep_row(row: dict, bbox: dict) -> str | None:
-    box = as_dict(row.get("bbox"))
-    lon, lat = box.get("xmin"), box.get("ymin")
-    if not row.get("id") or lon is None or lat is None:
-        return "geometrie"
-    if not (bbox["west"] <= lon <= bbox["east"] and bbox["south"] <= lat <= bbox["north"]):
-        return "hors_emprise"
-    names = as_dict(row.get("names"))
-    primary = names.get("primary")
-    if not isinstance(primary, str) or not primary.strip():
-        return "nom_absent"
-    if row.get("operating_status") == "permanently_closed":
-        return "ferme"
-    if row.get("confidence") == 0:
-        return "confidence_nulle"
-    return None
-
-
-def confidence_key(row: dict):
-    return (-(row.get("confidence") or 0), row["id"])
-
-
-def truncate_balanced(rows: list[dict], limit: int = MAX_FEATURES, floor: int = INDUSTRY_FLOOR) -> tuple[list[dict], int]:
-    if len(rows) <= limit:
-        return rows, 0
-    ranked = sorted(rows, key=confidence_key)
-    buckets: dict[str, list[dict]] = {}
-    for row in ranked:
-        buckets.setdefault(industry_of(row), []).append(row)
-    chosen: list[dict] = []
-    chosen_ids: set[str] = set()
-    for industry, bucket in buckets.items():
-        take = bucket[: min(len(bucket), floor)]
-        for row in take:
-            if row["id"] not in chosen_ids and len(chosen) < limit:
-                chosen.append(row)
-                chosen_ids.add(row["id"])
-    for row in ranked:
-        if len(chosen) >= limit:
-            break
-        if row["id"] not in chosen_ids:
-            chosen.append(row)
-            chosen_ids.add(row["id"])
-    chosen.sort(key=confidence_key)
-    return chosen, len(rows) - len(chosen)
-
-
-def extract_city(files, city: dict, radius_m: int) -> dict:
+def extract_city(connection, city: dict, radius_m: int) -> dict:
     bbox = radius_bbox(city, radius_m)
-    skipped = {"nom_absent": 0, "ferme": 0, "confidence_nulle": 0, "geometrie": 0, "hors_emprise": 0}
+    sql = f"""
+        select
+          id,
+          names,
+          basic_category,
+          taxonomy,
+          addresses,
+          phones,
+          emails,
+          websites,
+          sources,
+          confidence,
+          operating_status,
+          st_x(geometry) as lon,
+          st_y(geometry) as lat
+        from read_parquet('{S3_PATH}', filename=true, hive_partitioning=1)
+        where bbox.xmin between {bbox['west']} and {bbox['east']}
+          and bbox.ymin between {bbox['south']} and {bbox['north']}
+          and st_x(geometry) between {bbox['west']} and {bbox['east']}
+          and st_y(geometry) between {bbox['south']} and {bbox['north']}
+    """
+    result = connection.execute(sql).fetchall()
+    columns = [item[0] for item in connection.description]
     kept = []
-    groups_read = 0
-    files_read = []
-    for path, parquet_file, groups in files:
-        relevant = [index for index in groups if overlaps(groups[index], bbox)]
-        if not relevant:
+    skipped = {"nom_absent": 0, "ferme": 0, "confidence_nulle": 0, "geometrie": 0}
+    for raw in result:
+        row = dict(zip(columns, raw))
+        if not row.get("id") or row.get("lon") is None or row.get("lat") is None:
+            skipped["geometrie"] += 1
             continue
-        files_read.append(Path(path).name)
-        groups_read += len(relevant)
-        table = parquet_file.read_row_groups(relevant, columns=COLUMNS)
-        for row in table.to_pylist():
-            reason = keep_row(row, bbox)
-            if reason:
-                skipped[reason] += 1
-                continue
-            kept.append(row)
-    kept, truncated = truncate_balanced(kept)
+        names = row.get("names") or {}
+        primary = names.get("primary") if isinstance(names, dict) else ""
+        if not isinstance(primary, str) or not primary.strip():
+            skipped["nom_absent"] += 1
+            continue
+        if row.get("operating_status") == "permanently_closed":
+            skipped["ferme"] += 1
+            continue
+        if row.get("confidence") == 0:
+            skipped["confidence_nulle"] += 1
+            continue
+        kept.append(row)
+    kept.sort(key=lambda item: (-(item.get("confidence") or 0), item["id"]))
+    truncated = 0
+    if len(kept) > MAX_FEATURES:
+        truncated = len(kept) - MAX_FEATURES
+        kept = kept[:MAX_FEATURES]
     features = [compact_feature(row) for row in kept]
     payload = {
         "key": city["key"],
@@ -296,36 +172,9 @@ def extract_city(files, city: dict, radius_m: int) -> dict:
         "features": features,
         "truncated": truncated,
         "skipped": skipped,
-        "filesRead": files_read,
-        "rowGroupsRead": groups_read,
-        "truncation": "balanced_industry_floor" if truncated else "none",
     }
     payload["bytes"] = len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
     return payload
-
-
-def open_places_files():
-    try:
-        import pyarrow.parquet as pq
-        from pyarrow import fs
-    except ImportError as error:
-        raise SystemExit("pyarrow_absent: installer pyarrow dans un venv (pip install pyarrow), sans le commettre.") from error
-    filesystem = fs.S3FileSystem(anonymous=True, region="us-west-2")
-    infos = filesystem.get_file_info(fs.FileSelector(S3_PREFIX, recursive=False))
-    opened = []
-    for info in infos:
-        if not info.path.endswith(".parquet"):
-            continue
-        parquet_file = pq.ParquetFile(info.path, filesystem=filesystem)
-        groups = {}
-        for index in range(parquet_file.metadata.num_row_groups):
-            group_bbox = row_group_bbox(parquet_file.metadata.row_group(index))
-            if group_bbox:
-                groups[index] = group_bbox
-        opened.append((info.path, parquet_file, groups))
-    if not opened:
-        raise SystemExit("extrait_vide")
-    return opened
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -337,10 +186,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.radius_m <= 0 or args.radius_m > EXTRACT_RADIUS_M:
         raise SystemExit("emprise_refusee")
     if args.python_check_only:
-        print(json.dumps({"ok": True, "release": RELEASE_PIN, "radiusM": args.radius_m, "engine": "pyarrow"}))
+        print(json.dumps({"ok": True, "release": RELEASE_PIN, "radiusM": args.radius_m}))
         return 0
-    files = open_places_files()
-    cities = [extract_city(files, city, args.radius_m) for city in CITY_CENTERS]
+    try:
+        import duckdb
+    except ImportError:
+        raise SystemExit("duckdb_absent: installer DuckDB dans un venv (pip install duckdb), sans le commettre.")
+    connection = duckdb.connect()
+    connection.execute("install spatial; load spatial; install httpfs; load httpfs;")
+    connection.execute("set s3_region='us-west-2'; set s3_url_style='path';")
+    cities = [extract_city(connection, city, args.radius_m) for city in CITY_CENTERS]
     snapshot = {
         "release": RELEASE_PIN,
         "operational": False,
@@ -349,18 +204,16 @@ def main(argv: list[str] | None = None) -> int:
         "coverage": "rayon_2200m_six_centres" if args.radius_m == 2200 else f"rayon_{args.radius_m}m_six_centres",
         "categoriesColumn": "taxonomy_basic_category",
         "attribution": ATTRIBUTION,
-        "engine": "pyarrow-s3-anonymous",
         "cities": cities,
     }
-    args.out.parent.mkdir(parents=True, exist_ok=True)
     encoded = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     snapshot["bytes"] = len(encoded)
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
     summary = {
         "release": RELEASE_PIN,
         "path": str(args.out),
         "bytes": snapshot["bytes"],
-        "engine": snapshot["engine"],
         "cities": [
             {
                 "key": city["key"],
@@ -368,9 +221,6 @@ def main(argv: list[str] | None = None) -> int:
                 "bytes": city["bytes"],
                 "truncated": city["truncated"],
                 "skipped": city["skipped"],
-                "filesRead": city["filesRead"],
-                "rowGroupsRead": city["rowGroupsRead"],
-                "truncation": city["truncation"],
                 "bbox": city["bbox"],
             }
             for city in cities
