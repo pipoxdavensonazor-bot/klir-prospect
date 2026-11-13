@@ -339,31 +339,6 @@ async function applyServerLedger(){
   if(account.searches!=null)KS.S.usage.searches=account.searches;
   KS.save();
 }
-async function reserveServerUsage(amount,label){
-  serverLedgerApplied=false;
-  serverSearches=null;
-  pendingDebitKey="";
-  const receipt=KS.uid(label==="Scan Radar"?"radar":"debit");
-  if(!window.KlirAuth||typeof window.KlirAuth.reserveUsage!=="function")return {ok:false,message:"Le registre des crédits n'est pas disponible. Aucune recherche n'est lancée."};
-  const reserved=await window.KlirAuth.reserveUsage({receipt:receipt,amount:amount,label:label});
-  if(!reserved.ok)return reserved;
-  pendingDebitKey=receipt;
-  serverLedgerApplied=true;
-  if(reserved.balance!=null)KS.S.credits.balance=reserved.balance;
-  if(reserved.searches!=null)serverSearches=reserved.searches;
-  return reserved;
-}
-async function settleServerUsage(debit){
-  const receipt=pendingDebitKey;
-  if(!receipt)return true;
-  if(!window.KlirAuth||typeof window.KlirAuth.settleUsage!=="function")return false;
-  const settled=await window.KlirAuth.settleUsage({receipt:receipt,outcome:debit?"complete":"release"});
-  if(!settled.ok)return false;
-  pendingDebitKey="";
-  if(settled.balance!=null)KS.S.credits.balance=settled.balance;
-  if(settled.searches!=null)serverSearches=settled.searches;
-  return true;
-}
 function applyServerUsage(){if(serverSearches!=null)KS.S.usage.searches=serverSearches;}
 function chargeOnce(n,label){
   const receipt=pendingDebitKey||"";
@@ -681,60 +656,12 @@ function deleteSavedSearch(id){
   KS.audit("search.deleted",s.label||id);
   render();
 }
-async function runOvertureSearch(q,savedParams){
+async function runSearch(q,savedParams){
   if(searchRunning)return;
   searchRunning=true;
   const prog=document.getElementById("prog");
   try{
-    if(!osmSearchAllowed())throw new Error("Connexion au pilote requise.");
-    if(!q||!q.trim())throw new Error("Décrivez les entreprises recherchées.");
-    const params=formSearchParams(q,savedParams);
-    syncSearchFields(params);
-    updateSearchQuote();
-    if(!searchRunnable(params)){showPlaceBlock(params);return;}
-    const city={"montréal":"montreal","laval":"laval","québec":"quebec"}[params.cityKey];
-    if(!city||params.industry!=="restauration"||params.area!=="radius")throw new Error("Essai accompagné : restaurants et cafés, dans les trois cercles de Montréal, Laval ou Québec (2 200 m).");
-    if(params.size||(params.webFilter&&Object.keys(params.webFilter).length))throw new Error("Ces critères ne sont pas vérifiés dans le catalogue du pilote. Retirez les filtres de taille ou de site.");
-    syncSearchFields(params);
-    const key="klir-overture-pending-"+authState.user.id;
-    const normalized={city:city,sector:params.industry,quantity:params.quantity};
-    let pending=null;
-    try{pending=JSON.parse(sessionStorage.getItem(key)||"null");}catch(e){}
-    if(pending&&JSON.stringify(pending.params)!==JSON.stringify(normalized))throw new Error("Une recherche attend sa réponse. Relancez ses mêmes paramètres pour récupérer son résultat avant de changer de recherche.");
-    if(!pending){pending={receipt:KS.uid("debit"),params:normalized};sessionStorage.setItem(key,JSON.stringify(pending));}
-    if(prog)prog.innerHTML='<div class="card">Recherche du catalogue Overture hébergé… Le serveur calcule les crédits.</div>';
-    const result=await window.KlirAuth.searchOverture({...normalized,receipt:pending.receipt});
-    if(result.balance!=null)KS.S.credits.balance=result.balance;
-    if(result.searches_used!=null)KS.S.usage.searches=result.searches_used;
-    if(result.recovery_expired){sessionStorage.removeItem(key);throw new Error("Le reçu est conservé, mais son résultat a dépassé 90 jours. Consultez l’historique enregistré ou demandez une nouvelle recherche.");}
-    if(result.state!=="complete"){
-      sessionStorage.removeItem(key);KS.save();
-      if(prog)prog.innerHTML='<div class="card"><b>'+({valid_empty:"Aucun résultat dans ce périmètre",partial:"Catalogue incomplet",error:"Recherche non terminée"}[result.state]||"Réponse non exploitable")+'</b><p>Aucun crédit débité. '+esc(result.reason||"")+'</p></div>';
-      return;
-    }
-    const id="ov_"+pending.receipt;
-    if(!KS.S.searches.some(s=>s.id===id)){
-      const rows=result.features.map(row=>window.KlirOverture.mapRow(row,params.industry,result)).map(p=>{
-        const sc=E.scoreProspect(p,params,KS.S.weights);
-        return {...p,id:p.id+"_"+pending.receipt,searchId:id,dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,status:"New"};
-      });
-      KS.S.searches.unshift({id:id,query:q,params:params,status:"terminée",label:sectorLabel(params.industry)+" "+params.city.city+" — "+rows.length+" candidats Overture",date:new Date().toLocaleDateString(),total:rows.length,qual:0,crm:0,dups:0,source:"Overture Maps",release:result.release,revision:result.revision,cacheAt:result.cache_at});
-      KS.S.prospects=[...rows,...KS.S.prospects];KS.S.usage.prospects+=rows.length;
-      KS.save();KS.addActivity(rows.length+" candidats Overture reçus — vérification requise");
-    }
-    const persisted=await KS.flushCloudPersist();
-    if(persisted&&persisted.error)throw new Error("Résultat reçu. Enregistrement du compte en attente ; relancez la même recherche pour réessayer sans nouveau débit.");
-    sessionStorage.removeItem(key);
-    curSearch=id;selExplicit=false;selSearch=id;sel=new Set();nav("/prospecting/results/"+id);
-  }catch(error){if(prog)prog.innerHTML='<div class="card"><b>Recherche interrompue</b><p>'+esc(error.message||"Réponse indisponible")+'</p></div>';}
-  finally{searchRunning=false;}
-}
-async function runSearch(q,savedParams){
-  if(window.KlirAuth&&window.KlirAuth.overturePreview())return runOvertureSearch(q,savedParams);
-  if(searchRunning)return;
-  searchRunning=true;
-  try{
-  if(!osmSearchAllowed())return alert("La démonstration et une session sans compte n'interrogent pas OpenStreetMap.");
+  if(!osmSearchAllowed())return alert("La démonstration et une session sans compte ne lancent aucune recherche serveur.");
   const L=window.KlirStore.LIMITS[KS.S.plan];
   if(KS.S.usage.searches>=L.searches)return alert(`Quota mensuel atteint (${L.searches} recherches complètes comptées). Il repart à zéro au mois suivant, fuseau America/Toronto. Une erreur, un résultat vide ou une collecte partielle ne compte pas.`);
   if(!q||!q.trim())return alert("Décrivez d'abord le type de client recherché.");if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
@@ -742,55 +669,79 @@ async function runSearch(q,savedParams){
   syncSearchFields(params);
   updateSearchQuote();
   if(!searchRunnable(params)){showPlaceBlock(params);return;}
-  const _costQ=params.quantity;
-  const searchCost=5+Math.ceil(_costQ/10);
-  if((KS.S.credits.balance||0)<searchCost)return alert(`Crédits insuffisants (${KS.S.credits.balance} restants, ${searchCost} requis pour : Recherche). L'achat de crédits n'est pas ouvert. Le solde reste celui de cette session.`);
-  try{var _wfn=(window.WebIntel?window.WebIntel.parseFilter(q):{});var _wfc={};document.querySelectorAll("[data-webf]:checked").forEach(c=>{_wfc[c.dataset.webf]=true;});params.webFilter=Object.assign({},(savedParams&&savedParams.webFilter)||{},_wfn,_wfc);}catch(e){if(!params.webFilter)params.webFilter={};}
-  document.getElementById("parsed").innerHTML=`<div class="grid4"><div class="card"><small>Secteur</small><b>${sectorLabel(params.industry)}</b></div><div class="card"><small>Location</small><b>${params.city.city}</b></div><div class="card"><small>Quantity</small><b>${params.quantity}</b></div><div class="card"><small>Taille</small><b>${sizeLabel(params.size)}</b></div></div>`;
-  const prog=document.getElementById("prog"); prog.innerHTML=`<div class="card"><b id="pt">Recherche en cours...</b><div class="bar"><div id="pb" style="width:35%"></div></div><small id="ps">Interrogation d'OpenStreetMap…</small></div>`;
-  const reserved=await reserveServerUsage(searchCost,"Recherche");
-  if(!reserved.ok)return alert(reserved.message);
-  let raw=[];
-  let sourceError="";
-  try{
-    if(!window.KlirSources||!window.KlirSources.osm||typeof window.KlirSources.osm.search!=="function")throw new Error("La source OpenStreetMap n'est pas disponible.");
-    raw=await window.KlirSources.osm.search(params,Math.min(40,params.quantity||40));
-  }catch(error){sourceError=error&&error.message?error.message:"Recherche échouée : OpenStreetMap est indisponible.";}
-  const reported=raw&&raw.osmCoverage?raw.osmCoverage:{};
-  const coverage={status:reported.status==="partial"?"partial":"complete",remark:reported.remark||"",area:reported.area||"radius",areaFallback:!!reported.areaFallback};
-  const partial=coverage.status==="partial";
-  const accountKind=sourceError?"error":partial?(raw.length?"partial":"partial-empty"):(raw.length?"complete":"empty");
-  const account=searchAccounting(accountKind);
-  if(sourceError){
-    await settleServerUsage(false);
-    document.getElementById("prog").innerHTML=`<div class="card" data-search-state="failure"><p><b>Recherche échouée</b><br>${esc(sourceError)}<br>Aucun crédit n'a été débité. Le quota mensuel n'augmente pas. Aucune fiche n'a été inventée.</p></div>`;
+  const searchCost=5+Math.ceil(params.quantity/10);
+  if((KS.S.credits.balance||0)<searchCost)return alert(`Crédits insuffisants (${KS.S.credits.balance} restants, ${searchCost} requis pour : Recherche). L'achat de crédits n'est pas ouvert.`);
+  if(!window.KlirAuth||typeof window.KlirAuth.searchJob!=="function"){if(prog)prog.innerHTML='<div class="card" data-search-state="failure"><p><b>Recherche indisponible</b><br>La file de recherche serveur n\'est pas branchée. Aucun crédit n\'est réservé.</p></div>';return;}
+  const parsed=document.getElementById("parsed");
+  if(parsed)parsed.innerHTML=`<div class="grid4"><div class="card"><small>Secteur</small><b>${sectorLabel(params.industry)}</b></div><div class="card"><small>Location</small><b>${params.city.city}</b></div><div class="card"><small>Quantity</small><b>${params.quantity}</b></div><div class="card"><small>Taille</small><b>${sizeLabel(params.size)}</b></div></div>`;
+  if(prog)prog.innerHTML='<div class="card"><b id="pt">Recherche en file serveur…</b><div class="bar"><div id="pb" style="width:35%"></div></div><small id="ps">Le serveur réserve, exécute et règle les crédits.</small></div>';
+  const payload=searchJobPayload(params);
+  const pending=searchJobKey(payload);
+  const result=await window.KlirAuth.searchJob({payload:payload,idempotencyKey:pending.key});
+  if(result&&result.balance!=null)KS.S.credits.balance=result.balance;
+  if(result&&result.searches!=null)KS.S.usage.searches=result.searches;
+  const outcome=result&&result.outcome||"jobs_injoignable";
+  if(!result||!result.ok){
+    if(outcome!=="jobs_injoignable"&&outcome!=="en_attente")pending.clear();
+    KS.save();
+    if(prog)prog.innerHTML=`<div class="card" data-search-state="${outcome==="echec"?"failure":"refused"}"><p><b>Recherche non lancée ou non terminée</b><br>${esc(SEARCH_JOB_MESSAGES[outcome]||SEARCH_JOB_MESSAGES.jobs_injoignable)}</p></div>`;
     return;
   }
-  if(!raw.length){
-    if(partial){
-      await settleServerUsage(false);
-      document.getElementById("prog").innerHTML=`<div class="card" data-search-state="partial"><p><b>Recherche partielle, aucun résultat reçu</b><br>OpenStreetMap n'a pas terminé la collecte. Ce n'est pas une collecte exhaustive. Aucune fiche n'a été inventée. Aucun crédit n'a été débité. Le quota mensuel n'augmente pas.${coverage.remark?`<br><small>${esc(coverage.remark)}</small>`:""}</p></div>`;
-      return;
-    }
-    await settleServerUsage(false);
-    document.getElementById("prog").innerHTML=`<div class="card" data-search-state="empty"><p><b>Recherche terminée, aucun résultat</b><br>Aucune entreprise publiée pour cette recherche. Aucune fiche n'a été inventée. Aucun crédit n'a été débité. Le quota mensuel n'augmente pas.</p></div>`;
+  pending.clear();
+  const job=result.job||{};
+  const places=Array.isArray(result.places)?result.places:[];
+  if(!places.length){
+    KS.save();
+    if(prog)prog.innerHTML='<div class="card" data-search-state="empty"><p><b>Recherche terminée, aucun résultat</b><br>Aucune fiche n\'a été inventée. Le serveur n\'a débité aucun crédit pour un résultat vide.</p></div>';
     return;
   }
-  stampCollected(raw);
-  if(account.debit&&!await settleServerUsage(true))return alert("Le débit n'a pas été enregistré. Aucune fiche n'est conservée.");
-  if(account.debit&&!spendCredits(searchCost,"Recherche"))return;
-  const {unique,dups}=E.dedup(raw);
-  const final=unique.slice(0,params.quantity).map(p=>{const sc=E.scoreProspect(p,params,KS.S.weights);return {...p,...{dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score},collection_status:partial?"partial":"complete",ai:E.aiAnalysis(p,params),searchId:null,icp:KS.S.icp?E.icpFit(p,KS.S.icp):null};});
-  try{if(window.OppEngine){final.forEach(p=>window.OppEngine.attach(p,params));var _of=window.OppEngine.parse(params.raw||q||"");if(_of.service||_of.sort==="opp"||_of.minOpp!=null){params.oppSort=_of.sort||"opp";params.oppService=_of.service||null;params.oppMin=_of.minOpp!=null?_of.minOpp:null;}}}catch(e){}
-  const s={id:KS.uid("s"),query:String(q||"").trim(),status:partial?"partielle":"terminée",label:`${sectorLabel(params.industry)} ${params.city.city} — ${final.length} prospects${partial?" (collecte partielle)":""}${coverage.area==="montreal_island"?" · île de Montréal":""}`,date:new Date().toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:dups.length,osmRemark:coverage.remark||"",osmArea:coverage.area||"radius",osmAreaFallback:!!coverage.areaFallback};
-  if(typeof absorbExternal==="function"){absorbExternal(s);final.forEach(absorbExternal);}
-  try{if(window.WebIntel&&params.webFilter&&Object.keys(params.webFilter).length){var _fw=params.webFilter;var _hasWebF=_fw.webActive||_fw.noSite||_fw.webInactive||_fw.regInactive;if(_hasWebF){var _ff=final.filter(p=>{var has=!!(p.website||p.domain);if(_fw.webActive)return has;return !has;});if(_ff.length){_ff.forEach(p=>{p.searchId=s.id;if(!p.website&&!p.domain){window.WebIntel.ensure(p);p.website_status="NON_RENSEIGNE";}});KS.S.searches.unshift(Object.assign({},s,{label:s.label+" 🌐",total:_ff.length,qual:_ff.filter(p=>p.rel>=75).length}));KS.S.prospects=[..._ff,...KS.S.prospects];KS.S.usage.searches+=account.searches;applyServerUsage();KS.S.usage.prospects+=account.searches?_ff.length:0;KS.save();KS.addActivity(`${_ff.length} prospects trouvés (filtre présence numérique)`);KS.notify(partial?`Recherche partielle : ${_ff.length} prospects (filtre 🌐). Collecte non exhaustive. Aucun crédit débité.`:`Recherche terminée : ${_ff.length} prospects (filtre 🌐). Vérification des sites en arrière-plan.`);KS.audit("search.completed",s.label+" [webfilter]");curSearch=KS.S.searches[0].id;selExplicit=false;selSearch=curSearch;sel=new Set(_ff.filter(p=>p.rel>=75).slice(0,10).map(p=>p.id));nav("/prospecting/results/"+curSearch);try{var _ids=_ff.map(p=>p.id);window.WebIntel.bulkCheck(_ids,{onProgress:(d,t)=>{var el=document.getElementById("webProg");if(el)el.textContent="Website verification in progress... "+d+" / "+t;}}).then(st=>{try{KS.save();}catch(e){}var el2=document.getElementById("webProg");if(el2)el2.textContent="Website check terminé : "+st.active+" actifs • "+st.inactive+" inactifs • "+st.available+" disponibles • "+st.unknown+" inconnus.";});}catch(e){}render();return;}}}}catch(e){}
-  final.forEach(p=>p.searchId=s.id);
-  KS.S.searches.unshift(s); KS.S.prospects=[...final,...KS.S.prospects]; KS.S.usage.searches+=account.searches; applyServerUsage(); KS.S.usage.prospects+=account.searches?final.length:0; KS.save(); KS.addActivity(partial?`${final.length} prospects reçus (collecte partielle, aucun crédit débité)`:`${final.length} prospects trouvés (${dups.length} doublons supprimés)`); KS.notify(partial?`Recherche partielle : ${final.length} fiches reçues. Collecte non exhaustive. Aucun crédit débité. Le quota mensuel n'augmente pas.`:`Recherche terminée : ${final.length} prospects (${dups.length} doublons écartés).`); KS.audit(partial?"search.partial":"search.completed",s.label);
-  curSearch=s.id; selExplicit=false; selSearch=curSearch; sel=new Set(final.filter(p=>p.rel>=75).slice(0,10).map(p=>p.id));
-  nav("/prospecting/results/"+s.id);
-  try{if(window.WebIntel&&window.WebIntel.settings().enabled){var _ids=final.map(p=>p.id);window.WebIntel.bulkCheck(_ids,{onProgress:(d,t)=>{var el=document.getElementById("webProg");if(el)el.textContent="Website verification in progress... "+d+" / "+t;}}).then(st=>{try{KS.save();}catch(e){}var el2=document.getElementById("webProg");if(el2)el2.textContent="Website check terminé : "+st.active+" actifs • "+st.inactive+" inactifs • "+st.available+" disponibles • "+st.unknown+" inconnus.";});}}catch(e){}
-  } finally { if(pendingDebitKey){try{await settleServerUsage(false);}catch(error){}} pendingDebitKey=""; serverLedgerApplied=false; searchRunning=false; }
+  const id="job_"+job.id;
+  if(!KS.S.searches.some(s=>s.id===id)){
+    const final=places.slice(0,params.quantity).map((row,index)=>{const p=searchJobProspect(row,index,job,params);const sc=E.scoreProspect(p,params,KS.S.weights);return {...p,dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score,collection_status:"complete",searchId:id,status:"New",icp:KS.S.icp?E.icpFit(p,KS.S.icp):null};});
+    try{if(window.OppEngine)final.forEach(p=>window.OppEngine.attach(p,params));}catch(e){}
+    const s={id:id,jobId:job.id,query:String(q||"").trim(),status:"terminée",label:`${sectorLabel(params.industry)} ${params.city.city} — ${final.length} fiches (file serveur)`,date:new Date().toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:0,source:"Overture Maps"};
+    KS.S.searches.unshift(s);KS.S.prospects=[...final,...KS.S.prospects];KS.S.usage.prospects+=final.length;
+    KS.save();KS.addActivity(`${final.length} fiches reçues du serveur (contacts non vérifiés)`);KS.audit("search.completed",s.label);
+    KS.notify(`Recherche terminée : ${final.length} fiches. Crédits réglés par le serveur.`);
+  }
+  curSearch=id;selExplicit=false;selSearch=id;sel=new Set();
+  nav("/prospecting/results/"+id);
+  }catch(error){if(prog)prog.innerHTML='<div class="card" data-search-state="failure"><p><b>Recherche interrompue</b><br>'+esc(error&&error.message||"Réponse indisponible")+'</p></div>';}
+  finally{searchRunning=false;}
+}
+// Toute recherche passe par la file de recherche du serveur : le serveur réserve,
+// exécute et règle les crédits. Le navigateur ne débite jamais directement.
+const SEARCH_JOB_MESSAGES={
+  jobs_disabled:"Le moteur est éteint. Aucune recherche lancée, aucun crédit réservé.",
+  session_requise:"Connectez-vous. Aucune recherche lancée.",
+  lieu_hors_pilote:"Ce lieu n'est pas l'un des six centres pris en charge. Aucune recherche lancée.",
+  quantite_invalide:"La quantité doit rester entre 10 et 40. Aucune recherche lancée.",
+  credits_insuffisants:"Crédits insuffisants. Aucune recherche lancée.",
+  rate_limited:"Trop de recherches en une minute. Réessayez dans un instant. Aucun nouveau crédit réservé.",
+  place_rejected:"Lieu refusé par le serveur. Aucune recherche lancée.",
+  jobs_injoignable:"Le serveur de recherche n'a pas répondu. Si une demande a été acceptée, relancez la même recherche : le serveur reprend la même demande sans nouveau débit.",
+  en_attente:"La demande est en file. Relancez la même recherche dans un instant pour récupérer son résultat sans nouveau débit.",
+  echec:"Recherche non terminée. Le serveur a libéré la réservation : aucun crédit n'a été débité."
+};
+function searchJobPayload(params){
+  return {place_status:"supported",cityKey:params.cityKey,industry:params.industry||"all",quantity:params.quantity,source:"overture-places-pilot",coverage:"rayon_2200m_six_centres"};
+}
+function searchJobKey(payload){
+  const storeKey="klir-search-job-pending-"+(authState.user&&authState.user.id||"anon");
+  let pending=null;
+  try{pending=JSON.parse(sessionStorage.getItem(storeKey)||"null");}catch(e){}
+  if(!pending||JSON.stringify(pending.payload)!==JSON.stringify(payload)){
+    pending={key:KS.uid("job"),payload:payload};
+    try{sessionStorage.setItem(storeKey,JSON.stringify(pending));}catch(e){}
+  }
+  return {key:pending.key,clear(){try{sessionStorage.removeItem(storeKey);}catch(e){}}};
+}
+function searchJobProspect(row,index,job,params){
+  return {
+    id:"job_"+job.id+"_"+index,company_name:String(row&&row.name||""),industry:sectorLabel(params.industry),industry_key:params.industry||"all",
+    category:String(row&&row.basic_category||""),city:params.city&&params.city.city||"",source:"Overture Maps",overture_release:String(row&&row.release||""),
+    contacts_verified:false,collected_at:row&&row.created_at||new Date().toISOString(),phone:"",public_email:"",website:"",address:"",signals:[],job_id:job.id
+  };
 }
 function toCrm(){if(window.KlirTeam&&!window.KlirTeam.guard("crm"))return;let n=0;for(const id of sel){const p=KS.S.prospects.find(x=>x.id===id);if(p&&!p.inCrm){p.inCrm=true;KS.S.crm.push({id:KS.uid("l"),company_name:p.company_name,city:p.city,stage:"New",prospectId:id,log:[{t:"Lead créé depuis la recherche",at:new Date().toLocaleString()}],lastActivity:new Date().toLocaleString()});n++;}}
   const s=KS.S.searches.find(x=>x.id===curSearch); if(s)s.crm+=n; KS.save(); KS.addActivity(`${n} prospects ajoutés au CRM`); KS.notify(`Import CRM terminé : ${n} prospects.`); KS.audit("crm.lead.created",n+" leads"); render();}
@@ -867,43 +818,10 @@ function copilot(){const noAct=KS.S.prospects.filter(p=>p.rel>=75&&!p.inCrm);con
 async function genMessagesRadar(ids){const rows=KS.S.prospects.filter(p=>ids.includes(p.id));if(!rows.length)return alert("Sélection vide.");if(!spendCredits(rows.length,"Messages IA"))return;
   const drafts=[];for(const p of rows){const txt=await KS.aiText(`Message B2B court pour ${p.company_name} (${p.industry}, ${p.city}).`, `Bonjour ${p.company_name}, échange de 15 min ? — ${KS.S.org?KS.S.org.name:"Klirline"}`);drafts.push({id:KS.uid("d"),prospectId:p.id,text:typeof absorbExternal==="function"?absorbExternal(txt):txt,status:"Draft"});}
   KS.S.campaigns.unshift({id:KS.uid("c"),name:`Brouillons Copilot — ${rows.length} prospects`,prospects:rows.map(p=>p.id),drafts,status:"Review",created:new Date().toLocaleDateString(),message:"Objet : Une question concernant votre activité"});KS.save();KS.addActivity("Copilot : brouillons en Review");KS.notify("Copilot : campagne en Review, à valider.");nav("/campaigns");}
-async function radarRun(){if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;
-  if(window.KlirAuth&&window.KlirAuth.overturePreview()){KS.notify("Radar désactivé pendant la validation Overture. Utilisez la recherche du pilote.");return;}
-  if(searchRunning||radarRunning)return;
-  radarRunning=true;
-  try{
-  if(!osmSearchAllowed())return alert("La démonstration et une session sans compte n'interrogent pas OpenStreetMap.");
-  const L=window.KlirStore.LIMITS[KS.S.plan];
-  if(KS.S.usage.searches>=L.searches)return alert(`Quota mensuel atteint (${L.searches} recherches complètes comptées). Il repart à zéro au mois suivant, fuseau America/Toronto. Une erreur, un résultat vide ou une collecte partielle ne compte pas.`);
-  if((KS.S.credits.balance||0)<5)return alert(`Crédits insuffisants (${KS.S.credits.balance} restants, 5 requis pour : Scan Radar). L'achat de crédits n'est pas ouvert. Le solde reste celui de cette session.`);
-  const icp=KS.S.icp;
-  const radarKey=icp?E.supportedCityKeyByName(icp.city):(KS.S.searches[0]&&KS.S.searches[0].params&&E.supportedCity(KS.S.searches[0].params.cityKey)?KS.S.searches[0].params.cityKey:null);
-  if(!E.supportedCity(radarKey)){KS.notify("Le radar n'a pas de ville prise en charge. Choisissez Montréal, Laval, Québec, Toronto, Paris ou Lyon. Aucune autre ville n'est recherchée. Aucun crédit n'a été réservé.");render();return;}
-  const radarReserved=await reserveServerUsage(5,"Scan Radar");
-  if(!radarReserved.ok)return alert(radarReserved.message);
-  const base={industry:icp?icp.industry:(KS.S.searches[0]&&KS.S.searches[0].params?KS.S.searches[0].params.industry:"all"),cityKey:radarKey,quantity:20,size:icp?icp.size:null,raw:"radar"+Date.now(),place:{status:"supported",cityKey:radarKey}};
-  base.city=E.supportedCity(radarKey);
-  let raw=[];
-  try{raw=await window.KlirSources.osm.search(base,15);}catch(error){await settleServerUsage(false);KS.notify((error&&error.message?error.message:"Recherche échouée : OpenStreetMap est indisponible.")+" Le quota mensuel n'augmente pas.");render();return;}
-  const radarCoverage=raw&&raw.osmCoverage?raw.osmCoverage:{};
-  const radarPartial=radarCoverage.status==="partial";
-  const account=searchAccounting(radarPartial?"partial":"complete");
-  if(!raw.length){await settleServerUsage(false);KS.notify(radarPartial?"Recherche partielle, aucun résultat reçu. Collecte non exhaustive. Aucun crédit n'a été débité. Le quota mensuel n'augmente pas.":"Recherche terminée, aucun résultat. Aucune fiche n'a été inventée. Aucun crédit n'a été débité. Le quota mensuel n'augmente pas.");render();return;}
-  stampCollected(raw);
-  if(account.debit&&!await settleServerUsage(true))return alert("Le débit n'a pas été enregistré. Aucune fiche n'est conservée.");
-  if(account.debit&&!spendCredits(5,"Scan Radar"))return;
-  const known=new Set(KS.S.prospects.map(p=>E.fingerprint(p)));
-  let added=0;
-  for(const p of raw){if(known.has(E.fingerprint(p)))continue;known.add(E.fingerprint(p));
-    const sc=E.scoreProspect(p,base,KS.S.weights);Object.assign(p,{dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score,collection_status:radarPartial?"partial":"complete",ai:E.aiAnalysis(p,base),searchId:"radar",icp:icp?E.icpFit(p,icp):null});
-    if(typeof absorbExternal==="function")absorbExternal(p);KS.S.prospects.unshift(p);added++;
-    try{if(window.OppEngine)window.OppEngine.attach(p,base);}catch(e){}
-    const hot=p.rel>=80||(icp&&p.icp>=70)||p.signals.includes("Entreprise récente");
-    if(hot&&(KS.S.radarCfg.signals.includes(p.signals[0]||"")||p.rel>=85)){const suggestion=radarSuggestion(p,icp);KS.S.opps.unshift({id:KS.uid("o"),prospectId:p.id,score:icp?Math.max(p.rel,p.icp):p.rel,kind:suggestion.kind,signal:suggestion.signal,why:suggestion.why,action:suggestion.action,at:new Date().toLocaleString()});}
-    if(added>=12)break;}
-  const chg=0;
-  KS.S.usage.searches+=account.searches;applyServerUsage();KS.S.usage.prospects+=account.searches?added:0;KS.S.lastRadar=new Date().toLocaleString();KS.S.radarStats={at:KS.S.lastRadar,added:added,changes:chg,opps:KS.S.opps.length,partial:radarPartial};KS.save();KS.notify(radarPartial?`Radar partiel : ${added} fiches reçues. Collecte non exhaustive. Aucun crédit débité. Le quota mensuel n'augmente pas.`:`🔥 Radar : ${added} nouveaux prospects. Cette collecte compte comme une recherche du mois.`);KS.audit(radarPartial?"radar.partial":"radar.scan",added+" nouveaux");render();
-  } finally { if(pendingDebitKey){try{await settleServerUsage(false);}catch(error){}} pendingDebitKey=""; serverLedgerApplied=false; radarRunning=false; }
+async function radarRun(){
+  // Le radar débitait directement le registre depuis le navigateur. Il reste
+  // fermé tant qu'il ne passe pas par la file de recherche du serveur.
+  KS.notify("Radar indisponible : toutes les recherches passent par la file serveur. Lancez une recherche depuis « Trouver des prospects ». Aucun crédit n'a été réservé.");
 }
 async function enrichSelected(){if(window.KlirTeam&&!window.KlirTeam.guard("search"))return;const rows=KS.S.prospects.filter(p=>sel.has(p.id));if(!rows.length)return alert("Sélectionnez des prospects.");if(!spendCredits(rows.length*2,"Enrichissement waterfall"))return;
   let filled=0;for(const p of rows){const r=E.enrichWaterfall(p,KS.S.integrations);filled+=r.filled.length;const sc=E.scoreProspect(p,KS.S.searches.find(s=>s.id===p.searchId)?.params||{industry:p.industry_key,cityKey:"default",city:KlirData.CITIES.default},KS.S.weights);p.dq=sc.data_quality_score;p.rel=sc.commercial_relevance_score;p.intent=sc.intent_score;p.opp=sc.opportunity_score;}

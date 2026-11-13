@@ -6,7 +6,8 @@ export const PROD_PROJECT_REF = "cbklwmjudobqwbkbxqgy";
 export const TEST_SUPABASE_URL = `https://${TEST_PROJECT_REF}.supabase.co`;
 export const PREVIEW_ORIGIN = "https://cursor-test-server-diagnostic-2f07.klirprospect.klirline.ca";
 export const PILOT_UI_ORIGIN = "https://cursor-search-pilot-ui-2f07.klirprospect.klirline.ca";
-const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN]);
+export const TARGETED_UI_ORIGIN = "https://cursor-search-targeted-claim-2f07.klirprospect.klirline.ca";
+const PREVIEW_ORIGINS = new Set([PREVIEW_ORIGIN, PILOT_UI_ORIGIN, TARGETED_UI_ORIGIN]);
 
 function previewCors(request) {
   const origin = request.headers.get("origin") || "";

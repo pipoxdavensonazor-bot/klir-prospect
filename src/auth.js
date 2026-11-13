@@ -337,49 +337,77 @@ async function confirmStripeTestCheckout(sessionId) {
   return { ok: true, outcome: data.outcome, active: data.active === true, balance: Number.isInteger(data.balance) ? data.balance : null };
 }
 
-async function searchOverture(request) {
-  if (!overturePreview() || !currentUser) throw new Error("Recherche Overture réservée au pilote connecté.");
+const SEARCH_JOB_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
+const SEARCH_JOB_TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
+const SEARCH_JOB_POLL_MS = 2000;
+const SEARCH_JOB_POLL_LIMIT = 60;
+
+async function functionReply(result) {
+  let data = result && result.data && typeof result.data === "object" ? result.data : null;
+  const context = result && result.error && result.error.context;
+  if (!data && context && typeof context.clone === "function") {
+    try {
+      const body = await context.clone().json();
+      data = body && typeof body === "object" ? body : null;
+    } catch {
+      data = null;
+    }
+  }
+  const status = context && typeof context.status === "number" ? context.status : (result && result.error ? 0 : 200);
+  return { data, status, failed: Boolean(result && result.error) };
+}
+
+const SEARCH_JOB_ERRORS = new Set(["jobs_disabled", "credits_insuffisants", "rate_limited", "place_rejected", "quantite_invalide"]);
+
+// Recherche par la file serveur : enqueue, attente du runner, lecture des fiches du propriétaire (RLS).
+// Le navigateur n'appelle aucune RPC de débit : le serveur réserve et règle le reçu.
+async function searchJob(request, options = {}) {
+  if (!currentUser) return { ok: false, outcome: "session_requise" };
+  const payload = request && request.payload && typeof request.payload === "object" ? request.payload : {};
+  const cityKey = String(payload.cityKey || "");
+  const quantity = Number(payload.quantity);
+  if (!SEARCH_JOB_CITY_KEYS.has(cityKey)) return { ok: false, outcome: "lieu_hors_pilote" };
+  if (!Number.isInteger(quantity) || quantity < 10 || quantity > 40) return { ok: false, outcome: "quantite_invalide" };
+  const idempotencyKey = String(request && request.idempotencyKey || "");
+  if (idempotencyKey.length < 8 || idempotencyKey.length > 80) return { ok: false, outcome: "jobs_injoignable" };
+  const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const supabase = await requireClient();
-  const reserved = await supabase.rpc("overture_begin", {
-    p_receipt: request.receipt, p_city: request.city, p_sector: request.sector, p_quantity: request.quantity
-  });
-  if (reserved.error) throw new Error(usageMessage(reserved.error));
-  const result = await supabase.rpc("overture_execute", { p_receipt: request.receipt }).abortSignal(AbortSignal.timeout(10000));
-  if (result.error) throw new Error("Réponse serveur indisponible. Réessayez la même recherche : le reçu est conservé pour éviter un double débit. Une réservation non terminée expire après 60 secondes.");
-  return result.data;
-}
-
-async function reserveUsage(request) {
-  try {
-    const supabase = await requireClient();
-    if (!currentUser) return { ok: false, message: "Session requise." };
-    const result = await supabase.rpc("reserve_usage", {
-      p_receipt: request && request.receipt,
-      p_amount: request && request.amount,
-      p_label: request && request.label
-    });
-    if (result.error) return { ok: false, message: usageMessage(result.error) };
-    const row = result.data || {};
-    return { ok: true, balance: row.balance, searches: row.searches_used };
-  } catch (error) {
-    return { ok: false, message: usageMessage(error) };
+  const enqueued = await functionReply(await supabase.functions.invoke("search-jobs", {
+    body: {
+      action: "enqueue",
+      idempotencyKey,
+      payload: {
+        place_status: "supported",
+        cityKey,
+        industry: String(payload.industry || "all"),
+        quantity,
+        source: "overture-places-pilot",
+        coverage: "rayon_2200m_six_centres"
+      }
+    }
+  }));
+  const code = enqueued.data && typeof enqueued.data.error === "string" ? enqueued.data.error : "";
+  if (SEARCH_JOB_ERRORS.has(code)) return { ok: false, outcome: code };
+  if (enqueued.failed || !enqueued.data || typeof enqueued.data.id !== "string") return { ok: false, outcome: "jobs_injoignable" };
+  let job = enqueued.data;
+  for (let index = 0; index < SEARCH_JOB_POLL_LIMIT && !SEARCH_JOB_TERMINAL.has(job.status); index += 1) {
+    await sleep(SEARCH_JOB_POLL_MS);
+    const polled = await functionReply(await supabase.functions.invoke(`search-jobs?id=${encodeURIComponent(job.id)}`, { method: "GET" }));
+    if (polled.data && typeof polled.data.status === "string") job = { ...job, ...polled.data };
   }
-}
-
-async function settleUsage(request) {
-  try {
-    const supabase = await requireClient();
-    if (!currentUser) return { ok: false, message: "Session requise." };
-    const result = await supabase.rpc("settle_usage", {
-      p_receipt: request && request.receipt,
-      p_outcome: request && request.outcome
-    });
-    if (result.error) return { ok: false, message: usageMessage(result.error) };
-    const row = result.data || {};
-    return { ok: true, balance: row.balance, searches: row.searches_used, status: row.status };
-  } catch (error) {
-    return { ok: false, message: usageMessage(error) };
-  }
+  const account = await readCreditAccount();
+  const money = account.ok ? { balance: account.balance, searches: account.searches } : {};
+  if (!SEARCH_JOB_TERMINAL.has(job.status)) return { ok: false, outcome: "en_attente", job, ...money };
+  if (job.status !== "succeeded") return { ok: false, outcome: "echec", job, ...money };
+  const listed = await supabase
+    .from("search_job_places")
+    .select("name, basic_category, release, contacts_verified, created_at")
+    .eq("job_id", job.id)
+    .order("created_at", { ascending: true })
+    .order("name", { ascending: true })
+    .limit(40);
+  if (listed.error) return { ok: false, outcome: "jobs_injoignable", job, ...money };
+  return { ok: true, outcome: "termine", job, places: Array.isArray(listed.data) ? listed.data : [], ...money };
 }
 
 async function initialize() {
@@ -447,9 +475,7 @@ window.KlirAuth = {
   overturePreview,
   startStripeTestCheckout,
   confirmStripeTestCheckout,
-  searchOverture,
-  reserveUsage,
-  settleUsage,
+  searchJob,
   completeCallback,
   dismissCallback
 };

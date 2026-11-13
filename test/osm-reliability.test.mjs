@@ -245,9 +245,13 @@ test("le CSP autorise chaque instance Overpass et le parcours Overture reste dev
   assert.equal(html.includes("https://nominatim.openstreetmap.org"), true);
   assert.equal(headers.includes("https://nominatim.openstreetmap.org"), true);
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
-  assert.ok(search.indexOf("return runOvertureSearch") < search.indexOf("KlirSources.osm.search"));
-  assert.ok(search.indexOf("sourceError") < search.indexOf("settleServerUsage(false)"));
-  assert.ok(search.indexOf("settleServerUsage(false)") < search.indexOf("spendCredits(searchCost"));
+  const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
+  assert.equal(search.includes("KlirAuth.searchJob("), true);
+  assert.equal(search.includes("KlirSources.osm.search"), false);
+  assert.equal(search.includes("spendCredits("), false);
+  assert.equal(search.includes("5+Math.ceil(params.quantity/10)"), true);
+  assert.equal(radar.includes("KlirSources.osm.search"), false);
+  assert.equal(radar.includes("spendCredits("), false);
 });
 
 test("une réponse JSON valide sans fiche n'est pas une erreur", async () => {
@@ -308,23 +312,23 @@ test("le parcours de production n'appelle ni genProspects ni les signaux aléato
   const sources = await readFile(new URL("../src/sources.js", import.meta.url), "utf8");
   const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
+  assert.equal(search.includes("KlirAuth.searchJob("), true);
+  assert.equal(search.includes("KlirSources.osm.search"), false);
+  assert.equal(search.includes("spendCredits("), false);
+  assert.equal(search.includes("5+Math.ceil(params.quantity/10)"), true);
+  assert.equal(radar.includes("KlirSources.osm.search"), false);
+  assert.equal(radar.includes("spendCredits("), false);
   assert.equal(app.includes("genProspects"), false);
   assert.equal(sources.includes("genProspects"), false);
   assert.equal(radar.includes("KlirSecurity.random"), false);
   assert.equal(radar.includes("Nouveau site"), false);
   assert.equal(radar.includes("Recrutement"), false);
   assert.equal(radar.includes("Signal commercial"), false);
-  assert.equal(search.includes("spendCredits(searchCost"), true);
-  assert.ok(search.indexOf("Recherche échouée") < search.indexOf("spendCredits(searchCost"));
-  assert.ok(search.indexOf("Recherche terminée, aucun résultat") < search.indexOf("spendCredits(searchCost"));
-  assert.ok(radar.indexOf("Recherche échouée") < radar.indexOf('spendCredits(5,"Scan Radar")'));
-  assert.ok(radar.indexOf("Recherche terminée, aucun résultat") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   const importer = app.slice(app.indexOf("function importCsvText"), app.length);
   assert.equal(importer.includes('employee_range:"11'), false);
   assert.equal(importer.includes('employee_range:""'), true);
   assert.equal(app.includes('employee_range||"PME"'), false);
   assert.equal(app.includes('website_status="INACTIVE"'), false);
-  assert.equal(app.includes('website_status="NON_RENSEIGNE"'), true);
   assert.equal(app.includes("données simulées"), false);
   assert.equal(app.includes("CET APPAREIL"), true);
   assert.equal(app.includes("© les contributeurs OpenStreetMap"), true);
