@@ -1,0 +1,65 @@
+name: Surveillance (toutes les 30 min)
+
+# Contrôles : site (build.json), API search-jobs, démarrage du runner, jobs bloqués et
+# réservations échues via public.klir_ops_health() (lecture seule, clé anon publique).
+# Échec -> ouvre ou met à jour l'issue « Alerte surveillance » (notification e-mail GitHub).
+# Retour au vert -> commentaire et fermeture. Inactif sans KLIR_MONITOR_ENABLED=true.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: vars.KLIR_MONITOR_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Contrôles
+        id: checks
+        env:
+          MONITOR_SUPABASE_URL: ${{ vars.KLIR_MONITOR_SUPABASE_URL }}
+          MONITOR_ANON_KEY: ${{ vars.KLIR_MONITOR_ANON_KEY }}
+          MONITOR_SITE_URL: ${{ vars.KLIR_MONITOR_SITE_URL }}
+          MONITOR_LABEL: ${{ vars.KLIR_MONITOR_LABEL }}
+          MONITOR_ACCESS_CLIENT_ID: ${{ secrets.KLIR_MONITOR_ACCESS_CLIENT_ID }}
+          MONITOR_ACCESS_CLIENT_SECRET: ${{ secrets.KLIR_MONITOR_ACCESS_CLIENT_SECRET }}
+        run: |
+          set +e
+          node ops/monitor/check.mjs > report.md
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Issue d'alerte
+        uses: actions/github-script@v7
+        env:
+          RC: ${{ steps.checks.outputs.rc }}
+        with:
+          script: |
+            const fs = require("fs");
+            const report = fs.readFileSync("report.md", "utf8");
+            const title = "Alerte surveillance KlirProspect";
+            const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: "open", labels: "surveillance", per_page: 10 });
+            const issue = open.find((i) => i.title === title);
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            if (process.env.RC !== "0") {
+              const body = `${report}\n\nExécution : ${run}`;
+              if (issue) await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body });
+              else await github.rest.issues.create({ ...context.repo, title, body, labels: ["surveillance"] });
+              core.setFailed("Au moins un contrôle a échoué");
+            } else if (issue) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: `Retour au vert.\n\n${report}\n\n${run}` });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: "closed" });
+            }

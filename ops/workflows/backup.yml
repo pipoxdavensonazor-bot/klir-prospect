@@ -1,0 +1,82 @@
+name: Sauvegarde base (quotidienne)
+
+# Sauvegarde gratuite : pg_dump -> gzip -> age (clé publique ops/backup/age-recipient.txt)
+# -> artefact GitHub 90 jours. Restauration vérifiée à chaque exécution dans un
+# PostgreSQL 17 jetable du runner AVANT chiffrement (aucune clé privée sur GitHub).
+# Inactif tant que la variable de dépôt KLIR_BACKUP_ENABLED n'est pas « true ».
+# Le dépôt est public : les journaux n'affichent que des compteurs et l'artefact est chiffré.
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # 02:17 Toronto (heure normale)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: vars.KLIR_BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      verify:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: verify-only
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 20
+    env:
+      KLIR_BACKUP_DB_URL: ${{ secrets.KLIR_BACKUP_DB_URL }}
+      KLIR_BACKUP_PROJECT_REF: ${{ vars.KLIR_BACKUP_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Outils (pg_dump 17, age)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 age
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+      - name: Garde-fous
+        run: |
+          test -n "$KLIR_BACKUP_DB_URL" || { echo "secret KLIR_BACKUP_DB_URL absent"; exit 1; }
+          test -n "$KLIR_BACKUP_PROJECT_REF" || { echo "variable KLIR_BACKUP_PROJECT_REF absente"; exit 1; }
+          case "$KLIR_BACKUP_DB_URL" in *"$KLIR_BACKUP_PROJECT_REF"*) ;; *) echo "URL et référence incohérentes"; exit 1;; esac
+      - name: Dump, vérification de restauration, chiffrement
+        run: |
+          set -euo pipefail
+          umask 077
+          work=$(mktemp -d)
+          psql "$KLIR_BACKUP_DB_URL" -X -q -At -f ops/backup/fingerprint.sql > "$work/fp-before.json"
+          pg_dump "$KLIR_BACKUP_DB_URL" --format=plain --no-owner --no-comments \
+            --schema=public --schema=private --schema=auth > "$work/dump.sql"
+          # Restauration de contrôle dans le PostgreSQL jetable du runner (localhost)
+          export VERIFY_URL="postgresql://postgres:verify-only@localhost:5432/postgres"
+          psql "$VERIFY_URL" -X -q -v ON_ERROR_STOP=1 -f ops/backup/restore-preamble.sql
+          sed -E 's/^CREATE SCHEMA (public|private|auth);$/CREATE SCHEMA IF NOT EXISTS \1;/' "$work/dump.sql" \
+            | psql "$VERIFY_URL" -X -q -v ON_ERROR_STOP=1 --single-transaction -f - >/dev/null
+          psql "$VERIFY_URL" -X -q -At -f ops/backup/fingerprint.sql > "$work/fp-restored.json"
+          psql "$KLIR_BACKUP_DB_URL" -X -q -At -f ops/backup/fingerprint.sql > "$work/fp-after.json"
+          if python3 ops/backup/compare_fingerprints.py "$work/fp-before.json" "$work/fp-after.json" >/dev/null; then
+            python3 ops/backup/compare_fingerprints.py "$work/fp-before.json" "$work/fp-restored.json"
+          else
+            echo "::warning::écritures pendant le dump : comparaison stricte impossible, restauration réussie quand même"
+          fi
+          mkdir -p out
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          name="klirprospect-${KLIR_BACKUP_PROJECT_REF}-${stamp}.sql.gz.age"
+          gzip -9c "$work/dump.sql" | age -r "$(cat ops/backup/age-recipient.txt)" -o "out/$name"
+          ( cd out && sha256sum "$name" > "$name.sha256" )
+          shred -u "$work/dump.sql"; rm -rf "$work"
+          echo "archive: $name ($(stat -c %s "out/$name") octets)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ vars.KLIR_BACKUP_PROJECT_REF }}-${{ github.run_id }}
+          path: out/
+          retention-days: 90
+          if-no-files-found: error
