@@ -1,0 +1,2826 @@
+{
+  "release": "2026-10-21.0",
+  "operational": false,
+  "geocoder": null,
+  "categoriesColumn": false,
+  "cities": [
+    {
+      "key": "montréal",
+      "countryCode": "CA",
+      "partition": "part-00006",
+      "partitionBytes": 755632071,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "montréal-centre-sonde",
+        "west": -73.5698,
+        "south": 45.4992,
+        "east": -73.5648,
+        "north": 45.5042,
+        "note": "Sonde autour du centre déjà utilisé pour montréal. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 1,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "ca79ab2b-d9ff-4535-ab43-f89dc3a91745",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56963348388672,
+              45.50371170043945
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Payless ShoeSource"
+            },
+            "basic_category": "fashion_and_apparel_store",
+            "taxonomy": {
+              "primary": "shoe_store",
+              "hierarchy": [
+                "shopping",
+                "fashion_and_apparel_store",
+                "shoe_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montreal",
+                "country": "CA",
+                "freeform": "625 Rue Ste Catherines W, Space 1010"
+              }
+            ],
+            "phones": [
+              "5148437406"
+            ],
+            "emails": [],
+            "websites": [
+              ""
+            ],
+            "sources": [
+              {
+                "dataset": "Microsoft",
+                "property": "",
+                "record_id": "562949958519661",
+                "update_time": "2019-03-18T11:58:56.587Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "c922fd77-efb5-4e80-8cc7-0069141c30b7",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56950378417969,
+              45.50373840332031
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Promenades Cathédrale"
+            },
+            "basic_category": "shopping_mall",
+            "taxonomy": {
+              "primary": "shopping_mall",
+              "hierarchy": [
+                "shopping",
+                "shopping_mall"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montréal",
+                "country": "CA",
+                "freeform": "625 Sainte-Catherine St. West"
+              }
+            ],
+            "phones": [
+              "+15148458230"
+            ],
+            "emails": [
+              "info@promenadescathedrale.com"
+            ],
+            "websites": [
+              "http://www.promenadescathedrale.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "109248039212110",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "c864f7ff-2177-4c97-ac57-ed14d5b11b7e",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56952667236328,
+              45.503761291503906
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Radical - Luggage Storage Mcgill"
+            },
+            "basic_category": "travel_service",
+            "taxonomy": {
+              "primary": "luggage_storage",
+              "hierarchy": [
+                "travel_and_transportation",
+                "travel_service",
+                "luggage_storage"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montréal",
+                "country": "CA",
+                "freeform": "625 Rue Sainte-Catherine Ouest"
+              }
+            ],
+            "phones": [
+              "+44 7782 218080"
+            ],
+            "emails": [
+              "marketing@radicalstorage.com"
+            ],
+            "websites": [
+              "https://radicalstorage.com/luggage-storage/montreal/montreal-gare-central/luggage-storage-mcgill"
+            ],
+            "sources": [
+              {
+                "dataset": "Uberall",
+                "property": "",
+                "record_id": "175633866",
+                "update_time": "2026-10-14T15:24:41.372Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Uberall",
+                "property": "/properties/operating_status",
+                "record_id": "175633866",
+                "update_time": "2026-10-14T15:24:41.372Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "811ca972-081a-4b0e-b11e-d06afd294da5",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56953430175781,
+              45.503753662109375
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "La Cordée Montréal (Promenades Cathédrale)"
+            },
+            "basic_category": "sporting_goods_store",
+            "taxonomy": {
+              "primary": "fitness_exercise_store",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "sporting_goods_store",
+                "fitness_exercise_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montréal",
+                "country": "CA",
+                "freeform": "625 Sainte-Catherine O, Local 1200"
+              }
+            ],
+            "phones": [
+              "5145878377"
+            ],
+            "emails": [],
+            "websites": [
+              "https://www.lacordee.com/fr/magasins/montreal_promenades-cathedrale"
+            ],
+            "sources": [
+              {
+                "dataset": "Microsoft",
+                "property": "",
+                "record_id": "1125899912220910",
+                "update_time": "2025-09-04T19:44:50.310Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "987e06e4-f9ba-4018-af6b-499745a28bc4",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56940460205078,
+              45.50385284423828
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Walmart Fleurimont Store"
+            },
+            "basic_category": "electronics_store",
+            "taxonomy": {
+              "primary": "mobile_phone_store",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "electronics_store",
+                "mobile_phone_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Sherbrooke",
+                "country": "CA",
+                "freeform": "940, 13e Avenue Nord"
+              }
+            ],
+            "phones": [
+              "8192464633"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.walmart.ca/en/walmart-fleurimont-store/1172"
+            ],
+            "sources": [
+              {
+                "dataset": "Microsoft",
+                "property": "",
+                "record_id": "844424930732853",
+                "update_time": "2014-08-26T20:46:30.603Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "67f0bd4e-9d85-45da-9edd-530e4defb0d7",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56929779052734,
+              45.50392532348633
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Tiki-Ming"
+            },
+            "basic_category": "restaurant",
+            "taxonomy": {
+              "primary": "chinese_restaurant",
+              "hierarchy": [
+                "food_and_drink",
+                "restaurant",
+                "asian_restaurant",
+                "east_asian_restaurant",
+                "chinese_restaurant"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montreal",
+                "country": "CA",
+                "freeform": "625 rue Ste-Catherine Ouest, #3280, Promenades de la Cathedrale"
+              }
+            ],
+            "phones": [
+              "(514) 289-9889"
+            ],
+            "emails": [],
+            "websites": [
+              "https://www.tikiming.com"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "5d89c50a364f1a0008939a28",
+                "update_time": "2025-07-14T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "b5cdea89-287d-40b5-a95b-75fdf488fc16",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.5694351196289,
+              45.503700256347656
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Mulan Beauty Spa"
+            },
+            "basic_category": "wellness_service",
+            "taxonomy": {
+              "primary": "day_spa",
+              "hierarchy": [
+                "lifestyle_services",
+                "wellness_service",
+                "spa",
+                "day_spa"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montréal",
+                "country": "CA",
+                "freeform": "Entrance beside old church inside underground mall close to EconoFitness, 625 Sainte-Catherine St. West Unit 1130"
+              }
+            ],
+            "phones": [
+              "+15148433288"
+            ],
+            "emails": [],
+            "websites": [
+              "https://mulanbeautyspa.ca/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "111752858224271",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "ef7f9ca5-0660-4a0f-8dcb-85aaa80d1f4c",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.56945037841797,
+              45.50370788574219
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Bible House"
+            },
+            "basic_category": "books_music_and_video_store",
+            "taxonomy": {
+              "primary": "bookstore",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "books_music_and_video_store",
+                "bookstore"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Montréal",
+                "country": "CA",
+                "freeform": "Les Promenades La Cathédrale - Mezzanine Coin Ste-Catherine/Union (A l’intérieur du centre commercial, 625 Rue Sainte-Catherine Ouest"
+              }
+            ],
+            "phones": [
+              "+15148489777"
+            ],
+            "emails": [
+              "bookstore@sbmtl.com"
+            ],
+            "websites": [
+              "http://librairie.sbmtl.com"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "287414337945501",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "laval",
+      "countryCode": "CA",
+      "partition": "part-00006",
+      "partitionBytes": 755632071,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "laval-centre-sonde",
+        "west": -73.7149,
+        "south": 45.6041,
+        "east": -73.7099,
+        "north": 45.6091,
+        "note": "Sonde autour du centre déjà utilisé pour laval. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 0,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "e3434232-4eb4-4322-8288-4afdfa6212cf",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71480560302734,
+              45.60647964477539
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Provigo"
+            },
+            "basic_category": "food_and_beverage_store",
+            "taxonomy": {
+              "primary": "grocery_store",
+              "hierarchy": [
+                "shopping",
+                "food_and_beverage_store",
+                "grocery_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": "1855 Rene-Laennec Blvd"
+              }
+            ],
+            "phones": [
+              "(450) 629-1850"
+            ],
+            "emails": [],
+            "websites": [
+              "https://www.provigo.ca/store-locator/?storeId=8075"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "4ca8989ba6e08cfab77e9094",
+                "update_time": "2025-08-03T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "08c0f583-882d-4449-881b-2f63ee167d53",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71481323242188,
+              45.6077880859375
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Nettoyage K&Z"
+            },
+            "basic_category": "shopping",
+            "taxonomy": {
+              "primary": "shopping",
+              "hierarchy": [
+                "shopping"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": "1835 Rue François-Broussais"
+              }
+            ],
+            "phones": [
+              "+15145760337"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "865465863523078",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "5887a71c-9b7a-4c2f-bfad-d7fc7ab8c934",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71260070800781,
+              45.608924865722656
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Auto Groom Detailing"
+            },
+            "basic_category": "automotive_service",
+            "taxonomy": {
+              "primary": "auto_detailing",
+              "hierarchy": [
+                "travel_and_transportation",
+                "vehicle_service",
+                "automotive_service",
+                "auto_detailing"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": "1830 Mnt Monette"
+              }
+            ],
+            "phones": [
+              "+15148144391"
+            ],
+            "emails": [
+              "andy@autogroom.ca"
+            ],
+            "websites": [
+              "http://www.autogroom.ca/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "100181828914290",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "934cc21c-f9d0-476a-9f15-5edf3dc36af8",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71247863769531,
+              45.60664367675781
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Paquette F & Fils Inc"
+            },
+            "basic_category": "home_service",
+            "taxonomy": {
+              "primary": "contractor",
+              "hierarchy": [
+                "services_and_business",
+                "home_service",
+                "contractor"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": "275 Marc-Aurele-Fortin Blvd"
+              }
+            ],
+            "phones": [
+              "(450) 625-2297"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.f.paquette.com"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "d891a1d786994c710446386c",
+                "update_time": "2025-07-14T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "128076cd-9fd3-4b11-8dc4-29d5af5a5190",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71247863769531,
+              45.60664367675781
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "maconnerie Bernier inc."
+            },
+            "basic_category": "hardware_home_and_garden_store",
+            "taxonomy": {
+              "primary": "building_supply_store",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "hardware_home_and_garden_store",
+                "building_supply_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": "55 14ei Rue"
+              }
+            ],
+            "phones": [
+              "(514) 802-1677"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.maconneriebernier.com"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "551cccf5498ef80096df59bc",
+                "update_time": "2025-10-22T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "c0038cb1-dbc2-456a-a8ea-acd0ea48b038",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.7124252319336,
+              45.606590270996094
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Saint-Martin-de-Laval"
+            },
+            "basic_category": "geographic_entities",
+            "taxonomy": {
+              "primary": "geographic_entities",
+              "hierarchy": [
+                "geographic_entities"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": ""
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "149563928412234",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "cb20d98a-7bbd-442f-a126-7034cf26d61e",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.7124252319336,
+              45.606590270996094
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Musée Armand-Frappier"
+            },
+            "basic_category": "museum",
+            "taxonomy": {
+              "primary": "museum",
+              "hierarchy": [
+                "arts_and_entertainment",
+                "museum"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval",
+                "country": "CA",
+                "freeform": ""
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [
+              "http://www.musee-afrappier.qc.ca/fr/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "938097976258167",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "adbe4b46-9b3e-428f-b271-2f208d02f055",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -73.71240234375,
+              45.60659408569336
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Chocolato - Espace Montmorency"
+            },
+            "basic_category": "casual_eatery",
+            "taxonomy": {
+              "primary": "ice_cream_shop",
+              "hierarchy": [
+                "food_and_drink",
+                "casual_eatery",
+                "dessert_shop",
+                "ice_cream_shop"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Laval, QC, Canada",
+                "country": "CA",
+                "freeform": "1955 Rue Claude-Gagné"
+              }
+            ],
+            "phones": [
+              "(450) 682-0047"
+            ],
+            "emails": [],
+            "websites": [
+              "https://chocolato.ca"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "5409695c498e2690f594d985",
+                "update_time": "2024-11-11T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "québec",
+      "countryCode": "CA",
+      "partition": "part-00006",
+      "partitionBytes": 755632071,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "québec-centre-sonde",
+        "west": -71.2105,
+        "south": 46.8114,
+        "east": -71.2055,
+        "north": 46.8164,
+        "note": "Sonde autour du centre déjà utilisé pour québec. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 1,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "c4e2d6c6-13ca-4c43-9090-e8df6dfbc3fe",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21049499511719,
+              46.81437301635742
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Radical - Luggage Storage Côte Du Palais"
+            },
+            "basic_category": "travel_service",
+            "taxonomy": {
+              "primary": "luggage_storage",
+              "hierarchy": [
+                "travel_and_transportation",
+                "travel_service",
+                "luggage_storage"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "52 Côte du Palais"
+              }
+            ],
+            "phones": [
+              "+44 7782 218080"
+            ],
+            "emails": [
+              "marketing@radicalstorage.com"
+            ],
+            "websites": [
+              "https://radicalstorage.com/luggage-storage/quebec-city/basse-Ville/luggage-storage-cote-du-palais"
+            ],
+            "sources": [
+              {
+                "dataset": "Uberall",
+                "property": "",
+                "record_id": "175462456",
+                "update_time": "2026-10-14T15:24:41.372Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Uberall",
+                "property": "/properties/operating_status",
+                "record_id": "175462456",
+                "update_time": "2026-10-14T15:24:41.372Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "d08f02cf-e4cd-4453-96ec-a73637525abe",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.2104721069336,
+              46.81413269042969
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Le Casse-Crêpe Breton"
+            },
+            "basic_category": "restaurant",
+            "taxonomy": {
+              "primary": "pancake_house",
+              "hierarchy": [
+                "food_and_drink",
+                "restaurant",
+                "breakfast_and_brunch_restaurant",
+                "pancake_house"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "1136 Rue Saint-Jean"
+              }
+            ],
+            "phones": [
+              "+14186920438"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.cassecrepebreton.ca/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "1197126250402947",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "fe38b13c-07ea-4dc6-a7b9-5c7522ffed22",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21048736572266,
+              46.81385040283203
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Endorphines"
+            },
+            "basic_category": "sporting_goods_store",
+            "taxonomy": {
+              "primary": "sporting_goods_store",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "sporting_goods_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Quebec",
+                "country": "CA",
+                "freeform": "1123 Saint-Jean Rue"
+              }
+            ],
+            "phones": [
+              "(581) 742-6642"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.5817426642.pj.ca"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "52b88758498e5dc736354fe8",
+                "update_time": "2026-03-28T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "2c4f3326-4884-42ae-a054-ce3c7fd6b9e8",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21040344238281,
+              46.81170654296875
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "St.Ann,s Basílica,Quebec"
+            },
+            "basic_category": "christian_place_of_worship",
+            "taxonomy": {
+              "primary": "roman_catholic_place_of_worship",
+              "hierarchy": [
+                "cultural_and_historic",
+                "place_of_worship",
+                "christian_place_of_worship",
+                "roman_catholic_place_of_worship"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": ""
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "362784890451771",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "1b3e8265-fe24-48c9-bb00-4c0a9ece4e6e",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21040344238281,
+              46.81441116333008
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Paris Tacos"
+            },
+            "basic_category": "restaurant",
+            "taxonomy": {
+              "primary": "taco_restaurant",
+              "hierarchy": [
+                "food_and_drink",
+                "restaurant",
+                "latin_american_restaurant",
+                "taco_restaurant"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "52 Côte du Palais"
+              }
+            ],
+            "phones": [
+              "+14186943033"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "108788401409538",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "c87de782-6509-42c4-b0df-7b9cc84b306a",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21038055419922,
+              46.812320709228516
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Hôtel Champlain"
+            },
+            "basic_category": "hotel",
+            "taxonomy": {
+              "primary": "hotel",
+              "hierarchy": [
+                "lodging",
+                "hotel"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "115 Rue Ste-Anne"
+              }
+            ],
+            "phones": [
+              "+14186940106"
+            ],
+            "emails": [
+              "infos@champlainhotel.com"
+            ],
+            "websites": [
+              "http://www.champlainhotel.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "205638666209865",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "e8c23a81-0513-47a9-8295-0fbd1c31d96e",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21038055419922,
+              46.81434631347656
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Ashton"
+            },
+            "basic_category": "restaurant",
+            "taxonomy": {
+              "primary": "restaurant",
+              "hierarchy": [
+                "food_and_drink",
+                "restaurant"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "54, Côte du Palais"
+              }
+            ],
+            "phones": [
+              "+14186923055"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.chez-ashton.com"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "151459974905539",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "c7e8132a-ba69-4a64-99ed-795884a1f599",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -71.21044158935547,
+              46.813201904296875
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Résidence des Frères des Écoles Chrétiennes"
+            },
+            "basic_category": "religious_organization",
+            "taxonomy": {
+              "primary": "religious_organization",
+              "hierarchy": [
+                "cultural_and_historic",
+                "religious_organization"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Québec",
+                "country": "CA",
+                "freeform": "10 Rue Cook"
+              }
+            ],
+            "phones": [
+              "+14186949881"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.delasalle.qc.ca/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "1167308140036968",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "toronto",
+      "countryCode": "CA",
+      "partition": "part-00003",
+      "partitionBytes": 826418126,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "toronto-centre-sonde",
+        "west": -79.3857,
+        "south": 43.6507,
+        "east": -79.3807,
+        "north": 43.6557,
+        "note": "Sonde autour du centre déjà utilisé pour toronto. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 2,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "3a6dcc33-219a-42c7-b87c-0a1c10eadae9",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38523864746094,
+              43.65076446533203
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "JDavis Painting"
+            },
+            "basic_category": "home_service",
+            "taxonomy": {
+              "primary": "painting",
+              "hierarchy": [
+                "services_and_business",
+                "home_service",
+                "painting"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": "-"
+              }
+            ],
+            "phones": [
+              "(647) 490-4030"
+            ],
+            "emails": [],
+            "websites": [
+              "https://www.jdavispainting.com"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "654b83a42079a437e5b0fdb6",
+                "update_time": "2023-11-09T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "db0362b5-4040-4374-a406-cc63d6c8fe37",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.3851547241211,
+              43.651973724365234
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Canadian Gap Year Association"
+            },
+            "basic_category": "professional_service",
+            "taxonomy": {
+              "primary": "professional_service",
+              "hierarchy": [
+                "services_and_business",
+                "professional_service"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": ""
+              }
+            ],
+            "phones": [
+              "+18664986025"
+            ],
+            "emails": [
+              "info@cangap.ca"
+            ],
+            "websites": [
+              "http://www.cangap.ca/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "137230826289335",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "1e946931-2d81-4405-b041-252645952e97",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38520812988281,
+              43.65180206298828
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Second Cup Café"
+            },
+            "basic_category": "coffee_shop",
+            "taxonomy": {
+              "primary": "coffee_shop",
+              "hierarchy": [
+                "food_and_drink",
+                "non_alcoholic_beverage_venue",
+                "coffee_shop"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "",
+                "country": "CA",
+                "freeform": "Wellington And University"
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [
+              "https://secondcup.com"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "51e01ff3498e0c87b8159c5e",
+                "update_time": "2025-01-25T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "877d6520-9b05-4da7-8f43-783c08315b0d",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38500213623047,
+              43.65192794799805
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "KA Car Care"
+            },
+            "basic_category": "automotive_service",
+            "taxonomy": {
+              "primary": "auto_detailing",
+              "hierarchy": [
+                "travel_and_transportation",
+                "vehicle_service",
+                "automotive_service",
+                "auto_detailing"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": "Green P Carpark at City Hall, 110 Queen St W Level 2A"
+              }
+            ],
+            "phones": [
+              "+14169200010"
+            ],
+            "emails": [
+              "info@kacarcare.com"
+            ],
+            "websites": [
+              "http://www.kacarcare.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "432281276841292",
+                "update_time": "2026-09-14T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "687bbe3d-49a6-419b-8931-bcd21d4ba647",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38481140136719,
+              43.650821685791016
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "the Untitled Studios"
+            },
+            "basic_category": "professional_service",
+            "taxonomy": {
+              "primary": "professional_service",
+              "hierarchy": [
+                "services_and_business",
+                "professional_service"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": "123 Queen St W"
+              }
+            ],
+            "phones": [
+              "+14164779555"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.theuntitledstudios.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "588087824538930",
+                "update_time": "2026-09-14T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "076fcec9-0579-4425-99ec-5a6be3bd07bd",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38471984863281,
+              43.65125274658203
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Green P Parking"
+            },
+            "basic_category": "parking",
+            "taxonomy": {
+              "primary": "parking",
+              "hierarchy": [
+                "travel_and_transportation",
+                "parking"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": "110 Queen St W"
+              }
+            ],
+            "phones": [
+              "4163937275"
+            ],
+            "emails": [],
+            "websites": [
+              "http://parking.greenp.com/parking-info/carpark-info/36_110-queen-street-west-nathan-phillips-square-garage.html"
+            ],
+            "sources": [
+              {
+                "dataset": "Microsoft",
+                "property": "",
+                "record_id": "562949956290995",
+                "update_time": "2016-07-14T13:37:14.823Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "a29e32bc-f062-4bd7-95c2-6f5380a202e3",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.38459014892578,
+              43.65114212036133
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Ziba Couture"
+            },
+            "basic_category": "fashion_and_apparel_store",
+            "taxonomy": {
+              "primary": "womens_clothing_store",
+              "hierarchy": [
+                "shopping",
+                "fashion_and_apparel_store",
+                "clothing_store",
+                "womens_clothing_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": "123 Queen St W"
+              }
+            ],
+            "phones": [
+              "+14163686989"
+            ],
+            "emails": [],
+            "websites": [
+              "http://zibacouture.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "782626525150206",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "cdb348c1-2b97-4954-af54-9d082d9c834d",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              -79.3846206665039,
+              43.65251922607422
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Frases católicos hispanos"
+            },
+            "basic_category": "",
+            "taxonomy": {
+              "primary": "",
+              "hierarchy": []
+            },
+            "addresses": [
+              {
+                "locality": "Toronto",
+                "country": "CA",
+                "freeform": ""
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "104172205158032",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "paris",
+      "countryCode": "FR",
+      "partition": "part-00007",
+      "partitionBytes": 725017426,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "paris-centre-sonde",
+        "west": 2.3497,
+        "south": 48.8541,
+        "east": 2.3547,
+        "north": 48.8591,
+        "note": "Sonde autour du centre déjà utilisé pour paris. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 2,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "91f8cc6f-9f9f-4306-a758-e071e309592e",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.3498849868774414,
+              48.854225158691406
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "La Dame De Paris"
+            },
+            "basic_category": "cafe",
+            "taxonomy": {
+              "primary": "cafe",
+              "hierarchy": [
+                "food_and_drink",
+                "casual_eatery",
+                "cafe"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": ""
+              }
+            ],
+            "phones": [
+              "01 43 54 19 45"
+            ],
+            "emails": [],
+            "websites": [
+              "http://ladamedeparis.fr"
+            ],
+            "sources": [
+              {
+                "dataset": "Foursquare",
+                "property": "",
+                "record_id": "64b960a6e49220235a85e66b",
+                "update_time": "2026-04-10T00:00:00.000",
+                "license": "Apache-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "43d671fc-dcca-4444-9474-14c24e39574c",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.3498098850250244,
+              48.85422897338867
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "La Cité Notre Dame"
+            },
+            "basic_category": "specialty_store",
+            "taxonomy": {
+              "primary": "souvenir_store",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "souvenir_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "11 rue d'Arcole"
+              }
+            ],
+            "phones": [
+              "33143298233"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33760822591",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33760822591",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "0567c57f-7eeb-4bf7-bd8b-4df393c408ed",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.3498098850250244,
+              48.85422897338867
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Acupuncture Paris 1er Carina Greweling"
+            },
+            "basic_category": "complementary_and_alternative_medicine",
+            "taxonomy": {
+              "primary": "acupuncture",
+              "hierarchy": [
+                "health_care",
+                "outpatient_care_facility",
+                "complementary_and_alternative_medicine",
+                "acupuncture"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "11 rue d'Arcole"
+              }
+            ],
+            "phones": [
+              "33783409869"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33145444062",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33145444062",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "27dc1eeb-87cc-4128-acba-79945166b2d5",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.3504087924957275,
+              48.854122161865234
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Boutique De Tasses Exclusives"
+            },
+            "basic_category": "home_service",
+            "taxonomy": {
+              "primary": "furniture_reupholstery",
+              "hierarchy": [
+                "services_and_business",
+                "home_service",
+                "furniture_reupholstery"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "22 rue Chanoinesse"
+              }
+            ],
+            "phones": [
+              "84559215212"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33152216614",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33152216614",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "61bcb298-4824-4129-9180-c1ea185250c9",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.350153684616089,
+              48.854270935058594
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Jbbl Architecture"
+            },
+            "basic_category": "design_service",
+            "taxonomy": {
+              "primary": "architect",
+              "hierarchy": [
+                "services_and_business",
+                "design_service",
+                "architect"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "26 rue Chanoinesse"
+              }
+            ],
+            "phones": [
+              "33140517638"
+            ],
+            "emails": [],
+            "websites": [
+              "https://jbbl.fr/"
+            ],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "34000764430",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "34000764430",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "f3f23bae-e22c-4dab-a0da-616522aea49b",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.350153684616089,
+              48.854270935058594
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Clubvert Com"
+            },
+            "basic_category": "travel_service",
+            "taxonomy": {
+              "primary": "travel_agent",
+              "hierarchy": [
+                "travel_and_transportation",
+                "travel_service",
+                "travel_agent"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "26 rue Chanoinesse"
+              }
+            ],
+            "phones": [
+              "33156249102"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33172955226",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33172955226",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "51ba2723-0d67-4a92-a132-1775c4d7a3c7",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.350285530090332,
+              48.85423278808594
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Marie's Good Store"
+            },
+            "basic_category": "food_and_beverage_store",
+            "taxonomy": {
+              "primary": "grocery_store",
+              "hierarchy": [
+                "shopping",
+                "food_and_beverage_store",
+                "grocery_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "24 Rue Chanoinesse"
+              }
+            ],
+            "phones": [
+              "+33140517852"
+            ],
+            "emails": [],
+            "websites": [
+              "https://restaurantauvieuxparis.fr/fr"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "412606765278176",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "ba62be71-41b7-43ce-9f58-3c3278f2b935",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              2.350289821624756,
+              48.854209899902344
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Magnétiseur Lahochi Massage énergétique Radiesthésie Paris & Alfortville"
+            },
+            "basic_category": "complementary_and_alternative_medicine",
+            "taxonomy": {
+              "primary": "naturopathic_medicine",
+              "hierarchy": [
+                "health_care",
+                "outpatient_care_facility",
+                "complementary_and_alternative_medicine",
+                "naturopathic_medicine"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Paris",
+                "country": "FR",
+                "freeform": "24 rue Chanoinesse"
+              }
+            ],
+            "phones": [
+              "+33681339925"
+            ],
+            "emails": [],
+            "websites": [
+              "https://philippegrand-magnetiseur-paris.fr/MesLiens"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "107082238786893",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "key": "lyon",
+      "countryCode": "FR",
+      "partition": "part-00009",
+      "partitionBytes": 713205738,
+      "kind": "local-extract",
+      "release": "2026-10-21.0",
+      "bbox": {
+        "name": "lyon-centre-sonde",
+        "west": 4.8332,
+        "south": 45.7615,
+        "east": 4.8382,
+        "north": 45.7665,
+        "note": "Sonde autour du centre déjà utilisé pour lyon. Ce rectangle n'est pas la ville."
+      },
+      "emailsOmittedFromRepo": 0,
+      "features": [
+        {
+          "type": "Feature",
+          "id": "f7e9bcde-b404-4424-b636-1dead7656673",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834335803985596,
+              45.766456604003906
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Monop'"
+            },
+            "basic_category": "food_and_beverage_store",
+            "taxonomy": {
+              "primary": "grocery_store",
+              "hierarchy": [
+                "shopping",
+                "food_and_beverage_store",
+                "grocery_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "18-28 Rue du Président Édouard Herriot"
+              }
+            ],
+            "phones": [
+              "+33437271270"
+            ],
+            "emails": [
+              "migration@smart-traffik.io"
+            ],
+            "websites": [
+              "https://www.monoprix.fr/1963.html"
+            ],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "232119937249599",
+                "update_time": "2026-10-12T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "5ca0719c-97e9-4ab3-898e-d8f0b5dedc4f",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834898471832275,
+              45.76649856567383
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "L'Epicerie du Chef"
+            },
+            "basic_category": "food_and_beverage_store",
+            "taxonomy": {
+              "primary": "grocery_store",
+              "hierarchy": [
+                "shopping",
+                "food_and_beverage_store",
+                "grocery_store"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "5 Rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "meta",
+                "property": "",
+                "record_id": "238695939520395",
+                "update_time": "2026-09-14T00:00:00.000Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "3be83052-c413-4415-a6c7-f4ba83560508",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Ats Développement"
+            },
+            "basic_category": "professional_service",
+            "taxonomy": {
+              "primary": "professional_service",
+              "hierarchy": [
+                "services_and_business",
+                "professional_service"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [
+              "04 72 77 72 77"
+            ],
+            "emails": [],
+            "websites": [
+              "http://www.ats.fr"
+            ],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "34244877310",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "34244877310",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "af5b8d00-e235-487b-9f3a-4809d7a6dfe0",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Galerie Cinéma 2"
+            },
+            "basic_category": "movie_theater",
+            "taxonomy": {
+              "primary": "movie_theater",
+              "hierarchy": [
+                "arts_and_entertainment",
+                "movie_theater"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33142944884",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33142944884",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "d640da45-da02-46b1-badd-1563c2fd51c6",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Liberlo"
+            },
+            "basic_category": "corporate_or_business_office",
+            "taxonomy": {
+              "primary": "corporate_or_business_office",
+              "hierarchy": [
+                "services_and_business",
+                "corporate_or_business_office"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [
+              "33465845410"
+            ],
+            "emails": [],
+            "websites": [
+              "https://liberlo.com/"
+            ],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33571006188",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33571006188",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "d2fbdf71-607e-4633-8271-e4d22a1a8573",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Eft Thérapie"
+            },
+            "basic_category": "complementary_and_alternative_medicine",
+            "taxonomy": {
+              "primary": "complementary_and_alternative_medicine",
+              "hierarchy": [
+                "health_care",
+                "outpatient_care_facility",
+                "complementary_and_alternative_medicine"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [
+              "33745897328"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33970789232",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33970789232",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "89519781-144d-4a79-b2eb-11f5e032af9c",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "La Petite Mouche"
+            },
+            "basic_category": "books_music_and_video_store",
+            "taxonomy": {
+              "primary": "bookstore",
+              "hierarchy": [
+                "shopping",
+                "specialty_store",
+                "books_music_and_video_store",
+                "bookstore"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "34001703069",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "34001703069",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "id": "bf5a1283-c499-4988-a44e-8baf010b3235",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              4.834787845611572,
+              45.76647186279297
+            ]
+          },
+          "properties": {
+            "names": {
+              "primary": "Sfs Rhône"
+            },
+            "basic_category": "financial_service",
+            "taxonomy": {
+              "primary": "insurance_agency",
+              "hierarchy": [
+                "services_and_business",
+                "financial_service",
+                "insurance_agency"
+              ]
+            },
+            "addresses": [
+              {
+                "locality": "Lyon",
+                "country": "FR",
+                "freeform": "3 rue de l'Arbre Sec"
+              }
+            ],
+            "phones": [
+              "33478717969"
+            ],
+            "emails": [],
+            "websites": [],
+            "sources": [
+              {
+                "dataset": "BrightQuery",
+                "property": "",
+                "record_id": "33777256798",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "BrightQuery",
+                "property": "/properties/operating_status",
+                "record_id": "33777256798",
+                "update_time": "2026-10-14T15:26:05.933Z",
+                "license": "CDLA-Permissive-2.0"
+              },
+              {
+                "dataset": "Overture",
+                "property": "/properties/confidence",
+                "record_id": "",
+                "update_time": "2026-10-15T18:00:21Z",
+                "license": "CDLA-Permissive-2.0"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "bytes": 84970
+}

@@ -57,21 +57,21 @@ function fieldsFor(query, cityKey = "montréal") {
   }]));
 }
 
-async function harness({ query = "10 restaurants à Montréal", cityKey = "montréal", balance = 200, fetchImpl = null, source } = {}) {
+async function harness({ query = "10 restaurants à Montréal", cityKey = "montréal", balance = 200, source } = {}) {
   const { sandbox, waits } = clockedSandbox();
   const fields = fieldsFor(query, cityKey);
-  const calls = { reservations: [], sources: [], settlements: [], alerts: [], notices: [] };
+  const jobs = [];
+  // reservations et sources désignent la même liste : toute demande passe par la file serveur.
+  const calls = { jobs, reservations: jobs, sources: jobs, settlements: jobs, osm: [], alerts: [], notices: [] };
   Object.assign(sandbox, {
     document: { getElementById: (id) => fields[id] || null, querySelectorAll: () => [] },
     authState: { user: { email: "tester@example.invalid" } },
-    searchRunning: false, radarRunning: false, pendingDebitKey: "", serverLedgerApplied: false, serverSearches: null,
+    searchRunning: false, radarRunning: false,
     sel: new Set(), selExplicit: false, selSearch: null, curSearch: null,
     alert: (message) => calls.alerts.push(message),
-    nav() {}, render() {}, applyServerUsage() {},
+    nav() {}, render() {},
     sectorLabel: (key) => sandbox.KlirEngine.industryLabel(key),
-    async reserveServerUsage(amount, label) { calls.reservations.push({ amount, label }); return { ok: true }; },
-    async settleServerUsage(debit) { calls.settlements.push(debit); return true; },
-    spendCredits(amount) { sandbox.KS.S.credits.balance -= amount; return true; }
+    spendCredits() { throw new Error("aucun débit local"); }
   });
   sandbox.KS = {
     S: {
@@ -82,28 +82,19 @@ async function harness({ query = "10 restaurants à Montréal", cityKey = "montr
     notify: (message) => calls.notices.push(message)
   };
   sandbox.KlirStore = { LIMITS: { Free: { searches: 10 } } };
-  if (fetchImpl) sandbox.fetch = fetchImpl;
-  await loadScripts(sandbox, { sources: !!fetchImpl });
-  if (!fetchImpl) {
-    sandbox.KlirSources = { osm: { async search(params, limit) {
-      calls.sources.push({ params: structuredClone(params), limit });
-      if (source === "error") throw new Error("source indisponible");
-      const rows = source === "empty" ? [] : [{
-        id: "osm_node_1", company_name: "Atelier test", city: params.city.city,
-        industry: "Construction / Rénovation", industry_key: "construction",
-        source: "OpenStreetMap", phone: "", public_email: "", website: "", signals: []
-      }];
-      if (source === "partial") rows.osmCoverage = { status: "partial", remark: "timeout" };
-      return rows;
-    } } };
-  } else {
-    sandbox.KlirSources.osm.search = new Proxy(sandbox.KlirSources.osm.search, {
-      apply(target, thisArg, args) {
-        calls.sources.push({ params: args[0], limit: args[1] });
-        return Reflect.apply(target, thisArg, args);
-      }
-    });
-  }
+  await loadScripts(sandbox);
+  sandbox.KlirSources = { osm: { async search(params, limit) { calls.osm.push({ params, limit }); return []; } } };
+  sandbox.KlirAuth = { async searchJob(request) {
+    jobs.push(structuredClone(request));
+    const cost = 5 + Math.ceil(request.payload.quantity / 10);
+    const job = { id: "22222222-2222-4222-8222-22222222222" + jobs.length, status: "succeeded" };
+    if (source === "error") return { ok: false, outcome: "echec", job: { ...job, status: "failed" }, balance };
+    if (source === "unreachable") return { ok: false, outcome: "jobs_injoignable" };
+    if (source === "disabled") return { ok: false, outcome: "jobs_disabled" };
+    if (source === "empty") return { ok: true, outcome: "termine", job, places: [], balance };
+    return { ok: true, outcome: "termine", job, balance: balance - cost, searches: 1,
+      places: [{ name: "Atelier test", basic_category: "restaurant", release: "2026-10-21.0", contacts_verified: false }] };
+  } };
   return { sandbox, fields, calls, waits };
 }
 
@@ -245,21 +236,21 @@ test("São Paulo, Casablanca et un lieu introuvable gardent l'écriture d'origin
 test("un Paris homonyme attend une confirmation et ne cherche pas Montréal", async () => {
   const { sandbox, fields, calls } = await harness({ query: "10 restaurants à Paris, Texas", cityKey: "montréal" });
   await sandbox.runSearch(fields.qInput.value);
-  assert.equal(calls.sources.length, 0);
-  assert.equal(calls.reservations.length, 0);
+  assert.equal(calls.jobs.length, 0);
   assert.match(fields.prog.innerHTML, /data-search-state="ambiguous"/);
   assert.match(fields.prog.innerHTML, /Paris, Texas/);
   assert.match(fields.prog.innerHTML, /Île-de-France/);
   await sandbox.runSearch(fields.qInput.value, { placeConfirmation: "paris-texas", quantity: 10 });
-  assert.equal(calls.sources.length, 0);
+  assert.equal(calls.jobs.length, 0);
   assert.match(fields.prog.innerHTML, /data-search-state="unsupported"/);
   await sandbox.runSearch(fields.qInput.value, { placeConfirmation: "paris", quantity: 10, industry: "restauration" });
-  assert.equal(calls.sources.length, 1);
-  assert.equal(calls.sources[0].params.city.city, "Paris");
-  assert.equal(calls.sources[0].params.city.lat, 48.8566);
-  assert.equal(calls.sources[0].params.city.lng, 2.3522);
-  assert.equal(calls.reservations.length, 1);
-  assert.equal(calls.reservations[0].amount, 6);
+  assert.equal(calls.jobs.length, 1);
+  assert.equal(calls.jobs[0].payload.cityKey, "paris");
+  assert.equal(calls.jobs[0].payload.quantity, 10);
+  assert.equal(calls.jobs[0].payload.industry, "restauration");
+  assert.equal(sandbox.KS.S.prospects[0].city, "Paris");
+  assert.equal(sandbox.KS.S.credits.balance, 194);
+  assert.equal(calls.osm.length, 0);
 });
 
 test("sans lieu dans la phrase, la ville choisie explicitement est affichée et utilisée", async () => {
@@ -269,87 +260,50 @@ test("sans lieu dans la phrase, la ville choisie explicitement est affichée et 
   assert.match(fields.searchSummary.textContent, /45\.6066, -73\.7124/);
   assert.match(fields.searchSummary.textContent, /Pas une couverture mondiale/);
   await sandbox.runSearch(fields.qInput.value);
-  assert.equal(calls.sources[0].params.city.city, "Laval");
-  assert.notEqual(calls.sources[0].params.city.lat, 45.5017);
+  assert.equal(calls.jobs[0].payload.cityKey, "laval");
+  assert.equal(sandbox.KS.S.prospects[0].city, "Laval");
 });
 
 test("une clé default historique ne recherche pas Montréal", async () => {
   const { sandbox, fields, calls } = await harness({ query: "30 entreprises de rénovation", cityKey: "default" });
   await sandbox.runSearch(fields.qInput.value);
-  assert.equal(calls.sources.length, 0);
-  assert.equal(calls.reservations.length, 0);
+  assert.equal(calls.jobs.length, 0);
   assert.match(fields.prog.innerHTML, /data-search-state="not_found"/);
   assert.equal(sandbox.KS.S.credits.balance, 200);
 });
 
-test("le radar sans ville prise en charge ne réserve rien", async () => {
+test("le radar ne réserve rien et n'interroge aucune source", async () => {
   const { sandbox, calls } = await harness();
-  sandbox.KS.S.icp = { industry: "restauration", city: "Tokyo", size: "" };
-  await sandbox.radarRun();
-  assert.equal(calls.reservations.length, 0);
-  assert.equal(calls.sources.length, 0);
-  assert.match(calls.notices.at(-1), /Aucun crédit n'a été réservé/);
-  sandbox.KS.S.icp = { industry: "restauration", city: "Montréal", size: "" };
-  await sandbox.radarRun();
-  assert.equal(calls.sources.length, 1);
-  assert.equal(calls.sources[0].params.city.city, "Montréal");
-  assert.equal(calls.reservations.length, 1);
+  for (const city of ["Tokyo", "Montréal"]) {
+    sandbox.KS.S.icp = { industry: "restauration", city, size: "" };
+    await sandbox.radarRun();
+    assert.equal(calls.jobs.length, 0);
+    assert.equal(calls.osm.length, 0);
+    assert.match(calls.notices.at(-1), /Aucun crédit n'a été réservé/);
+  }
+  assert.equal(sandbox.KS.S.credits.balance, 200);
 });
 
-test("vide, partiel et erreur libèrent le crédit sans fiche inventée", async () => {
-  for (const source of ["empty", "partial", "error"]) {
+test("vide, échec, moteur éteint et serveur injoignable : aucun débit, aucune fiche inventée", async () => {
+  for (const source of ["empty", "error", "disabled", "unreachable"]) {
     const { sandbox, fields, calls } = await harness({ source });
     await sandbox.runSearch(fields.qInput.value);
+    assert.equal(calls.jobs.length, 1, source);
+    assert.equal(calls.osm.length, 0, source);
     assert.equal(sandbox.KS.S.credits.balance, 200, source);
-    assert.equal(calls.settlements.includes(true), false, source);
     assert.equal(sandbox.KS.S.usage.searches, 0, source);
-    if (source === "partial") {
-      assert.equal(sandbox.KS.S.prospects[0].collection_status, "partial");
-      assert.equal(sandbox.KS.S.searches[0].status, "partielle");
-    } else {
-      assert.equal(sandbox.KS.S.prospects.length, 0, source);
-      assert.match(fields.prog.innerHTML, new RegExp(source === "error" ? "failure" : "empty"));
-    }
+    assert.equal(sandbox.KS.S.prospects.length, 0, source);
+    assert.match(fields.prog.innerHTML, source === "empty" ? /data-search-state="empty"/ : source === "error" ? /data-search-state="failure"/ : /data-search-state="refused"/, source);
   }
 });
 
-function scriptedFetch(steps) {
-  const calls = [];
-  let index = 0;
-  return {
-    calls,
-    fetch: async () => {
-      const step = steps[Math.min(index, steps.length - 1)];
-      index += 1;
-      calls.push(step.status == null ? 0 : step.status);
-      if (step.error) throw step.error;
-      return new Response(step.body, { status: step.status, headers: step.headers || {} });
-    }
-  };
-}
-
-test("429, 502, délai et 200 tronqué libèrent la réservation sans donnée synthétique", async () => {
-  const cases = [
-    { name: "429", steps: [{ status: 429, body: "", headers: { "Retry-After": "0" } }], calls: [429, 429, 429, 429], message: /429/ },
-    { name: "502", steps: [{ status: 502, body: "bad gateway" }], calls: [502, 502, 502, 502], message: /502/ },
-    { name: "timeout", steps: [{ error: Object.assign(new Error("aborted"), { name: "AbortError" }) }], calls: [0, 0, 0, 0], message: /temps/ },
-    { name: "truncated", steps: [{ status: 200, body: '{"elements":[{"type":"node","id":1' }], calls: [200], message: /invalide/ }
-  ];
-  for (const item of cases) {
-    const http = scriptedFetch(item.steps);
-    const { sandbox, fields, calls } = await harness({ fetchImpl: http.fetch, query: "10 restaurants à Montréal" });
-    await sandbox.runSearch(fields.qInput.value);
-    assert.deepEqual(http.calls, item.calls, item.name);
-    assert.equal(calls.reservations.length, 1, item.name);
-    assert.deepEqual(calls.settlements, [false], item.name);
-    assert.equal(sandbox.KS.S.credits.balance, 200, item.name);
-    assert.equal(sandbox.KS.S.prospects.length, 0, item.name);
-    assert.equal(sandbox.KS.S.usage.searches, 0, item.name);
-    assert.match(fields.prog.innerHTML, /data-search-state="failure"/, item.name);
-    assert.match(fields.prog.innerHTML, item.message, item.name);
-    assert.equal(fields.prog.innerHTML.includes("Nord"), false, item.name);
-    assert.equal(sandbox.KlirSources.osm.limits.requestMs, 18000, item.name);
-    assert.equal(sandbox.KlirSources.osm.limits.queryTimeoutSec, 15, item.name);
-    assert.equal(sandbox.KlirSources.osm.limits.retryAfterCapMs, 30000, item.name);
+test("la recherche de l'application n'appelle ni OpenStreetMap ni une RPC de débit", () => {
+  const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
+  const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
+  for (const source of [search, radar]) {
+    assert.equal(source.includes("KlirSources.osm.search"), false);
+    assert.doesNotMatch(source, /reserve_usage|settle_usage|reserveServerUsage|settleServerUsage|overture_begin|overture_execute|searchOverture/);
+    assert.equal(source.includes("spendCredits("), false);
   }
+  assert.match(search, /KlirAuth\.searchJob\(/);
 });
