@@ -75,6 +75,8 @@ async function syncAuthState(next){
     if(seq!==syncSeq)return;
     applyAuthState(authState);
     await applyServerLedger();
+    if(seq!==syncSeq)return;
+    await restoreServerJobs(seq); // les appelants affichent ensuite l'état hydraté
   }finally{
     if(seq===syncSeq)historyLoading=false;
   }
@@ -674,7 +676,7 @@ async function runSearch(q,savedParams){
   if(!window.KlirAuth||typeof window.KlirAuth.searchJob!=="function"){if(prog)prog.innerHTML='<div class="card" data-search-state="failure"><p><b>Recherche indisponible</b><br>La file de recherche serveur n\'est pas branchée. Aucun crédit n\'est réservé.</p></div>';return;}
   const parsed=document.getElementById("parsed");
   if(parsed)parsed.innerHTML=`<div class="grid4"><div class="card"><small>Secteur</small><b>${sectorLabel(params.industry)}</b></div><div class="card"><small>Location</small><b>${params.city.city}</b></div><div class="card"><small>Quantity</small><b>${params.quantity}</b></div><div class="card"><small>Taille</small><b>${sizeLabel(params.size)}</b></div></div>`;
-  if(prog)prog.innerHTML='<div class="card"><b id="pt">Recherche en file serveur…</b><div class="bar"><div id="pb" style="width:35%"></div></div><small id="ps">Le serveur réserve, exécute et règle les crédits.</small></div>';
+  if(prog)prog.innerHTML='<div class="card"><b id="pt">Recherche en file serveur…</b><div class="bar"><div id="pb" style="width:35%"></div></div><small id="ps">Le serveur réserve, exécute et règle les crédits. Vous pouvez recharger la page : la recherche continue côté serveur et son résultat sera récupéré, sans nouveau débit.</small></div>';
   const payload=searchJobPayload(params);
   const pending=searchJobKey(payload);
   const result=await window.KlirAuth.searchJob({payload:payload,idempotencyKey:pending.key});
@@ -695,15 +697,7 @@ async function runSearch(q,savedParams){
     if(prog)prog.innerHTML='<div class="card" data-search-state="empty"><p><b>Recherche terminée, aucun résultat</b><br>Aucune fiche n\'a été inventée. Le serveur n\'a débité aucun crédit pour un résultat vide.</p></div>';
     return;
   }
-  const id="job_"+job.id;
-  if(!KS.S.searches.some(s=>s.id===id)){
-    const final=places.slice(0,params.quantity).map((row,index)=>{const p=searchJobProspect(row,index,job,params);const sc=E.scoreProspect(p,params,KS.S.weights);return {...p,dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score,collection_status:"complete",searchId:id,status:"New",icp:KS.S.icp?E.icpFit(p,KS.S.icp):null};});
-    try{if(window.OppEngine)final.forEach(p=>window.OppEngine.attach(p,params));}catch(e){}
-    const s={id:id,jobId:job.id,query:String(q||"").trim(),status:"terminée",label:`${sectorLabel(params.industry)} ${params.city.city} — ${final.length} fiches (file serveur)`,date:new Date().toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:0,source:"Overture Maps",release:String((places.find(r=>r&&r.release)||{}).release||"")};
-    KS.S.searches.unshift(s);KS.S.prospects=[...final,...KS.S.prospects];KS.S.usage.prospects+=final.length;
-    KS.save();KS.addActivity(`${final.length} fiches reçues du serveur (contacts non vérifiés)`);KS.audit("search.completed",s.label);
-    KS.notify(`Recherche terminée : ${final.length} fiches. Crédits réglés par le serveur.`);
-  }
+  const id=recordServerJobResult(job,places,params,q);
   curSearch=id;selExplicit=false;selSearch=id;sel=new Set();
   nav("/prospecting/results/"+id);
   }catch(error){if(prog)prog.innerHTML='<div class="card" data-search-state="failure"><p><b>Recherche interrompue</b><br>'+esc(error&&error.message||"Réponse indisponible")+'</p></div>';}
@@ -757,6 +751,74 @@ function searchJobProspect(row,index,job,params){
     category:String(row&&row.basic_category||""),city:params.city&&params.city.city||"",source:"Overture Maps",overture_release:String(row&&row.release||""),
     contacts_verified:false,collected_at:row&&row.created_at||new Date().toISOString(),phone:"",public_email:"",website:"",address:"",signals:[],job_id:job.id
   };
+}
+// Ajoute le résultat d'un job serveur à l'historique et aux prospects, une seule fois par job.
+// Règle anti-doublon : un job déjà présent (job_<id>) ou supprimé par l'utilisateur n'est jamais réinséré.
+// Aucun débit : le serveur a déjà réglé le reçu.
+function recordServerJobResult(job,places,params,q,options){
+  const id="job_"+job.id;
+  const removed=Array.isArray(KS.S.removedSearchIds)?KS.S.removedSearchIds:[];
+  if(KS.S.searches.some(s=>s.id===id)||removed.indexOf(id)>=0)return id;
+  const restored=!!(options&&options.restored);
+  const final=places.slice(0,params.quantity).map((row,index)=>{const p=searchJobProspect(row,index,job,params);const sc=E.scoreProspect(p,params,KS.S.weights);return {...p,dq:sc.data_quality_score,rel:sc.commercial_relevance_score,conf:sc.confidence_score,intent:sc.intent_score,opp:sc.opportunity_score,collection_status:"complete",searchId:id,status:"New",icp:KS.S.icp?E.icpFit(p,KS.S.icp):null};});
+  try{if(window.OppEngine)final.forEach(p=>window.OppEngine.attach(p,params));}catch(e){}
+  const when=restored&&job.created_at?new Date(job.created_at):new Date();
+  const s={id:id,jobId:job.id,query:String(q||"").trim(),status:"terminée",label:`${sectorLabel(params.industry)} ${params.city.city} — ${final.length} fiches (file serveur)`,date:(isNaN(when)?new Date():when).toLocaleDateString(),total:final.length,qual:final.filter(p=>p.rel>=75).length,crm:0,params,dups:0,source:"Overture Maps",release:String((places.find(r=>r&&r.release)||{}).release||"")};
+  KS.S.searches.unshift(s);KS.S.prospects=[...final,...KS.S.prospects];KS.S.usage.prospects+=final.length;
+  KS.save();KS.addActivity(`${final.length} fiches ${restored?"récupérées":"reçues"} du serveur (contacts non vérifiés)`);KS.audit(restored?"search.restored":"search.completed",s.label);
+  KS.notify(restored?`Recherche récupérée : ${final.length} fiches. Aucun nouveau débit.`:`Recherche terminée : ${final.length} fiches. Crédits réglés par le serveur.`);
+  return id;
+}
+// Paramètres d'affichage d'un job relu depuis le serveur (ville, secteur, quantité de sa demande).
+function serverJobParams(payload){
+  const source=payload&&typeof payload==="object"?payload:{};
+  return E.normalizeSearchParams(E.parseQuery(""),{place:null,cityKey:String(source.cityKey||""),industry:String(source.industry||"all"),quantity:Number(source.quantity)||10});
+}
+function serverJobQuery(params){return `${params.quantity} ${sectorLabel(params.industry)} à ${params.city?params.city.city:""}`.trim();}
+// Après hydratation : rattache les jobs terminés absents de l'historique et reprend le suivi
+// des jobs encore en file. Lecture seule : aucune mise en file, aucune réservation, aucun débit.
+const resumingServerJobs=new Set();
+async function restoreServerJobs(seq){
+  if(!authState.user||!KS.S||KS.S.demo||historyLoadFailed)return 0;
+  if(!window.KlirAuth||typeof window.KlirAuth.syncServerJobs!=="function")return 0;
+  let found;
+  try{found=await window.KlirAuth.syncServerJobs({knownSearchIds:(KS.S.searches||[]).map(s=>s&&s.id),removedSearchIds:KS.S.removedSearchIds||[]});}catch(e){return 0;}
+  if(seq!=null&&seq!==syncSeq)return 0;
+  if(!found||!found.ok)return 0;
+  let added=0;
+  for(const item of found.completed||[]){
+    const params=serverJobParams(item.job.payload);
+    if(!params.city)continue;
+    const before=KS.S.searches.length;
+    recordServerJobResult(item.job,item.places,params,serverJobQuery(params),{restored:true});
+    if(KS.S.searches.length>before)added+=1;
+  }
+  clearSettledPendingKey(found.terminal||[]);
+  for(const job of found.active||[])resumeServerJobTracking(job);
+  return added;
+}
+// La clé de reprise de l'onglet ne doit pas renvoyer vers un job déjà terminé.
+function clearSettledPendingKey(terminal){
+  const storeKey="klir-search-job-pending-"+(authState.user&&authState.user.id||"anon");
+  let pending=null;
+  try{pending=JSON.parse(sessionStorage.getItem(storeKey)||"null");}catch(e){}
+  if(pending&&terminal.some(job=>job&&job.idempotency_key&&job.idempotency_key===pending.key)){try{sessionStorage.removeItem(storeKey);}catch(e){}}
+}
+async function resumeServerJobTracking(job){
+  if(!job||!job.id||resumingServerJobs.has(job.id))return;
+  if(!window.KlirAuth||typeof window.KlirAuth.resumeServerJob!=="function")return;
+  resumingServerJobs.add(job.id);
+  try{
+    const result=await window.KlirAuth.resumeServerJob(job);
+    if(result&&result.balance!=null)KS.S.credits.balance=result.balance;
+    if(result&&result.searches!=null)KS.S.usage.searches=result.searches;
+    if(result&&result.ok&&Array.isArray(result.places)&&result.places.length){
+      const params=serverJobParams(job.payload);
+      if(params.city)recordServerJobResult({...job,...result.job},result.places,params,serverJobQuery(params),{restored:true});
+    }else KS.save();
+    if(appBootstrapped)render();
+  }catch(e){}
+  finally{resumingServerJobs.delete(job.id);}
 }
 function toCrm(){if(window.KlirTeam&&!window.KlirTeam.guard("crm"))return;let n=0;for(const id of sel){const p=KS.S.prospects.find(x=>x.id===id);if(p&&!p.inCrm){p.inCrm=true;KS.S.crm.push({id:KS.uid("l"),company_name:p.company_name,city:p.city,stage:"New",prospectId:id,log:[{t:"Lead créé depuis la recherche",at:new Date().toLocaleString()}],lastActivity:new Date().toLocaleString()});n++;}}
   const s=KS.S.searches.find(x=>x.id===curSearch); if(s)s.crm+=n; KS.save(); KS.addActivity(`${n} prospects ajoutés au CRM`); KS.notify(`Import CRM terminé : ${n} prospects.`); KS.audit("crm.lead.created",n+" leads"); render();}
