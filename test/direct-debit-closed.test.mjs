@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite";
 const migration = await readFile(new URL("../supabase/migrations/20261113160000_revoke_direct_debit_rpcs.sql", import.meta.url), "utf8");
 const auth = await readFile(new URL("../src/auth.js", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
+const serverJobs = await readFile(new URL("../src/server-jobs.js", import.meta.url), "utf8");
 
 test("la migration ferme les RPC de débit direct sans rien rouvrir", () => {
   for (const fn of ["reserve_usage", "settle_usage", "overture_begin", "overture_execute"]) {
@@ -19,7 +20,10 @@ test("le navigateur ne connaît plus que la file serveur pour rechercher", () =>
   assert.doesNotMatch(auth, /rpc\("(reserve_usage|settle_usage|overture_begin|overture_execute)"/);
   assert.doesNotMatch(auth, /searchOverture|reserveUsage|settleUsage/);
   assert.match(auth, /functions\.invoke\("search-jobs"/);
-  assert.match(auth, /from\("search_job_places"\)/);
+  // Les fiches sont lues par le module de lecture partagé (fin de recherche et reprise après rechargement).
+  assert.match(auth, /readServerJobPlaces\(supabase, job\.id\)/);
+  assert.match(serverJobs, /from\("search_job_places"\)/);
+  assert.doesNotMatch(serverJobs, /rpc\(|reserve|settle|functions\.invoke/);
   assert.match(auth, /place_status: "supported"/);
   assert.doesNotMatch(app, /reserveServerUsage|settleServerUsage|runOvertureSearch|KlirSources\.osm\.search\(/);
 });

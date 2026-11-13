@@ -17,6 +17,7 @@ import {
   workspaceForMigration
 } from "./auth-policy.js";
 import { createServerDiagnostic, createServerCycle, publicDiagnosticBody, publicCycleBody } from "./server-diagnostic.js";
+import { awaitServerJob, listRecoverableServerJobs, readServerJobPlaces } from "./server-jobs.js";
 
 const CALLBACK_KEY = "klir-auth-callback";
 const config = window.__KLIR_CONFIG__ || {};
@@ -339,8 +340,6 @@ async function confirmStripeTestCheckout(sessionId) {
 
 const SEARCH_JOB_CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
 const SEARCH_JOB_TERMINAL = new Set(["succeeded", "failed", "cancelled"]);
-const SEARCH_JOB_POLL_MS = 2000;
-const SEARCH_JOB_POLL_LIMIT = 60;
 
 async function functionReply(result) {
   let data = result && result.data && typeof result.data === "object" ? result.data : null;
@@ -370,7 +369,6 @@ async function searchJob(request, options = {}) {
   if (!Number.isInteger(quantity) || quantity < 10 || quantity > 40) return { ok: false, outcome: "quantite_invalide" };
   const idempotencyKey = String(request && request.idempotencyKey || "");
   if (idempotencyKey.length < 8 || idempotencyKey.length > 80) return { ok: false, outcome: "jobs_injoignable" };
-  const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const supabase = await requireClient();
   const enqueued = await functionReply(await supabase.functions.invoke("search-jobs", {
     body: {
@@ -389,25 +387,42 @@ async function searchJob(request, options = {}) {
   const code = enqueued.data && typeof enqueued.data.error === "string" ? enqueued.data.error : "";
   if (SEARCH_JOB_ERRORS.has(code)) return { ok: false, outcome: code };
   if (enqueued.failed || !enqueued.data || typeof enqueued.data.id !== "string") return { ok: false, outcome: "jobs_injoignable" };
-  let job = enqueued.data;
-  for (let index = 0; index < SEARCH_JOB_POLL_LIMIT && !SEARCH_JOB_TERMINAL.has(job.status); index += 1) {
-    await sleep(SEARCH_JOB_POLL_MS);
-    const polled = await functionReply(await supabase.functions.invoke(`search-jobs?id=${encodeURIComponent(job.id)}`, { method: "GET" }));
-    if (polled.data && typeof polled.data.status === "string") job = { ...job, ...polled.data };
-  }
+  const job = await awaitServerJob(pollJobStatus(supabase), enqueued.data, { sleep: options.sleep });
+  return finishServerJob(supabase, job);
+}
+
+function pollJobStatus(supabase) {
+  return async (id) => {
+    const polled = await functionReply(await supabase.functions.invoke(`search-jobs?id=${encodeURIComponent(id)}`, { method: "GET" }));
+    return polled.data && typeof polled.data.status === "string" ? polled.data : null;
+  };
+}
+
+// Lecture finale d'un job : solde serveur, puis fiches du propriétaire (RLS). Aucun débit ici.
+async function finishServerJob(supabase, job) {
   const account = await readCreditAccount();
   const money = account.ok ? { balance: account.balance, searches: account.searches } : {};
   if (!SEARCH_JOB_TERMINAL.has(job.status)) return { ok: false, outcome: "en_attente", job, ...money };
   if (job.status !== "succeeded") return { ok: false, outcome: "echec", job, ...money };
-  const listed = await supabase
-    .from("search_job_places")
-    .select("name, basic_category, release, contacts_verified, created_at")
-    .eq("job_id", job.id)
-    .order("created_at", { ascending: true })
-    .order("name", { ascending: true })
-    .limit(40);
-  if (listed.error) return { ok: false, outcome: "jobs_injoignable", job, ...money };
-  return { ok: true, outcome: "termine", job, places: Array.isArray(listed.data) ? listed.data : [], ...money };
+  const listed = await readServerJobPlaces(supabase, job.id);
+  if (!listed.ok) return { ok: false, outcome: "jobs_injoignable", job, ...money };
+  return { ok: true, outcome: "termine", job, places: listed.places, ...money };
+}
+
+// Après un rechargement : jobs du compte terminés mais absents de l'historique,
+// et jobs encore en file. Lecture seule, aucune mise en file, aucun débit.
+async function syncServerJobs(options = {}) {
+  if (!currentUser) return { ok: false, completed: [], active: [], terminal: [] };
+  const supabase = await requireClient();
+  return listRecoverableServerJobs(supabase, options);
+}
+
+// Reprend le suivi d'un job déjà en file (aucune nouvelle demande au serveur de recherche).
+async function resumeServerJob(job, options = {}) {
+  if (!currentUser || !job || typeof job.id !== "string") return { ok: false, outcome: "session_requise" };
+  const supabase = await requireClient();
+  const done = await awaitServerJob(pollJobStatus(supabase), job, { sleep: options.sleep });
+  return finishServerJob(supabase, done);
 }
 
 async function initialize() {
@@ -476,6 +491,8 @@ window.KlirAuth = {
   startStripeTestCheckout,
   confirmStripeTestCheckout,
   searchJob,
+  syncServerJobs,
+  resumeServerJob,
   completeCallback,
   dismissCallback
 };
