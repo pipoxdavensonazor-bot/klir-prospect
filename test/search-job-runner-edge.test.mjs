@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRunnerDiagnostic, assertRunnerDbConfig, authorizedTestJobId, bodyHasExtraKeys, TEST_DB_POOLER_HOSTS, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
+import { handleRunnerDiagnostic, assertRunnerDbConfig, authorizedTestJobId, bodyHasExtraKeys, TEST_DB_POOLER_HOSTS, RUNNER_DIAGNOSTIC_SQL, CONNECT_ROLE, PREVIEW_ORIGIN, PILOT_UI_ORIGIN, TARGETED_UI_ORIGIN } from "../supabase/functions/_shared/search-job-runner-edge.mjs";
 import { TEST_PROJECT_REF, TEST_SUPABASE_URL } from "../supabase/functions/_shared/search-job-edge.mjs";
 
 const ada = "11111111-1111-4111-8111-111111111111";
@@ -359,6 +359,14 @@ test("non-régression : sans cible, le cycle de production garde expiration puis
     // Pas de contrôle d'identité ajouté au cycle normal.
     assert.equal(db.calls.some((text) => text.includes("current_user")), false);
   }
+});
+
+test("l'aperçu de la branche du cycle ciblé passe la prévérification, pas la production", async () => {
+  const allowed = await handleRunnerDiagnostic(new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: TARGETED_UI_ORIGIN } }), { env: env() });
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get("access-control-allow-origin"), TARGETED_UI_ORIGIN);
+  const prod = await handleRunnerDiagnostic(new Request("http://127.0.0.1/search-job-runner", { method: "OPTIONS", headers: { origin: "https://klirprospect.klirline.ca" } }), { env: env() });
+  assert.equal(prod.status, 403);
 });
 
 test("la prévisualisation Test peut demander le diagnostic, une autre origine non", async () => {

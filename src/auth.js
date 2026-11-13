@@ -16,6 +16,7 @@ import {
   passwordMessage,
   workspaceForMigration
 } from "./auth-policy.js";
+import { createServerDiagnostic, createServerCycle, publicDiagnosticBody, publicCycleBody } from "./server-diagnostic.js";
 
 const CALLBACK_KEY = "klir-auth-callback";
 const config = window.__KLIR_CONFIG__ || {};
@@ -452,3 +453,55 @@ window.KlirAuth = {
   completeCallback,
   dismissCallback
 };
+
+window.KlirAuth.diagnoseServerConnection = createServerDiagnostic({
+  config: () => config,
+  session: () => ({ user: currentUser }),
+  isAdmin: async () => {
+    const supabase = await requireClient();
+    currentAdmin = await readAdminFlag(supabase);
+    return currentAdmin;
+  },
+  invoke: async () => {
+    const supabase = await requireClient();
+    const result = await supabase.functions.invoke("search-job-runner", { body: { action: "diagnose" } });
+    const status = result.error && result.error.context && typeof result.error.context.status === "number"
+      ? result.error.context.status
+      : 0;
+    let data = publicDiagnosticBody(result.data);
+    if (!data && result.error && result.error.context && typeof result.error.context.clone === "function") {
+      try {
+        data = publicDiagnosticBody(await result.error.context.clone().json());
+      } catch {
+        data = null;
+      }
+    }
+    return { data, error: Boolean(result.error), status };
+  }
+});
+
+window.KlirAuth.runServerCycle = createServerCycle({
+  config: () => config,
+  session: () => ({ user: currentUser }),
+  isAdmin: async () => {
+    const supabase = await requireClient();
+    currentAdmin = await readAdminFlag(supabase);
+    return currentAdmin;
+  },
+  invoke: async (body) => {
+    const supabase = await requireClient();
+    const result = await supabase.functions.invoke("search-job-runner", { body });
+    const status = result.error && result.error.context && typeof result.error.context.status === "number"
+      ? result.error.context.status
+      : (result.error ? 0 : 200);
+    let data = publicCycleBody(result.data);
+    if (!data && result.error && result.error.context && typeof result.error.context.clone === "function") {
+      try {
+        data = publicCycleBody(await result.error.context.clone().json());
+      } catch {
+        data = null;
+      }
+    }
+    return { data, error: Boolean(result.error), status };
+  }
+});
