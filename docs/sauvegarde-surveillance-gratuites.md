@@ -1,15 +1,13 @@
 # Sauvegarde quotidienne et surveillance — gratuites (plan Supabase Free)
 
-> **Installation des workflows** : le jeton de la machine d'exploitation n'a pas le droit
-> `workflow`, les fichiers sont livrés dans `ops/workflows/`. Les copier tels quels dans
-> `.github/workflows/` (`backup.yml`, `monitor.yml`) par un compte ayant ce droit.
+> **Installation des workflows** : > Les workflows sont en place dans `.github/workflows/` (backup.yml, monitor.yml).
 
 Objectif : ouvrir sans payer Supabase (pas de PITR). Tout tourne sur GitHub Actions
 (dépôt public : minutes gratuites). **Rien n'est actif tant que les variables
 `KLIR_BACKUP_ENABLED` / `KLIR_MONITOR_ENABLED` ne valent pas `true`**, et les
 planifications GitHub ne tournent que depuis `main`.
 
-## 1. Sauvegarde (`ops/workflows/backup.yml` → `.github/workflows/`)
+## 1. Sauvegarde (`.github/workflows/backup.yml`)
 
 Chaque jour 02:17 (Toronto, heure normale) et à la demande :
 
@@ -44,7 +42,7 @@ refuse une base non vide, restaure en une transaction et imprime l'empreinte JSO
 Comparer avec `compare_fingerprints.py`. Une base PostgreSQL restaurée n'est pas une
 pile Supabase complète : voir [restauration-complete-procedure.md](restauration-complete-procedure.md).
 
-## 2. Surveillance (`ops/workflows/monitor.yml` → `.github/workflows/`, toutes les 30 min)
+## 2. Surveillance (`.github/workflows/monitor.yml`, toutes les 30 min)
 
 `ops/monitor/check.mjs` (sans dépendance) contrôle :
 

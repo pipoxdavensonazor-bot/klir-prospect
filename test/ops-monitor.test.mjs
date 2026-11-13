@@ -60,7 +60,7 @@ test("klir_ops_health : lecture seule, aucune donnée personnelle, droits borné
 
 test("workflows : planification inactive tant que la variable d'activation est absente", async () => {
   for (const f of ["backup.yml", "monitor.yml"]) {
-    const y = await readFile(new URL(`../ops/workflows/${f}`, import.meta.url), "utf8");
+    const y = await readFile(new URL(`../.github/workflows/${f}`, import.meta.url), "utf8");
     assert.match(y, /vars\.KLIR_(BACKUP|MONITOR)_ENABLED == 'true'/);
     assert.doesNotMatch(y, /cbklwmjudobqwbkbxqgy/);
   }
