@@ -1,18 +1,16 @@
 # Import Overture Places — six centres
 
-Document de travail pour recharger l'instantané lu par le fournisseur `overture-places-pilot`. Test uniquement. Aucun appel OpenCage, aucun débit de crédits, aucune production.
+Document de travail pour charger le catalogue des six centres lu par le fournisseur `overture-places-pilot`. Test uniquement. Aucun appel OpenCage, aucun débit de crédits, aucune production.
 
 ## Ce que lit le fournisseur
 
-Le runner Test appelle `private.pilot_snapshot()`, qui renvoie le document JSON unique de `private.search_pilot_snapshot`. Le fournisseur attend :
+Le runner Test appelle `private.search_catalog_lookup(ville, secteur, quantité)`, qui lit `private.search_catalog_places` une fiche par ligne, avec un `LIMIT` (plafond 40). Il n'agrège pas le document jsonb. Si la table est vide, la fonction se rabat sur une seule ville de l'instantané sonde `private.search_pilot_snapshot`, toujours avec une limite.
 
-- `release` épinglée `2026-10-21.0`
-- `cities[]` avec `key` (`montréal`, `laval`, `québec`, `toronto`, `paris`, `lyon`), `kind` (`local-extract` ou `fixture`), `bbox`, `features`
-- chaque fiche au format GeoJSON compact : `id` GERS, point WGS84, `names.primary`, `basic_category` / `taxonomy`, `addresses`, `sources` (licence comprise)
+Le fournisseur attend des fiches avec identifiant GERS, nom, `basic_category` / jetons de taxonomie, licences et release épinglée `2026-10-21.0`. Les villes sont `montréal`, `laval`, `québec`, `toronto`, `paris`, `lyon`.
 
-`tools/overture-places-import.mjs` normalise, refuse une emprise trop vaste, déduplique par identifiant GERS, et conserve les notices CDLA / Apache / CC0. Un secteur (`industry`) filtre ensuite les jetons de taxonomie ; `all` ou l'absence de secteur renvoie les premières fiches, dans la limite de la quantité (plafond 40).
+L'outil d'import (`tools/overture-places-import.mjs`) normalise encore un extrait GeoJSON local : il refuse une emprise trop vaste, déduplique par identifiant GERS, et conserve les notices CDLA / Apache / CC0. Ces lignes sont ensuite insérées dans la table, par petits lots, sans réécrire le document jsonb unique.
 
-L'instantané pilote d'une fiche par centre n'est pas un catalogue de ville.
+Un secteur (`industry`) filtre les jetons de taxonomie ; `all` ou l'absence de secteur renvoie les premières fiches, dans la limite de la quantité (plafond 40). L'instantané pilote d'une fiche par centre n'est pas un catalogue de ville. Il ne sert plus que de repli si la table est vide.
 
 ## Bornes
 
@@ -44,9 +42,9 @@ Sources : https://docs.overturemaps.org/guides/places/ , https://docs.overturema
 
 ## Chargement Test
 
-Projet autorisé uniquement : `pwakjxjjxswdjsapsbxn` (KlirProspect Test). Interdit : `cbklwmjudobqwbkbxqgy`. Remplacer seulement `private.search_pilot_snapshot.document`. Ne pas modifier `jobs_enabled`, les crédits, ni créer de job.
+Projet autorisé uniquement : `pwakjxjjxswdjsapsbxn` (KlirProspect Test). Interdit : `cbklwmjudobqwbkbxqgy`. Remplir seulement `private.search_catalog_places`, par lots courts (environ 80 fiches). Ne pas réécrire `private.search_pilot_snapshot.document` avec l'extrait complet. Ne pas modifier `jobs_enabled`, les crédits, ni créer de job.
 
-Sauvegarder l'instantané actuel, puis charger uniquement si `KLIR_TEST_DB_URL` (ou un fichier `--credentials` hors git) pointe vers le projet Test, session pooler port 5432 ou `db.pwakjxjjxswdjsapsbxn.supabase.co`. Toute URL contenant le projet de production, le pool 6543, ou `sslmode=disable` est refusée avant connexion.
+Sauvegarder l'instantané sonde actuel, puis charger uniquement si `KLIR_TEST_DB_URL` (ou un fichier `--credentials` hors git) pointe vers le projet Test, session pooler port 5432 ou `db.pwakjxjjxswdjsapsbxn.supabase.co`. Toute URL contenant le projet de production, le pool 6543, ou `sslmode=disable` est refusée avant connexion.
 
 ```bash
 node tools/overture-places-load-test.mjs --snapshot /tmp/overture-six-centers.json --backup /tmp/pilot-snapshot-backup.json --dry-run
@@ -54,6 +52,6 @@ node tools/overture-places-load-test.mjs --snapshot /tmp/overture-six-centers.js
 node tools/overture-places-load-test.mjs --snapshot /tmp/overture-six-centers.json --backup /tmp/pilot-snapshot-backup.json
 ```
 
-Ne pas écrire dans `private.overture_places` ni `private.overture_snapshot_places`. Mesurer ensuite `pg_database_size(current_database())` et `pg_total_relation_size('private.search_pilot_snapshot')`. La simulation `tools/overture-places-simulate.mjs` relit le JSON ou, après chargement, le document SQL : elle n'appelle pas le runner, ne crée pas de job et ne débité aucun crédit.
+Ne pas écrire dans `private.overture_places` ni `private.overture_snapshot_places`. Mesurer ensuite `pg_database_size(current_database())` et `pg_total_relation_size('private.search_catalog_places')`. Arrêter si la base approche 450 Mo. La simulation `tools/overture-places-simulate.mjs` relit le JSON local ; après chargement, `private.search_catalog_lookup` vérifie les 18 recherches (6 villes × 3 secteurs, quantité 10). Elle n'appelle pas le runner, ne crée pas de job et ne débite aucun crédit.
 
 Le fichier d'extrait (~60 Mo) n'est pas commis ; rester bien sous 500 Mo de base au total sur le plan gratuit.

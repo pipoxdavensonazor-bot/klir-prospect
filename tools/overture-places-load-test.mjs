@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-// Charge l'instantané uniquement sur KlirProspect Test. Aucun job, aucun crédit.
+// Charge le catalogue ligne par ligne uniquement sur KlirProspect Test.
+// Aucun job, aucun crédit, pas d'écriture du document jsonb complet.
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import pg from "pg";
+import { importPlaces } from "./overture-places-import.mjs";
 import { simulateFile } from "./overture-places-simulate.mjs";
 
 export const TEST_PROJECT = "pwakjxjjxswdjsapsbxn";
 export const PROD_PROJECT = "cbklwmjudobqwbkbxqgy";
+export const CATALOG_BATCH_SIZE = 80;
 
 export function assertTestDatabaseUrl(url) {
   if (typeof url !== "string" || !url.trim()) throw new Error("url_absente");
@@ -48,6 +51,47 @@ export function databaseUrlFromEnvOrFile(env, credentialsPath) {
   return url;
 }
 
+export function catalogRowsFromSnapshot(snapshot) {
+  snapshotGuard(snapshot, JSON.stringify(snapshot).length);
+  const cities = [];
+  const rows = [];
+  for (const city of snapshot.cities) {
+    const imported = importPlaces({
+      kind: city.kind,
+      release: city.release || snapshot.release,
+      bbox: city.bbox,
+      features: city.features,
+      bytes: city.bytes
+    });
+    cities.push({ key: city.key, features: imported.kept.length, rejected: imported.rejected.length });
+    for (const record of imported.kept) {
+      rows.push({
+        city_key: city.key,
+        id: record.gersId,
+        name: record.name,
+        basic_category: record.basicCategory || "",
+        category_tokens: record.categoryTokens || [],
+        locality: record.locality || "",
+        country: record.country || "",
+        latitude: record.latitude,
+        longitude: record.longitude,
+        sources: record.sources || [],
+        licenses: record.licenses || [],
+        release: record.release || snapshot.release
+      });
+    }
+  }
+  return { cities, rows };
+}
+
+function batchesOf(rows, size) {
+  const batches = [];
+  for (let index = 0; index < rows.length; index += size) {
+    batches.push(rows.slice(index, index + size));
+  }
+  return batches;
+}
+
 function arg(args, flag) {
   const index = args.indexOf(flag);
   return index >= 0 ? args[index + 1] : undefined;
@@ -57,62 +101,87 @@ export async function loadPilotSnapshot(options) {
   const raw = readFileSync(options.snapshotPath);
   const snapshot = JSON.parse(raw);
   snapshotGuard(snapshot, raw.length);
+  const prepared = catalogRowsFromSnapshot(snapshot);
   const sha256 = createHash("sha256").update(raw).digest("hex");
   if (options.dryRun) {
-    return { ok: true, dryRun: true, sha256, bytes: raw.length, project: TEST_PROJECT };
+    return {
+      ok: true,
+      dryRun: true,
+      sha256,
+      bytes: raw.length,
+      project: TEST_PROJECT,
+      target: "private.search_catalog_places",
+      cities: prepared.cities,
+      rows: prepared.rows.length
+    };
   }
   const url = databaseUrlFromEnvOrFile(options.env || process.env, options.credentialsPath);
   assertTestDatabaseUrl(url);
   const client = new pg.Client({
     connectionString: url,
     ssl: { rejectUnauthorized: true },
-    application_name: "klir-overture-places-load-test"
+    application_name: "klir-overture-places-load-catalog"
   });
   try {
     await client.connect();
     const identity = await client.query(
-      "select current_database() as db, inet_server_addr()::text as addr, current_setting('request.jwt.claims', true) as claims"
+      "select current_database() as db, inet_server_addr()::text as addr"
     );
     const addr = `${identity.rows[0].addr || ""}`;
     if (addr.includes(PROD_PROJECT)) throw new Error("projet_production_interdit");
+    const present = await client.query("select to_regclass('private.search_catalog_places') is not null as ok");
+    if (!present.rows[0] || present.rows[0].ok !== true) throw new Error("catalogue_absent");
     const backup = await client.query("select document from private.search_pilot_snapshot where singleton is true");
     if (!backup.rowCount) throw new Error("instantane_absent");
     writeFileSync(options.backupPath, JSON.stringify(backup.rows[0].document));
-    await client.query("begin");
-    await client.query(
-      "update private.search_pilot_snapshot set document = $1::jsonb where singleton is true",
-      [raw.toString("utf8")]
-    );
+    const batchSize = options.batchSize || CATALOG_BATCH_SIZE;
+    for (const batch of batchesOf(prepared.rows, batchSize)) {
+      await client.query(
+        `insert into private.search_catalog_places (
+           city_key, id, name, basic_category, category_tokens, locality, country,
+           latitude, longitude, sources, licenses, release
+         )
+         select
+           rec.city_key, rec.id, rec.name, rec.basic_category, rec.category_tokens,
+           rec.locality, rec.country, rec.latitude, rec.longitude, rec.sources,
+           rec.licenses, rec.release
+         from jsonb_to_recordset($1::jsonb) as rec(
+           city_key text, id text, name text, basic_category text, category_tokens text[],
+           locality text, country text, latitude double precision, longitude double precision,
+           sources jsonb, licenses text[], release text
+         )
+         on conflict (city_key, id) do update set
+           name = excluded.name,
+           basic_category = excluded.basic_category,
+           category_tokens = excluded.category_tokens,
+           locality = excluded.locality,
+           country = excluded.country,
+           latitude = excluded.latitude,
+           longitude = excluded.longitude,
+           sources = excluded.sources,
+           licenses = excluded.licenses,
+           release = excluded.release`,
+        [JSON.stringify(batch)]
+      );
+    }
     const verify = await client.query(`
       select
-        length(document::text) as chars,
-        pg_column_size(document) as toasted_bytes,
-        document->>'release' as release,
-        document->>'coverage' as coverage,
-        (
-          select jsonb_agg(jsonb_build_object('key', city->>'key', 'features', jsonb_array_length(city->'features')) order by city->>'key')
-          from jsonb_array_elements(document->'cities') city
-        ) as cities,
-        pg_database_size(current_database()) as database_bytes
-      from private.search_pilot_snapshot
-      where singleton is true
+        city_key as key,
+        count(*)::int as features
+      from private.search_catalog_places
+      group by city_key
+      order by city_key
     `);
-    const row = verify.rows[0];
-    if (row.release !== "2026-10-21.0" || Number(row.chars) < 1_000_000) {
-      await client.query("rollback");
-      throw new Error("verification_refusee");
-    }
-    await client.query("commit");
+    const size = await client.query("select pg_database_size(current_database()) as database_bytes");
     return {
       ok: true,
       sha256,
       bytes: raw.length,
       project: TEST_PROJECT,
-      documentChars: Number(row.chars),
-      toastedBytes: Number(row.toasted_bytes),
-      databaseBytes: Number(row.database_bytes),
-      coverage: row.coverage,
-      cities: row.cities,
+      target: "private.search_catalog_places",
+      rows: prepared.rows.length,
+      cities: verify.rows,
+      databaseBytes: Number(size.rows[0].database_bytes),
       backup: options.backupPath
     };
   } catch (error) {
@@ -123,7 +192,8 @@ export async function loadPilotSnapshot(options) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isCli = import.meta.url === `file://${process.argv[1]}` && !process.env.NODE_TEST_CONTEXT;
+if (isCli) {
   const args = process.argv.slice(2);
   const snapshotPath = arg(args, "--snapshot");
   const backupPath = arg(args, "--backup");

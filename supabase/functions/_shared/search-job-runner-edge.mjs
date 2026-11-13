@@ -1,7 +1,7 @@
 import { createGetUserVerifier } from "./search-job-auth.mjs";
 import { resolveTestAuth, TEST_PROJECT_REF, PROD_PROJECT_REF, TEST_SUPABASE_URL } from "./search-job-edge.mjs";
 import { runWorkerCycle } from "./search-job-worker.mjs";
-import { createOverturePilotProvider } from "./search-job-overture-pilot.mjs";
+import { createCatalogQueryProvider } from "./search-job-overture-pilot.mjs";
 
 export const CONNECT_ROLE = "klir_job_connect_test";
 export const RUNNER_ROLE = "klir_job_runner";
@@ -281,13 +281,8 @@ async function diagnose(request, options) {
       const cycle = await db.begin(async (sql) => {
         await sql.unsafe("set local role klir_job_runner");
         if (targetJobId) await assertTargetedSession(sql);
-        let provider = options.provider;
-        if (!provider) {
-          const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
-          const snapshot = loaded && loaded[0] ? loaded[0].document : null;
-          provider = createOverturePilotProvider(snapshot);
-        }
         const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
+        const provider = options.provider || createCatalogQueryProvider(query);
         return runWorkerCycle(query, provider, { targetJobId });
       });
       const jobs = Array.isArray(cycle && cycle.results) ? cycle.results : [];
@@ -353,13 +348,8 @@ async function scheduled(request, body, options) {
       await assertTargetedSession(sql);
       const flag = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.flag);
       if (!(flag && flag[0] && flag[0].jobs_enabled === true)) return { skipped: "moteur_off" };
-      let provider = options.provider;
-      if (!provider) {
-        const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
-        const snapshot = loaded && loaded[0] ? loaded[0].document : null;
-        provider = createOverturePilotProvider(snapshot);
-      }
       const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
+      const provider = options.provider || createCatalogQueryProvider(query);
       return runWorkerCycle(query, provider, {});
     });
     if (cycle && cycle.skipped) {

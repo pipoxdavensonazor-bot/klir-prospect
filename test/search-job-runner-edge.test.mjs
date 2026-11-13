@@ -430,6 +430,11 @@ test("la migration crée le login sans secret et sans droit de facturation", asy
   assert.match(snapshotSql, /grant execute on function private\.pilot_snapshot\(\) to klir_job_runner/);
   assert.doesNotMatch(snapshotSql, /jobs_enabled\s*=\s*true/);
   assert.doesNotMatch(snapshotSql, /grant execute on function public\.(reserve_usage|settle_usage)/i);
+  const catalogSql = await readFile(new URL("../supabase/migrations/20261113120000_search_catalog_places.sql", import.meta.url), "utf8");
+  assert.match(catalogSql, /grant execute on function private\.search_catalog_lookup\(text, text, integer\) to klir_job_runner/);
+  assert.match(catalogSql, /force row level security/);
+  assert.doesNotMatch(catalogSql, /jobs_enabled\s*=\s*true/);
+  assert.doesNotMatch(catalogSql, /grant execute on function public\.(reserve_usage|settle_usage)/i);
   const placesSql = await readFile(new URL("../supabase/migrations/20261108170000_search_job_places.sql", import.meta.url), "utf8");
   assert.match(placesSql, /grant select on table public\.search_job_places to authenticated/);
   assert.match(placesSql, /grant execute on function private\.record_search_places\(uuid, jsonb\) to klir_job_runner/);
