@@ -109,3 +109,36 @@ test("la commande d'extrait pointe vers le script Python versionné, sans résea
   assert.equal(command.args[0], EXTRACT_SCRIPT);
   assert.ok(command.args.includes("--python-check-only"));
 });
+
+import { assertTestDatabaseUrl, snapshotGuard } from "../tools/overture-places-load-test.mjs";
+import { simulateSnapshot } from "../tools/overture-places-simulate.mjs";
+
+test("le chargeur refuse une URL de production et un pool transactionnel", () => {
+  assert.throws(() => assertTestDatabaseUrl("postgresql://postgres.cbklwmjudobqwbkbxqgy@aws-1-ca-central-1.pooler.supabase.com:5432/postgres"), /projet_production_interdit/);
+  assert.throws(() => assertTestDatabaseUrl("postgresql://postgres.pwakjxjjxswdjsapsbxn@aws-1-ca-central-1.pooler.supabase.com:6543/postgres?sslmode=require"), /pool_transactionnel_refuse/);
+  assert.ok(assertTestDatabaseUrl("postgresql://postgres.pwakjxjjxswdjsapsbxn@aws-1-ca-central-1.pooler.supabase.com:5432/postgres?sslmode=require"));
+});
+
+test("une simulation locale quantité 10 ne dépend pas du réseau", () => {
+  const snapshot = {
+    release: "2026-10-21.0",
+    coverage: "rayon_2200m_six_centres",
+    cities: ["montréal", "laval", "québec", "toronto", "paris", "lyon"].map((key) => ({
+      key,
+      kind: "fixture",
+      release: "2026-10-21.0",
+      bbox: { west: -73.555, south: 45.545, east: -73.545, north: 45.555, radiusM: 2200, name: `${key}-rayon-2200m` },
+      features: [
+        { id: `${key}-rest`, type: "Feature", geometry: { type: "Point", coordinates: [-73.55, 45.55] }, properties: { names: { primary: "Café" }, basic_category: "restaurant", taxonomy: { primary: "restaurant" }, sources: [], addresses: [] } },
+        { id: `${key}-cons`, type: "Feature", geometry: { type: "Point", coordinates: [-73.55, 45.55] }, properties: { names: { primary: "Toiture" }, basic_category: "building_or_construction_service", taxonomy: { primary: "building_or_construction_service" }, sources: [], addresses: [] } },
+        { id: `${key}-shop`, type: "Feature", geometry: { type: "Point", coordinates: [-73.55, 45.55] }, properties: { names: { primary: "Épicerie" }, basic_category: "grocery_store", taxonomy: { primary: "grocery_store" }, sources: [], addresses: [] } }
+      ]
+    }))
+  };
+  snapshotGuard(snapshot, 1000);
+  const report = simulateSnapshot(snapshot, { quantity: 10 });
+  assert.equal(report.totalFeatures, 18);
+  assert.equal(report.cities[0].simulations.restauration.returned, 1);
+  assert.equal(report.cities[0].simulations.construction.returned, 1);
+  assert.equal(report.cities[0].simulations.commerce.returned, 1);
+});

@@ -36,3 +36,11 @@ Le traitement reste dans `search-job-runner` (fournisseur Overture pilote, filtr
 ## Tests
 
 `test/search-job-scheduler.test.mjs` : inactif par défaut, garde moteur, file vide, secret absent ou court, un appel par intervalle, URL de production refusée, URL arbitraire rejetée, droits refusés aux rôles client et runner, chemin Edge planifié (secret, identité Test, cible active, corps strict, moteur éteint, ordre expiration → réclamation, session inattendue).
+
+## Recette Test du 13 nov. 2026 (heure de Toronto)
+
+- Fonction `search-job-runner` v16 (bundle du commit `cda020a`), secret Edge `KLIR_JOB_SCHEDULER_SECRET` et secret Vault posés sans affichage, migration `search_job_scheduler` appliquée, configuration activée.
+- `jobs_enabled=true` à 03:15, recherche Laval 10 créée par `enqueue_search_job` pour `pipoxdavensonazor@gmail.com` (`db23d8f6-…`, réservation 6 crédits, 144 → 138) à 03:15:46.
+- Tick cron de 03:16:00 : `appel` → réponse 200 `{"mode":"planifie","executed":true,"expired":0,"jobs":[{"status":"succeeded","ledger_status":"complete"}]}` ; job `succeeded`/`complete`, 1 fiche, un seul reçu `debit_…` de 6 crédits.
+- `jobs_enabled=false` à 03:17:48 ; ticks de 03:18 et 03:19 : aucun appel HTTP.
+- Comptes A, B et `contact@klirline.ca` : soldes inchangés (194/1, 200/0, 200/0).
