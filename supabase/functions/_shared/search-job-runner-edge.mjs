@@ -56,10 +56,9 @@ function bearer(request) {
 const CLIENT_TARGET_KEYS = Object.freeze(["jobId", "job_id", "jobID", "targetJobId", "target_job_id", "target", "id", "job"]);
 const TEST_JOB_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Hôtes exacts du pooler partagé de la région du projet Test (ca-central-1).
-// Toute autre valeur, même un sous-domaine voisin, refuse le mode ciblé.
+// Hôte exact du pooler partagé du projet Test (ca-central-1), vérifié le 13 nov.
+// par empreinte du secret KLIR_JOB_DB_HOST. Toute autre valeur refuse le mode ciblé.
 export const TEST_DB_POOLER_HOSTS = Object.freeze([
-  "aws-0-ca-central-1.pooler.supabase.com",
   "aws-1-ca-central-1.pooler.supabase.com"
 ]);
 export const TEST_ENV = "preview";

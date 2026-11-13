@@ -11,7 +11,9 @@ const NAMES = [
   "KLIR_JOB_DB_PORT",
   "KLIR_JOB_DB_NAME",
   "KLIR_JOB_DB_USER",
-  "KLIR_JOB_DB_PASSWORD"
+  "KLIR_JOB_DB_PASSWORD",
+  "KLIR_ENV",
+  "KLIR_JOB_TEST_JOB_ID"
 ] as const;
 
 function edgeEnv(): Record<string, string> {

@@ -189,7 +189,7 @@ test("un admin lance un seul cycle local, un autre rôle ne touche pas la base",
 const targetJob = "44444444-4444-4444-8444-444444444444";
 
 function targetedEnv(extra = {}) {
-  return env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: targetJob, ...extra });
+  return env({ KLIR_ENV: "preview", KLIR_JOB_TEST_JOB_ID: targetJob, KLIR_JOB_DB_HOST: "aws-1-ca-central-1.pooler.supabase.com", ...extra });
 }
 
 test("un corps HTTP ne choisit pas le job, et seule une cible serveur de prévisualisation est acceptée", async () => {
@@ -255,6 +255,7 @@ test("identité Test stricte : environnement, URL, hôte, utilisateur, port, bas
     [{ SUPABASE_URL: `https://${TEST_PROJECT_REF}.supabase.co.evil.example` }, "hote_non_test"],
     [{ SUPABASE_URL: `http://${TEST_PROJECT_REF}.supabase.co` }, "hote_non_test"],
     [{ KLIR_JOB_DB_HOST: "aws-0-us-east-1.pooler.supabase.com" }, "hote_test_refuse"],
+    [{ KLIR_JOB_DB_HOST: "aws-0-ca-central-1.pooler.supabase.com" }, "hote_test_refuse"],
     [{ KLIR_JOB_DB_HOST: "evil.aws-0-ca-central-1.pooler.supabase.com" }, "hote_test_refuse"],
     [{ KLIR_JOB_DB_HOST: `db.${TEST_PROJECT_REF}.supabase.co` }, "hote_test_refuse"],
     [{ KLIR_JOB_DB_HOST: "db.cbklwmjudobqwbkbxqgy.supabase.co" }, "production_refusee"],
@@ -290,6 +291,14 @@ test("une cible mal configurée refuse le cycle sans connexion ni repli sur la f
     assert.equal(response.status, 400);
     assert.equal((await response.json()).error, code);
     assert.equal(connected, 0);
+  }
+});
+
+test("la fonction Edge transmet KLIR_ENV et KLIR_JOB_TEST_JOB_ID au mode ciblé", async () => {
+  const entry = await readFile(new URL("../supabase/functions/search-job-runner/index.ts", import.meta.url), "utf8");
+  const names = entry.slice(entry.indexOf("const NAMES"), entry.indexOf("] as const"));
+  for (const name of ["KLIR_ENV", "KLIR_JOB_TEST_JOB_ID", "SUPABASE_URL", "KLIR_JOB_DB_HOST", "KLIR_JOB_DB_USER"]) {
+    assert.match(names, new RegExp(`"${name}"`), name);
   }
 });
 
