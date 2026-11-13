@@ -1,6 +1,6 @@
 # Sauvegarde quotidienne et surveillance — gratuites (plan Supabase Free)
 
-> **Installation des workflows** : > Les workflows sont en place dans `.github/workflows/` (backup.yml, monitor.yml).
+> **Installation des workflows** : en place dans `.github/workflows/` (`backup.yml`, `monitor.yml`).
 
 Objectif : ouvrir sans payer Supabase (pas de PITR). Tout tourne sur GitHub Actions
 (dépôt public : minutes gratuites). **Rien n'est actif tant que les variables
