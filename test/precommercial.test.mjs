@@ -74,12 +74,13 @@ test("une réponse complète, vide, partielle ou en erreur suit le tarif sans ch
     assert.equal(outcome.searches, 0, kind);
   }
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
-  assert.equal(search.includes("5+Math.ceil(_costQ/10)"), true);
-  assert.equal(search.includes('if(account.debit&&!spendCredits(searchCost,"Recherche"))return;'), true);
-  assert.equal(search.includes("KS.S.usage.searches+=account.searches"), true);
-  assert.ok(search.indexOf("Recherche échouée") < search.indexOf("spendCredits(searchCost"));
-  assert.ok(search.indexOf("Recherche partielle, aucun résultat reçu") < search.indexOf("spendCredits(searchCost"));
-  assert.ok(search.indexOf("Recherche terminée, aucun résultat") < search.indexOf("spendCredits(searchCost"));
+  const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
+  assert.equal(search.includes("KlirAuth.searchJob("), true);
+  assert.equal(search.includes("KlirSources.osm.search"), false);
+  assert.equal(search.includes("spendCredits("), false);
+  assert.equal(search.includes("5+Math.ceil(params.quantity/10)"), true);
+  assert.equal(radar.includes("KlirSources.osm.search"), false);
+  assert.equal(radar.includes("spendCredits("), false);
   assert.equal(app.includes("genProspects"), false);
 });
 
@@ -235,20 +236,15 @@ test("le radar compte comme une recherche et une session anonyme n'appelle pas O
   const app = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
   const radar = app.slice(app.indexOf("async function radarRun"), app.indexOf("async function enrichSelected"));
   const search = app.slice(app.indexOf("async function runSearch"), app.indexOf("function toCrm"));
-  assert.equal(radar.includes("KS.S.usage.searches+=account.searches"), true);
-  assert.equal(radar.includes('if(account.debit&&!spendCredits(5,"Scan Radar"))return;'), true);
-  assert.ok(radar.indexOf("osmSearchAllowed") < radar.indexOf("KlirSources.osm.search"));
-  assert.ok(search.indexOf("osmSearchAllowed") < search.indexOf("reserveServerUsage"));
-  assert.ok(search.indexOf("reserveServerUsage") < search.indexOf("KlirSources.osm.search"));
-  assert.ok(search.indexOf("if(!reserved.ok)return") < search.indexOf("KlirSources.osm.search"));
-  assert.ok(radar.indexOf("reserveServerUsage") < radar.indexOf("KlirSources.osm.search"));
-  assert.ok(radar.indexOf("if(!radarReserved.ok)return") < radar.indexOf("KlirSources.osm.search"));
+  assert.equal(search.includes("KlirAuth.searchJob("), true);
+  assert.equal(search.includes("KlirSources.osm.search"), false);
+  assert.equal(search.includes("spendCredits("), false);
+  assert.equal(search.includes("5+Math.ceil(params.quantity/10)"), true);
+  assert.equal(radar.includes("KlirSources.osm.search"), false);
+  assert.equal(radar.includes("spendCredits("), false);
   assert.equal(app.includes("credBuy"), false);
   assert.equal(app.includes("data-plan"), false);
   assert.equal(app.includes("Recharger +100"), false);
-  assert.ok(radar.indexOf("Recherche échouée") < radar.indexOf('spendCredits(5,"Scan Radar")'));
-  assert.ok(radar.indexOf("Recherche partielle, aucun résultat reçu") < radar.indexOf('spendCredits(5,"Scan Radar")'));
-  assert.ok(radar.indexOf("Recherche terminée, aucun résultat") < radar.indexOf('spendCredits(5,"Scan Radar")'));
   assert.equal(app.includes("pilotEmails"), false);
   assert.equal(app.includes("KLIR_PILOT_EMAILS"), false);
   assert.equal(app.includes("pilotSearchAllowed"), false);
