@@ -11,7 +11,7 @@ test('catalogue privé, recherche bornée et règlement serveur idempotent', asy
       create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       create role anon; create role authenticated; create role service_role;
       grant usage on schema public,auth to authenticated,anon;`);
-    for(const f of (await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('.sql')).sort())
+    for(const f of (await readdir(new URL('../supabase/migrations/',import.meta.url))).filter(f=>f.endsWith('.sql')&&f!=='20261113160000_revoke_direct_debit_rpcs.sql').sort()) // ancien parcours Overture testé avant sa fermeture
       await db.exec(await readFile(new URL('../supabase/migrations/'+f,import.meta.url),'utf8'));
     await db.query('insert into auth.users values($1,$3),($2,$3)',[uid,other,{}]);
     await db.exec("update private.overture_settings set enabled=true,complete=true,imported_at=now()");
