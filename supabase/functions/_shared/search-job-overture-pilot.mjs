@@ -1,4 +1,5 @@
 import { importPlaces } from "../../../tools/overture-places-import.mjs";
+import { matchIndustry } from "../../../tools/overture-places-bounds.mjs";
 
 const CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon"]);
 
@@ -11,6 +12,7 @@ function coded(code, retryable = false) {
 
 export function createOverturePilotProvider(snapshot) {
   if (!snapshot || !Array.isArray(snapshot.cities)) throw coded("instantane_invalide");
+  const coverage = typeof snapshot.coverage === "string" && snapshot.coverage ? snapshot.coverage : "sonde_centre";
   const byCity = new Map();
   for (const city of snapshot.cities) {
     if (!CITY_KEYS.has(city.key)) continue;
@@ -18,7 +20,8 @@ export function createOverturePilotProvider(snapshot) {
       kind: city.kind,
       release: city.release || snapshot.release,
       bbox: city.bbox,
-      features: city.features
+      features: city.features,
+      bytes: city.bytes
     });
     byCity.set(city.key, imported);
   }
@@ -26,7 +29,7 @@ export function createOverturePilotProvider(snapshot) {
     source: "overture-places-pilot",
     operational: false,
     network: false,
-    coverage: "sonde_centre",
+    coverage,
     async run(payload) {
       if (!payload || payload.place_status !== "supported" || !CITY_KEYS.has(payload.cityKey)) {
         throw coded("place_rejected");
@@ -35,7 +38,8 @@ export function createOverturePilotProvider(snapshot) {
       if (!imported) throw coded("place_rejected");
       const quantity = Number(payload.quantity);
       const limit = Number.isInteger(quantity) ? Math.min(40, Math.max(0, quantity)) : 10;
-      const records = imported.kept.slice(0, limit).map((row) => ({
+      const selected = imported.kept.filter((row) => matchIndustry(row, payload.industry)).slice(0, limit);
+      const records = selected.map((row) => ({
         gersId: row.gersId,
         name: row.name,
         basicCategory: row.basicCategory,
@@ -47,7 +51,7 @@ export function createOverturePilotProvider(snapshot) {
         count: records.length,
         source: "overture-places-pilot",
         release: imported.release,
-        coverage: "sonde_centre",
+        coverage,
         contactsVerified: false,
         records
       };

@@ -63,6 +63,9 @@ export const TEST_DB_POOLER_HOSTS = Object.freeze([
   "aws-1-ca-central-1.pooler.supabase.com"
 ]);
 export const TEST_ENV = "preview";
+export const SCHEDULER_HEADER = "x-klir-scheduler";
+export const SCHEDULER_ACTION = "scheduled";
+const SCHEDULER_SECRET_MIN = 32;
 
 export function clientSuppliedTarget(body) {
   if (!body || typeof body !== "object") return false;
@@ -82,7 +85,14 @@ export function bodyHasExtraKeys(body) {
 export function authorizedTestJobId(env = {}) {
   const raw = String(env.KLIR_JOB_TEST_JOB_ID || "").trim();
   if (!raw) return "";
-  const values = [env.SUPABASE_URL, env.KLIR_JOB_DB_HOST, env.KLIR_JOB_DB_USER, env.KLIR_JOB_DB_NAME, raw]
+  assertStrictTestIdentity(env, raw);
+  if (!TEST_JOB_UUID.test(raw)) throw reject("cible_invalide");
+  return raw.toLowerCase();
+}
+
+// Identité Test vérifiée à l'identique : environnement, URL, hôte, utilisateur, port, base.
+export function assertStrictTestIdentity(env = {}, extra = "") {
+  const values = [env.SUPABASE_URL, env.KLIR_JOB_DB_HOST, env.KLIR_JOB_DB_USER, env.KLIR_JOB_DB_NAME, extra]
     .map((value) => String(value || "").toLowerCase());
   if (values.some((value) => value.includes(PROD_PROJECT_REF))) throw reject("production_refusee");
   if (String(env.KLIR_ENV || "") !== TEST_ENV) throw reject("environnement_refuse");
@@ -94,8 +104,28 @@ export function authorizedTestJobId(env = {}) {
   if (user !== `${CONNECT_ROLE}.${TEST_PROJECT_REF}`) throw reject("utilisateur_test_refuse");
   if (String(env.KLIR_JOB_DB_PORT || "").trim() !== "6543") throw reject("port_non_transaction");
   if (String(env.KLIR_JOB_DB_NAME || "").trim() !== "postgres") throw reject("base_refusee");
-  if (!TEST_JOB_UUID.test(raw)) throw reject("cible_invalide");
-  return raw.toLowerCase();
+}
+
+function sameSecret(left, right) {
+  const a = String(left || "");
+  const b = String(right || "");
+  let diff = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    diff |= (a.charCodeAt(index) || 0) ^ (b.charCodeAt(index) || 0);
+  }
+  return diff === 0;
+}
+
+// Planificateur Test : seul pg_cron (via pg_net) connaît le secret serveur dédié.
+// Aucun navigateur, aucun compte, aucune cible. Refus sans repli hors Test.
+export function authorizeScheduler(request, env = {}) {
+  const secret = String(env.KLIR_JOB_SCHEDULER_SECRET || "");
+  if (secret.length < SCHEDULER_SECRET_MIN) throw reject("planificateur_inactif");
+  assertStrictTestIdentity(env);
+  const presented = request.headers.get(SCHEDULER_HEADER) || "";
+  if (!presented || !sameSecret(presented, secret)) throw reject("planificateur_refuse");
+  if (String(env.KLIR_JOB_TEST_JOB_ID || "").trim()) throw reject("cible_active");
 }
 
 // Vérifie dans la session elle-même que la connexion est bien celle du runner Test.
@@ -210,6 +240,10 @@ async function diagnose(request, options) {
   } catch {
     return json(400, { error: "invalid_request" });
   }
+  if (body && typeof body === "object" && body.action === SCHEDULER_ACTION) {
+    return scheduled(request, body, options);
+  }
+  if (request.headers.get(SCHEDULER_HEADER)) return json(400, { error: "planificateur_refuse" });
   let auth;
   try {
     auth = resolveTestAuth(options.env || {});
@@ -285,6 +319,58 @@ async function diagnose(request, options) {
       provider: "absent",
       executed: false,
       scheduler: "off"
+    });
+  } catch (error) {
+    const code = error && /^[a-z0-9_]+$/.test(String(error.code || "")) ? error.code : "connexion_serveur_absente";
+    return json(503, { error: code });
+  } finally {
+    if (db) {
+      try { await db.close(); } catch { /* fermeture */ }
+    }
+  }
+}
+
+async function scheduled(request, body, options) {
+  const env = options.env || {};
+  try {
+    authorizeScheduler(request, env);
+  } catch (error) {
+    const code = error && error.code ? error.code : "planificateur_refuse";
+    return json(code === "planificateur_inactif" ? 503 : code === "cible_active" ? 409 : 401, { error: code });
+  }
+  if (bodyHasExtraKeys(body)) return json(400, { error: "cible_refusee" });
+  try {
+    assertRunnerDbConfig(env);
+  } catch (error) {
+    return json(503, { error: error.code || "configuration_absente" });
+  }
+  if (typeof options.connect !== "function") return json(503, { error: "connexion_non_branchee" });
+  let db;
+  try {
+    db = await options.connect(env);
+    const cycle = await db.begin(async (sql) => {
+      await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.assume);
+      await assertTargetedSession(sql);
+      const flag = await sql.unsafe(RUNNER_DIAGNOSTIC_SQL.flag);
+      if (!(flag && flag[0] && flag[0].jobs_enabled === true)) return { skipped: "moteur_off" };
+      let provider = options.provider;
+      if (!provider) {
+        const loaded = await sql.unsafe("select private.pilot_snapshot() as document");
+        const snapshot = loaded && loaded[0] ? loaded[0].document : null;
+        provider = createOverturePilotProvider(snapshot);
+      }
+      const query = async (text, params) => ({ rows: await sql.unsafe(text, params || []) });
+      return runWorkerCycle(query, provider, {});
+    });
+    if (cycle && cycle.skipped) {
+      return json(200, { mode: "planifie", executed: false, skipped: cycle.skipped });
+    }
+    const jobs = Array.isArray(cycle && cycle.results) ? cycle.results : [];
+    return json(200, {
+      mode: "planifie",
+      executed: true,
+      expired: cycle && cycle.expired ? cycle.expired : 0,
+      jobs: jobs.map((row) => ({ id: row.id, status: row.status, ledger_status: row.ledger_status || null }))
     });
   } catch (error) {
     const code = error && /^[a-z0-9_]+$/.test(String(error.code || "")) ? error.code : "connexion_serveur_absente";

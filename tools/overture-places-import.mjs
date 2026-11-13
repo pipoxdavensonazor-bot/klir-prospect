@@ -14,9 +14,9 @@ function fold(value) {
 
 export const RELEASE_PIN = "2026-10-21.0";
 export const CATEGORIES_REMOVED_AT = "2026-09-23.0";
-export const MAX_FEATURES = 40;
-export const MAX_BYTES = 1_048_576;
-export const MAX_BBOX_DEGREES = 0.02;
+export const MAX_FEATURES = 15_000;
+export const MAX_BYTES = 20_000_000;
+export const MAX_BBOX_DEGREES = 0.08;
 export const PILOT_PROBE_BBOX = Object.freeze({
   name: "montréal-centre-sonde",
   west: -73.5695,
@@ -170,6 +170,7 @@ function normalize(feature, release, bbox) {
       nameFold: fold(name),
       basicCategory: category.basicCategory,
       taxonomyPrimary: category.primary,
+      categoryTokens: [...new Set([category.basicCategory, category.primary, ...category.hierarchy, ...category.alternates].filter(Boolean))],
       categoryObserved: category.observed,
       unexpectedLegacy: category.unexpectedLegacy,
       latitude,

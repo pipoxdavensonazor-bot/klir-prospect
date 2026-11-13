@@ -13,7 +13,8 @@ const NAMES = [
   "KLIR_JOB_DB_USER",
   "KLIR_JOB_DB_PASSWORD",
   "KLIR_ENV",
-  "KLIR_JOB_TEST_JOB_ID"
+  "KLIR_JOB_TEST_JOB_ID",
+  "KLIR_JOB_SCHEDULER_SECRET"
 ] as const;
 
 function edgeEnv(): Record<string, string> {
