@@ -5,6 +5,26 @@
 (function () {
   "use strict";
 
+  // Application Android (TWA Google Play) : aucun achat ni lien de paiement
+  // dans l'app (règles Google Play) ; les paiements se font sur le site.
+  // Détection : référent android-app:// de notre package ou ?source=twa
+  // (URL de démarrage de l'app). Mémorisé dans sessionStorage seulement :
+  // Chrome partage le localStorage avec l'app, le site resterait sinon masqué.
+  var ANDROID_APP_KEY = "klir_android_app";
+  var ANDROID_APP_REFERRER = "android-app://ca.klirline.klirprospect";
+  var ANDROID_APP_NOTE = "La gestion de l’abonnement se fait sur le site klirprospect.klirline.ca.";
+  function detectAndroidApp() {
+    try {
+      var ref = String(document.referrer || "");
+      var fromParam = /(?:^|[?&])source=twa(?:&|$)/.test(String(location.search || ""));
+      if (ref.indexOf(ANDROID_APP_REFERRER) === 0 || fromParam) sessionStorage.setItem(ANDROID_APP_KEY, "1");
+      return sessionStorage.getItem(ANDROID_APP_KEY) === "1";
+    } catch (e) { return false; }
+  }
+  var androidApp = detectAndroidApp();
+  function inAndroidApp() { return androidApp; }
+  function androidNote() { return '<div class="card" role="note" id="kpAndroidNote"><p>' + h(ANDROID_APP_NOTE) + "</p></div>"; }
+
   function h(value) {
     return String(value == null ? "" : value)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -62,6 +82,7 @@
   }
 
   function checkoutUrl(offerKey) {
+    if (inAndroidApp()) return "";
     var st = state.status;
     var user = signedUser();
     if (!st || !st.checkout_enabled || !user || !Array.isArray(st.offers)) return "";
@@ -74,6 +95,7 @@
   }
 
   function portalUrl() {
+    if (inAndroidApp()) return "";
     var st = state.status;
     var user = signedUser();
     if (!st || !st.portal_url || !/^https:\/\/billing\.stripe\.com\/p\/login\/[A-Za-z0-9_]+$/.test(st.portal_url)) return "";
@@ -107,7 +129,9 @@
     if (!p || !p.crm || p.crm.max == null) return Infinity;
     return Math.max(0, Number(p.crm.max) - Number(current || 0));
   }
-  var CRM_LIMIT_MSG = "Le forfait Gratuit inclut 100 fiches CRM. Vos fiches existantes sont conservées ; passez à Starter pour en ajouter.";
+  var CRM_LIMIT_MSG = inAndroidApp()
+    ? "Le forfait Gratuit inclut 100 fiches CRM. Vos fiches existantes sont conservées."
+    : "Le forfait Gratuit inclut 100 fiches CRM. Vos fiches existantes sont conservées ; passez à Starter pour en ajouter.";
 
   function limitsBlock() {
     var p = state.plan;
@@ -127,6 +151,7 @@
   }
 
   function testBanner() {
+    if (inAndroidApp()) return "";
     var st = state.status;
     if (st && st.checkout_enabled && st.mode === "test") {
       return '<div class="card demoB" role="note"><b>Mode test Stripe.</b> Aucun vrai paiement : utilisez la carte de test 4242 4242 4242 4242.</div>';
@@ -135,6 +160,11 @@
   }
 
   function tierButton(t) {
+    if (inAndroidApp()) {
+      if (t.key !== "gratuit") return "";
+      var u = signedUser();
+      return u ? '<span class="pill">Inclus avec votre compte</span>' : '<a class="cta" href="#/register">Créer un compte gratuit</a>';
+    }
     var user = signedUser();
     if (t.key === "gratuit") {
       return user ? '<span class="pill">Inclus avec votre compte</span>' : '<a class="cta" href="#/register">Créer un compte gratuit</a>';
@@ -164,6 +194,7 @@
   }
 
   function packsBlock(inApp) {
+    if (inAndroidApp()) return "";
     var st = state.status;
     var paid = st && st.tier && st.tier !== "gratuit";
     var rows = PACKS.map(function (p) {
@@ -199,7 +230,7 @@
       '<button type="button" class="' + (state.interval === "month" ? "cta" : "ghost") + '" data-kp-interval="month" aria-pressed="' + (state.interval === "month") + '">Mensuel</button>' +
       '<button type="button" class="' + (state.interval === "year" ? "cta" : "ghost") + '" data-kp-interval="year" aria-pressed="' + (state.interval === "year") + '">Annuel (environ 20 % de rabais)</button></div>';
     return '<h1>Tarifs</h1><p>Des commerces locaux à prospecter, un CRM intégré, en français et en dollars canadiens. Sans engagement.</p>' +
-      testBanner() + toggle + '<div class="kp-tiers">' + TIERS.map(tierCard).join("") + "</div>" + packsBlock(false) + creditRules();
+      (inAndroidApp() ? androidNote() : "") + testBanner() + toggle + '<div class="kp-tiers">' + TIERS.map(tierCard).join("") + "</div>" + packsBlock(false) + creditRules();
   }
 
   function bindPricing(root, rerender) {
@@ -238,12 +269,12 @@
     }
     if (st.status === "past_due") lines.push('<div class="row" role="alert"><span>Paiement en retard : mettez à jour votre carte.</span></div>');
     var portal = portalUrl();
-    var actions = st.tier !== "gratuit"
+    var actions = inAndroidApp() ? "<p>" + h(ANDROID_APP_NOTE) + "</p>" : st.tier !== "gratuit"
       ? (portal ? '<a class="cta" href="' + h(portal) + '" rel="noopener">Gérer mon abonnement</a>' : '<button type="button" class="ghost" disabled>Gestion bientôt disponible</button>') + ' <a class="ghost" href="#/tarifs">Voir les forfaits</a>'
       : '<a class="cta" href="#/tarifs">Choisir un forfait</a>';
     var success = /paiement=reussi/.test(location.search) ? '<div class="card demoB" role="status">Paiement reçu par Stripe. Les crédits apparaissent dès la confirmation, en général en quelques secondes. Rechargez la page au besoin.</div>' : "";
     return "<h1>Mon abonnement</h1>" + success + testBanner() + '<section class="card">' + lines.join("") + '<div class="rowb" style="margin-top:12px">' + actions + "</div>" +
-      '<p><small>« Gérer mon abonnement » ouvre l\'espace client Stripe : factures, carte, changement de forfait et annulation (effective à la fin de la période payée). Connexion par un code envoyé à votre courriel.</small></p></section>' +
+      (inAndroidApp() ? "" : '<p><small>« Gérer mon abonnement » ouvre l\'espace client Stripe : factures, carte, changement de forfait et annulation (effective à la fin de la période payée). Connexion par un code envoyé à votre courriel.</small></p>') + "</section>" +
       limitsBlock() + (st.tier !== "gratuit" ? packsBlock(true) : "");
   }
 
@@ -272,7 +303,7 @@
   }
 
   window.KlirBilling = {
-    TIERS: TIERS, PACKS: PACKS, state: state, refresh: refresh, checkoutUrl: checkoutUrl, portalUrl: portalUrl,
+    TIERS: TIERS, PACKS: PACKS, state: state, inAndroidApp: inAndroidApp, ANDROID_APP_NOTE: ANDROID_APP_NOTE, refresh: refresh, checkoutUrl: checkoutUrl, portalUrl: portalUrl,
     viewTarifs: viewTarifs, refreshPlan: refreshPlan, crmRoom: crmRoom, CRM_LIMIT_MSG: CRM_LIMIT_MSG, limitsBlock: limitsBlock, viewAbonnement: viewAbonnement, viewConditions: viewConditions, TERMS_SUMMARY: TERMS_SUMMARY,
     accountShell: function () { return '<div id="kpAbonnement">' + accountBody() + "</div>"; },
     pricingBody: pricingBody, accountBody: accountBody
