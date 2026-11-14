@@ -218,6 +218,7 @@ async function writeWorkspace(payload) {
     const result=await supabase.rpc("workspace_save",{p_expected_revision:expected,p_payload:clean});
     if(result.error){
       if(["PT409","40001"].includes(result.error.code))result.error={...result.error,code:"WORKSPACE_CONFLICT",message:"Conflit : une autre session a enregistré cet espace. Votre copie locale est conservée. Téléchargez-la et comparez les notes/actions avant toute reprise ; aucun écrasement automatique."};
+      else if(result.error.message?.includes("crm_limit"))result.error={...result.error,code:"CRM_LIMIT",message:"Le forfait Gratuit inclut 100 fiches CRM : les nouvelles fiches n'ont pas été enregistrées. Vos fiches existantes sont conservées ; passez à Starter pour en ajouter."};
       else if(result.error.message?.includes("payload_too_large"))result.error={...result.error,code:"WORKSPACE_TOO_LARGE",message:"Limite serveur de 2 Mo atteinte. Copie locale conservée : téléchargez-la avant de fermer cet onglet. Aucune donnée du compte remplacée."};
       return result;
     }
@@ -322,6 +323,31 @@ async function billingStatus() {
     return { ok: true, status: result.data || null };
   } catch (error) {
     return { ok: false, message: "Lecture de l'abonnement impossible pour le moment." };
+  }
+}
+
+async function planStatus() {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, message: "Session requise." };
+    const result = await supabase.rpc("plan_status");
+    if (result.error) return { ok: false, message: "Lecture des limites impossible pour le moment." };
+    return { ok: true, plan: result.data || null };
+  } catch (error) {
+    return { ok: false, message: "Lecture des limites impossible pour le moment." };
+  }
+}
+
+// Réserve des messages IA sur le compteur mensuel du serveur.
+async function aiQuota(count) {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, granted: 0 };
+    const result = await supabase.rpc("ai_quota_consume", { p_count: Math.max(1, Math.min(50, Number(count) || 1)) });
+    if (result.error) return { ok: false, granted: 0 };
+    return { ok: true, granted: Number(result.data && result.data.granted) || 0, used: result.data && result.data.used, max: result.data && result.data.max };
+  } catch (error) {
+    return { ok: false, granted: 0 };
   }
 }
 
@@ -525,6 +551,8 @@ window.KlirAuth = {
   deleteAccount,
   readCreditAccount,
   billingStatus,
+  planStatus,
+  aiQuota,
   overturePreview,
   startStripeTestCheckout,
   confirmStripeTestCheckout,

@@ -47,7 +47,7 @@
   ];
   var TIER_NAMES = { gratuit: "Gratuit", starter: "Starter", pro: "Pro", equipe: "Équipe" };
 
-  var state = { interval: "month", status: null, loading: false, error: "" };
+  var state = { interval: "month", status: null, plan: null, loading: false, error: "" };
 
   function money(n) {
     return n === 0 ? "0 $" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " $";
@@ -88,7 +88,42 @@
     state.loading = false;
     if (result && result.ok) { state.status = result.status; state.error = ""; }
     else { state.error = (result && result.message) || "Lecture de l'abonnement impossible."; }
+    await refreshPlan();
     return state.status;
+  }
+
+  // Limites du forfait lues sur le serveur (plan_status) ; le serveur les applique.
+  async function refreshPlan() {
+    var a = auth();
+    if (!a || typeof a.planStatus !== "function" || !signedUser()) { state.plan = null; return null; }
+    var result = await a.planStatus();
+    state.plan = result && result.ok ? result.plan : null;
+    return state.plan;
+  }
+
+  // Nombre de fiches CRM encore ajoutables (Infinity si illimité ou inconnu).
+  function crmRoom(current) {
+    var p = state.plan;
+    if (!p || !p.crm || p.crm.max == null) return Infinity;
+    return Math.max(0, Number(p.crm.max) - Number(current || 0));
+  }
+  var CRM_LIMIT_MSG = "Le forfait Gratuit inclut 100 fiches CRM. Vos fiches existantes sont conservées ; passez à Starter pour en ajouter.";
+
+  function limitsBlock() {
+    var p = state.plan;
+    if (!p) return "";
+    var row = function (label, used, max, unit) {
+      var value = max == null ? used + " " + unit + " (illimité)" : max === 0 ? "Non inclus" : used + " / " + max + " " + unit;
+      return '<div class="row"><span>' + h(label) + "</span><b>" + h(value) + "</b></div>";
+    };
+    var lots = (p.pack_lots || []).map(function (l) {
+      return '<div class="row"><span>Pack : ' + h(l.remaining) + " crédits restants sur " + h(l.credits) + "</span><b>Expire le " + h(dateFr(l.expires_at)) + "</b></div>";
+    }).join("");
+    return '<section class="card"><h2>Limites du forfait</h2>' +
+      row("Utilisateurs", p.seats.used, p.seats.max, "") +
+      row("Fiches CRM", p.crm.used, p.crm.max, "fiches") +
+      row("Messages IA ce mois-ci", p.ai.used, p.ai.max, "messages") + lots +
+      "<p><small>Au-delà d'une limite, rien n'est supprimé : seules les nouvelles additions sont bloquées. Les crédits de packs expirent 12 mois après l'achat et sont utilisés en premier.</small></p></section>";
   }
 
   function testBanner() {
@@ -209,7 +244,7 @@
     var success = /paiement=reussi/.test(location.search) ? '<div class="card demoB" role="status">Paiement reçu par Stripe. Les crédits apparaissent dès la confirmation, en général en quelques secondes. Rechargez la page au besoin.</div>' : "";
     return "<h1>Mon abonnement</h1>" + success + testBanner() + '<section class="card">' + lines.join("") + '<div class="rowb" style="margin-top:12px">' + actions + "</div>" +
       '<p><small>« Gérer mon abonnement » ouvre l\'espace client Stripe : factures, carte, changement de forfait et annulation (effective à la fin de la période payée). Connexion par un code envoyé à votre courriel.</small></p></section>' +
-      (st.tier !== "gratuit" ? packsBlock(true) : "");
+      limitsBlock() + (st.tier !== "gratuit" ? packsBlock(true) : "");
   }
 
   function viewAbonnement(container) {
@@ -238,7 +273,7 @@
 
   window.KlirBilling = {
     TIERS: TIERS, PACKS: PACKS, state: state, refresh: refresh, checkoutUrl: checkoutUrl, portalUrl: portalUrl,
-    viewTarifs: viewTarifs, viewAbonnement: viewAbonnement, viewConditions: viewConditions, TERMS_SUMMARY: TERMS_SUMMARY,
+    viewTarifs: viewTarifs, refreshPlan: refreshPlan, crmRoom: crmRoom, CRM_LIMIT_MSG: CRM_LIMIT_MSG, limitsBlock: limitsBlock, viewAbonnement: viewAbonnement, viewConditions: viewConditions, TERMS_SUMMARY: TERMS_SUMMARY,
     accountShell: function () { return '<div id="kpAbonnement">' + accountBody() + "</div>"; },
     pricingBody: pricingBody, accountBody: accountBody
   };

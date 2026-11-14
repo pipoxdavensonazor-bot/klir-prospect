@@ -246,6 +246,11 @@ function uid(prefix){
 async function aiText(prompt, fallback){
   try {
     if (window.root && typeof window.root.generateText === "function") {
+      // Messages IA réels : comptés sur le serveur selon le forfait (0 en Gratuit, 50/mois ensuite).
+      if (trustedLive && window.KlirAuth && typeof window.KlirAuth.aiQuota === "function") {
+        var quota = await window.KlirAuth.aiQuota(1);
+        if (!quota.granted) return fallback;
+      }
       var result = await Promise.race([window.root.generateText(String(prompt)), new Promise(function (_, reject){ setTimeout(function (){ reject(new Error("ai-timeout")); }, 25000); })]);
       return typeof result === "string" ? result : String(result && result.text || result);
     }
