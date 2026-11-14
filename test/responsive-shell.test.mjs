@@ -50,7 +50,7 @@ test("les icônes ont les tailles annoncées", async () => {
 });
 
 test("Connexion, Inscription et Démo ouvrent trois écrans distincts", () => {
-  assert.match(app, /class="land-actions"><a href="#\/login">Connexion<\/a><a href="#\/register">Inscription<\/a><a class="cta" href="#\/demo">Démo<\/a>/);
+  assert.match(app, /class="land-actions"><a href="#\/login">Connexion<\/a><a href="#\/register">Inscription<\/a><a class="cta" href="#\/demo">Démo<\/a><a href="#\/tarifs">Tarifs<\/a>/);
   assert.match(app, /aria-label="Navigation principale"/);
   assert.match(app, /aria-controls="sideNav" aria-expanded="false"/);
   assert.match(app, /\$\{register\?"Inscription":"Connexion"\}/);

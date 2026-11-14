@@ -229,7 +229,8 @@ function assertNav(view, probe) {
   assert.deepEqual(probe.links.map((link) => [link.text, link.href]), [
     ["Connexion", "#/login"],
     ["Inscription", "#/register"],
-    ["Démo", "#/demo"]
+    ["Démo", "#/demo"],
+    ["Tarifs", "#/tarifs"]
   ]);
   for (const link of probe.links) {
     assert.ok(link.w >= 44 && link.h >= 44, `${view.name} ${link.text}: cible ${link.w}x${link.h}`);

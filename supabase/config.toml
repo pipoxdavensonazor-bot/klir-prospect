@@ -427,6 +427,11 @@ verify_jwt = true
 [functions.email-finder]
 verify_jwt = true
 
+# Webhook Stripe. Pas de JWT (Stripe n'en envoie pas) : la signature Stripe est
+# vérifiée en base (secret dans Vault) ; la fonction ne détient aucun secret.
+[functions.stripe-webhook]
+verify_jwt = false
+
 # pg-delta is the schema diff engine for db diff / db pull / db remote commit.
 # Set enabled = false to fall back to the legacy migra engine.
 [experimental.pgdelta]

@@ -313,6 +313,18 @@ async function readCreditAccount() {
   }
 }
 
+async function billingStatus() {
+  try {
+    const supabase = await requireClient();
+    if (!currentUser) return { ok: false, message: "Session requise." };
+    const result = await supabase.rpc("billing_status");
+    if (result.error) return { ok: false, message: "Lecture de l'abonnement impossible pour le moment." };
+    return { ok: true, status: result.data || null };
+  } catch (error) {
+    return { ok: false, message: "Lecture de l'abonnement impossible pour le moment." };
+  }
+}
+
 function overturePreview() {
   return config.environment === "preview" && config.supabaseUrl === "https://pwakjxjjxswdjsapsbxn.supabase.co";
 }
@@ -512,6 +524,7 @@ window.KlirAuth = {
   resyncWorkspace,
   deleteAccount,
   readCreditAccount,
+  billingStatus,
   overturePreview,
   startStripeTestCheckout,
   confirmStripeTestCheckout,

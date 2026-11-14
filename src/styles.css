@@ -300,3 +300,15 @@ button:disabled,select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
 .wsig { display: inline-block; margin: 2px 4px 2px 0; padding: 0.1rem 0.45rem; border-radius: 999px; font-size: 0.75rem; background: #3a2a10; color: #fcd34d; }
 .wsig-no_website, .wsig-social_only { background: #3f1420; color: #fda4af; }
 .wsig-ok { background: #0e3b2e; color: #6ee7b7; }
+
+/* Tarifs et abonnement (billing.js) */
+.kp-wrap { max-width: 1180px; margin: 24px auto; padding: 0 12px; }
+.kp-tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.kp-tier { display: flex; flex-direction: column; position: relative; }
+.kp-tier ul { padding-left: 1.1rem; margin: 0.4rem 0 1rem; }
+.kp-tier .kp-act { margin-top: auto; }
+.kp-popular { border-color: #9333ea; box-shadow: 0 0 0 1px #9333ea inset; }
+.kp-price { font-size: 1.6rem; font-weight: 700; margin: 0.2rem 0; }
+.kp-badge { position: absolute; top: 10px; right: 10px; background: #4f46e5; }
+.kp-soon { background: #3b2f12; color: #fcd34d; font-size: 0.75rem; }
+.kp-toggle { margin: 0.5rem 0 1rem; }
