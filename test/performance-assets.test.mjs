@@ -31,13 +31,14 @@ const SCRIPT_ORDER = [
   "overture.js",
   "webai.js",
   "projects.js",
+  "billing.js",
   "auth.js",
   "app.js"
 ];
 
-test("les 13 scripts restent dans l’ordre et ne bloquent plus l’analyse", () => {
+test("les 14 scripts restent dans l’ordre et ne bloquent plus l’analyse", () => {
   const tags = [...html.matchAll(/<script\b([^>]*)><\/script>/g)].map((match) => match[1]);
-  assert.equal(tags.length, 13);
+  assert.equal(tags.length, 14);
   const sources = tags.map((attributes) => {
     assert.match(attributes, /(^|\s)defer(\s|$)/);
     assert.equal(attributes.includes("async"), false);
