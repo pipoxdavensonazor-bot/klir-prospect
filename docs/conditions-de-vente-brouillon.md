@@ -8,9 +8,10 @@ Dernière mise à jour : [date de publication]
 
 ## 1. Qui vend
 
-KlirProspect est un service en ligne exploité par [raison sociale exacte : « Klirline inc. »
-ou nom de l'entreprise individuelle], [numéro d'entreprise du Québec (NEQ)], [adresse
-d'affaires à publier], courriel : [adresse de soutien], téléphone : [facultatif].
+KlirProspect est un service en ligne exploité par **Klirline Inc.**, société par actions
+(entreprise incorporée), numéro d'entreprise (NE) : **777880576RC0001**.
+Adresse d'affaires : **[À COMPLÉTER — adresse postale d'affaires manquante]**.
+Courriel : [adresse de soutien], téléphone : [facultatif].
 
 ## 2. Objet
 
@@ -20,8 +21,15 @@ la politique de confidentialité du service.
 
 ## 3. Forfaits et prix
 
-Prix en dollars canadiens, **taxes en sus** (TPS et TVQ, ou TVH selon la province, lorsque
-applicables).
+Prix en dollars canadiens. **Aucune taxe n'est facturée** : Klirline Inc. est un petit
+fournisseur au sens de la *Loi sur la taxe d'accise* et de la *Loi sur la taxe de vente du
+Québec* et n'est pas inscrite aux fichiers de la TPS/TVH et de la TVQ. Le prix affiché est le
+prix total payé.
+
+Si l'inscription devient obligatoire (par exemple si les ventes dépassent le seuil du petit
+fournisseur), les taxes applicables (TPS et TVQ, ou TVH selon la province) pourront être
+ajoutées aux prix. Ce changement sera annoncé par courriel au moins [30] jours avant de
+s'appliquer à un renouvellement ; vous pourrez annuler avant qu'il prenne effet.
 
 | Forfait | Mensuel | Annuel | Crédits |
 |---|---|---|---|
@@ -83,7 +91,7 @@ forfait Gratuit. Les crédits restants demeurent au compte.
 ## 9. Renseignements fournis avant l'achat (LPC, art. 54.4)
 
 La page Tarifs et la page de paiement Stripe indiquent : identité et coordonnées du
-commerçant, description du forfait, prix détaillé, taxes, devise, modalités de paiement,
+commerçant (Klirline Inc., NE 777880576RC0001), description du forfait, prix détaillé, mention « aucune taxe facturée (petit fournisseur) », devise, modalités de paiement,
 de renouvellement et d'annulation, et ces conditions. [À vérifier avant la mise en ligne.]
 
 ## 10. Responsabilité et service
@@ -100,4 +108,4 @@ conditions ne limite les droits que la loi accorde aux consommateurs.
 
 ## 12. Contact
 
-[adresse de soutien] — [adresse postale d'affaires].
+Klirline Inc. (NE 777880576RC0001) — [adresse de soutien] — **[À COMPLÉTER — adresse postale d'affaires manquante]**.
