@@ -118,7 +118,7 @@
 
   function tierCard(t) {
     var price = state.interval === "year" && t.year ? money(perMonthOfYear(t)) + " / mois" : money(t.month) + " / mois";
-    var sub = state.interval === "year" && t.year ? "soit " + money(t.year) + " par an, taxes en sus" : (t.month ? "taxes en sus" : "sans carte de crédit");
+    var sub = state.interval === "year" && t.year ? "soit " + money(t.year) + " par an. Aucune taxe facturée (petit fournisseur)" : (t.month ? "Aucune taxe facturée (petit fournisseur)" : "sans carte de crédit");
     var list = t.features.map(function (f) { return "<li>" + h(f) + "</li>"; }).join("") +
       t.soon.map(function (f) { return '<li>' + h(f) + ' <span class="pill kp-soon">à venir</span></li>'; }).join("");
     return '<section class="card kp-tier' + (t.popular ? " kp-popular" : "") + '">' +
@@ -135,7 +135,7 @@
       var url = paid ? checkoutUrl(p.offer) : "";
       var action = url ? '<a class="cta" href="' + h(url) + '" rel="noopener">Acheter</a>'
         : '<button type="button" class="ghost" disabled>' + (paid ? "Paiement bientôt disponible" : "Réservé aux forfaits payants") + "</button>";
-      return '<div class="row"><span><b>' + h(p.credits) + "</b> — " + h(money(p.price)) + " (taxes en sus)</span>" + action + "</div>";
+      return '<div class="row"><span><b>' + h(p.credits) + "</b> — " + h(money(p.price)) + " — Aucune taxe facturée (petit fournisseur)</span>" + action + "</div>";
     }).join("");
     return '<section class="card"><h2>Packs de crédits</h2><p><small>En plus d\'un forfait payant. Valides 12 mois. Non remboursables.</small></p>' + rows +
       (inApp ? "" : "") + "</section>";
@@ -149,7 +149,7 @@
       "<li>Signaux opportunité web : inclus, sans crédit.</li>" +
       "<li>Garde-fou anti-abus : 30 recherches par heure et 200 par jour par compte.</li>" +
       "<li>Les forfaits payants reportent les crédits non utilisés, jusqu'à 2 fois l'allocation mensuelle.</li>" +
-      "</ul><p><small>Montants en dollars canadiens. TPS et TVQ en sus lorsqu'elles s'appliquent. Annulation à tout moment, effective à la fin de la période payée. " +
+      "</ul><p><small>Montants en dollars canadiens. Aucune taxe facturée (petit fournisseur) : Klirline Inc. n'est pas inscrite à la TPS/TVQ ; le prix affiché est le prix payé. Annulation à tout moment, effective à la fin de la période payée. " +
       'Voir les <a href="#/conditions">conditions de vente</a>.</small></p></section>';
   }
 
@@ -218,7 +218,9 @@
   }
 
   var TERMS_SUMMARY = [
-    "Prix en dollars canadiens. TPS et TVQ en sus lorsqu'elles s'appliquent, affichées avant le paiement.",
+    "Vendeur : Klirline Inc., entreprise incorporée, numéro d'entreprise (NE) 777880576RC0001. Adresse d'affaires : [À COMPLÉTER — adresse manquante].",
+    "Prix en dollars canadiens. Aucune TPS ni TVQ n'est facturée : Klirline Inc. est un petit fournisseur, non inscrit aux fichiers de la TPS/TVQ. Le prix affiché est le prix payé.",
+    "Si l'inscription aux taxes devient obligatoire, les prix pourront être ajustés pour ajouter les taxes applicables, avec un préavis par courriel avant tout renouvellement concerné.",
     "Abonnements mensuels ou annuels renouvelés automatiquement jusqu'à l'annulation.",
     "Annulation à tout moment depuis « Gérer mon abonnement » : effective à la fin de la période déjà payée, sans frais.",
     "Changement de forfait : une hausse prend effet tout de suite (montant au prorata) ; une baisse s'applique au renouvellement ou sous forme de crédit Stripe.",
