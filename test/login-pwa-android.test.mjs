@@ -48,3 +48,12 @@ test("assetlinks : clé de signature Play et clé d'envoi", async () => {
     "70:2E:AE:55:15:03:11:2D:81:49:7D:CD:C2:C8:BE:0A:B8:AD:38:8C:53:64:2B:F4:D8:AC:79:04:A8:79:16:66"
   ]);
 });
+
+test("confidentialité : section Supprimer votre compte (#suppression-compte)", async () => {
+  const privacy = await read("src/confidentialite.html");
+  assert.match(privacy, /<h2 id="suppression-compte">Supprimer votre compte<\/h2>/);
+  assert.match(privacy, /Mon profil<\/b>, puis <b>Supprimer mon compte/);
+  assert.match(privacy, /mailto:contact@klirline\.ca/);
+  assert.match(privacy, /Ce qui est supprimé/);
+  assert.match(privacy, /Ce qui est conservé/);
+});

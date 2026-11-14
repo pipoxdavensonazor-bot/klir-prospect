@@ -218,7 +218,7 @@ async function writeWorkspace(payload) {
     const result=await supabase.rpc("workspace_save",{p_expected_revision:expected,p_payload:clean});
     if(result.error){
       if(["PT409","40001"].includes(result.error.code))result.error={...result.error,code:"WORKSPACE_CONFLICT",message:"Conflit : une autre session a enregistré cet espace. Votre copie locale est conservée. Téléchargez-la et comparez les notes/actions avant toute reprise ; aucun écrasement automatique."};
-      else if(result.error.message?.includes("crm_limit"))result.error={...result.error,code:"CRM_LIMIT",message:"Le forfait Gratuit inclut 100 fiches CRM : les nouvelles fiches n'ont pas été enregistrées. Vos fiches existantes sont conservées ; passez à Starter pour en ajouter."};
+      else if(result.error.message?.includes("crm_limit"))result.error={...result.error,code:"CRM_LIMIT",message:"Le forfait Gratuit inclut 100 fiches CRM : les nouvelles fiches n'ont pas été enregistrées. Vos fiches existantes sont conservées" + (androidAppMode() ? "." : " ; passez à Starter pour en ajouter.")};
       else if(result.error.message?.includes("payload_too_large"))result.error={...result.error,code:"WORKSPACE_TOO_LARGE",message:"Limite serveur de 2 Mo atteinte. Copie locale conservée : téléchargez-la avant de fermer cet onglet. Aucune donnée du compte remplacée."};
       return result;
     }
@@ -355,9 +355,14 @@ function overturePreview() {
   return config.environment === "preview" && config.supabaseUrl === "https://pwakjxjjxswdjsapsbxn.supabase.co";
 }
 
+// Application Android (TWA) : aucun appel à l'achat (voir billing.js).
+function androidAppMode() {
+  try { return sessionStorage.getItem("klir_android_app") === "1"; } catch { return false; }
+}
+
 async function startStripeTestCheckout() {
   const flags = window.__KLIR_CONFIG__ || {};
-  if (!overturePreview() || flags.stripeTestCheckout !== true || !currentUser || !currentUser.email) return { ok: false, outcome: "purchases_closed" };
+  if (androidAppMode() || !overturePreview() || flags.stripeTestCheckout !== true || !currentUser || !currentUser.email) return { ok: false, outcome: "purchases_closed" };
   const supabase = await requireClient();
   const result = await supabase.functions.invoke("stripe-test-checkout", { body: {} });
   const data = result.data || {};
