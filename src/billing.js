@@ -268,7 +268,7 @@
   function viewConditions(app) {
     app.innerHTML = '<div class="land">' + landNav() + '<main class="kp-wrap card"><p class="pill kp-soon">Version préliminaire — en cours de validation</p>' +
       "<h1>Conditions de vente — résumé</h1><ul>" + TERMS_SUMMARY.map(function (t) { return "<li>" + h(t) + "</li>"; }).join("") + "</ul>" +
-      "<p><small>Le texte complet des conditions de vente et de la politique de remboursement sera publié ici avant l'ouverture des paiements réels.</small></p></main></div>";
+      "</main></div>";
   }
 
   window.KlirBilling = {
