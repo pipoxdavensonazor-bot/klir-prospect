@@ -16,14 +16,14 @@
       key: "gratuit", name: "Gratuit", month: 0, year: 0, credits: "50 crédits par mois",
       extra: "+ 200 crédits offerts à l'inscription",
       users: "1 utilisateur",
-      features: ["Recherche de commerces locaux et score d'opportunité", "CRM limité à 100 fiches", "Export CSV", "Solde remonté à 50 crédits chaque mois (sans report)"],
+      features: ["Recherche de commerces locaux et score d'opportunité", "Signaux opportunité web (sans site, réseau social seulement, sans HTTPS, sans téléphone)", "Courriels publics extraits des sites web : 1 crédit par courriel trouvé (remboursé sinon)", "CRM limité à 100 fiches", "Export CSV", "Solde remonté à 50 crédits chaque mois (sans report)"],
       soon: []
     },
     {
       key: "starter", name: "Starter", month: 19, year: 180, credits: "600 crédits par mois",
       extra: "Report des crédits non utilisés, jusqu'à 2 fois l'allocation",
       users: "1 utilisateur",
-      features: ["CRM illimité", "Export CSV illimité", "État des sites web (HTTP, HTTPS, DNS, SSL)", "50 messages IA par mois"],
+      features: ["Tout Gratuit, dont les signaux opportunité web et les courriels publics (1 crédit par courriel trouvé)", "CRM illimité", "Export CSV illimité", "État des sites web (HTTP, HTTPS, DNS, SSL)", "50 messages IA par mois"],
       soon: []
     },
     {
@@ -31,7 +31,7 @@
       extra: "Report des crédits non utilisés, jusqu'à 2 fois l'allocation",
       users: "2 utilisateurs (à venir)", popular: true,
       features: ["Tout Starter"],
-      soon: ["Courriels extraits des sites publics", "Vérification des courriels", "Alertes de nouvelles entreprises", "Listes d'exclusion", "Zapier ou webhook"]
+      soon: ["Vérification des courriels", "Alertes de nouvelles entreprises", "Listes d'exclusion", "Zapier ou webhook"]
     },
     {
       key: "equipe", name: "Équipe", month: 89, year: 852, credits: "6 000 crédits par mois, partagés",
@@ -145,6 +145,8 @@
     return '<section class="card"><h2>Comment les crédits sont utilisés</h2><ul>' +
       "<li>Recherche : 5 crédits + 1 crédit par tranche de 10 fiches demandées (40 fiches au plus, soit 9 crédits).</li>" +
       "<li>Une recherche vide, partielle ou en erreur ne coûte rien. L'export CSV est gratuit.</li>" +
+      "<li>Courriel public : 1 crédit par courriel trouvé sur le site de l'entreprise, remboursé si aucun courriel n'est trouvé (25 fiches au plus par lot).</li>" +
+      "<li>Signaux opportunité web : inclus, sans crédit.</li>" +
       "<li>Garde-fou anti-abus : 30 recherches par heure et 200 par jour par compte.</li>" +
       "<li>Les forfaits payants reportent les crédits non utilisés, jusqu'à 2 fois l'allocation mensuelle.</li>" +
       "</ul><p><small>Montants en dollars canadiens. TPS et TVQ en sus lorsqu'elles s'appliquent. Annulation à tout moment, effective à la fin de la période payée. " +
