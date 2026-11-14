@@ -38,7 +38,7 @@ function cleanJob(row) {
 export async function readServerJobPlaces(supabase, jobId) {
   const listed = await supabase
     .from("search_job_places")
-    .select("name, basic_category, release, contacts_verified, created_at, website, phone, contact_fields")
+    .select("id, name, basic_category, release, contacts_verified, created_at, website, phone, contact_fields, email, email_source, email_found_at, email_checked_at")
     .eq("job_id", jobId)
     .order("created_at", { ascending: true })
     .order("name", { ascending: true })

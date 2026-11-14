@@ -427,6 +427,29 @@ async function resumeServerJob(job, options = {}) {
   return finishServerJob(supabase, done);
 }
 
+// Courriels publics, sur demande : 1 crédit par courriel trouvé, remboursé sinon (réglé par le serveur).
+// refs : [{ id }] ou [{ job_id, name }], 25 au plus.
+const EMAIL_FINDER_ERRORS = new Set(["credits_insuffisants", "limite_recherches_heure", "limite_recherches_jour", "selection_invalide", "session_requise"]);
+async function findPublicEmails(refs) {
+  if (!currentUser) return { ok: false, outcome: "session_requise" };
+  const list = Array.isArray(refs) ? refs.slice(0, 25) : [];
+  if (!list.length) return { ok: false, outcome: "selection_invalide" };
+  const supabase = await requireClient();
+  const reply = await functionReply(await supabase.functions.invoke("email-finder", { body: { refs: list } }));
+  const code = reply.data && typeof reply.data.error === "string" ? reply.data.error : "";
+  if (code) return { ok: false, outcome: EMAIL_FINDER_ERRORS.has(code) ? code : "service_indisponible" };
+  if (reply.failed || !reply.data) return { ok: false, outcome: "service_indisponible" };
+  const d = reply.data;
+  return {
+    ok: true,
+    charged: Number(d.charged) || 0,
+    refunded: Number(d.refunded) || 0,
+    balance: Number.isInteger(d.balance) ? d.balance : null,
+    results: Array.isArray(d.results) ? d.results : [],
+    done: Array.isArray(d.done) ? d.done : []
+  };
+}
+
 async function initialize() {
   const hasAuthCode = new URLSearchParams(window.location.search).has("code");
   captureCallback();
@@ -495,6 +518,7 @@ window.KlirAuth = {
   searchJob,
   syncServerJobs,
   resumeServerJob,
+  findPublicEmails,
   completeCallback,
   dismissCallback
 };
