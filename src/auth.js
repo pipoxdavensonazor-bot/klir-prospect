@@ -294,6 +294,8 @@ function usageMessage(error) {
   const message = error && error.message ? String(error.message) : "";
   if (/credits_insuffisants/i.test(message)) return "Crédits insuffisants. L'achat de crédits n'est pas ouvert. Le solde reste celui du compte.";
   if (/quota_mensuel/i.test(message)) return "Quota mensuel atteint. Il repart à zéro au mois suivant, fuseau America/Toronto.";
+  if (/limite_recherches_heure/i.test(message)) return "Trop de recherches en une heure (30 au maximum). Réessayez un peu plus tard. Aucun crédit n'a été débité.";
+  if (/limite_recherches_jour/i.test(message)) return "Limite de 200 recherches par jour atteinte. Réessayez demain. Aucun crédit n'a été débité.";
   if (/session_requise/i.test(message)) return "Session requise.";
   return "Le registre des crédits n'a pas accepté l'opération. Aucune recherche n'est lancée.";
 }
@@ -356,7 +358,7 @@ async function functionReply(result) {
   return { data, status, failed: Boolean(result && result.error) };
 }
 
-const SEARCH_JOB_ERRORS = new Set(["jobs_disabled", "credits_insuffisants", "rate_limited", "place_rejected", "quantite_invalide"]);
+const SEARCH_JOB_ERRORS = new Set(["jobs_disabled", "credits_insuffisants", "rate_limited", "limite_recherches_heure", "limite_recherches_jour", "place_rejected", "quantite_invalide"]);
 
 // Recherche par la file serveur : enqueue, attente du runner, lecture des fiches du propriétaire (RLS).
 // Le navigateur n'appelle aucune RPC de débit : le serveur réserve et règle le reçu.

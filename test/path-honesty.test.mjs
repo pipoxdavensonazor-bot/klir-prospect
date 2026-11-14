@@ -33,7 +33,8 @@ test("la prévisualisation Overture n'affiche pas le parcours OpenStreetMap publ
   const { landing, search } = render(true);
   assert.match(landing, /catalogue Overture 2026-10-21\.0/);
   assert.match(landing, /pas une couverture mondiale/);
-  assert.match(landing, /mois civil/);
+  assert.match(landing, /plus de plafond mensuel/);
+  assert.match(landing, /30 recherches par heure et 200 par jour/);
   assert.equal(landing.includes("recherchez des entreprises dans OpenStreetMap"), false);
   assert.match(search, /id="aCity"/);
   assert.match(search, /value="montréal"/);
@@ -58,7 +59,7 @@ test("le site sans catalogue Overture continue de décrire OpenStreetMap", () =>
   assert.match(search, /montreal_island/);
 });
 
-test("le récapitulatif Overture reprend le cercle, la source et le mois civil", () => {
+test("le récapitulatif Overture reprend le cercle, la source et les limites d’usage", () => {
   const { quote } = render(true);
   const fields = {
     qInput: { value: "10 restaurants à Montréal" },
@@ -76,7 +77,8 @@ test("le récapitulatif Overture reprend le cercle, la source et le mois civil",
   assert.match(fields.searchSummary.textContent, /cercle de 2,2 km/);
   assert.match(fields.searchSummary.textContent, /Overture 2026-10-21\.0/);
   assert.match(fields.searchSummary.textContent, /pas une couverture mondiale/);
-  assert.match(fields.searchSummary.textContent, /mois civil/);
+  assert.match(fields.searchSummary.textContent, /Pas de plafond mensuel/);
+  assert.doesNotMatch(fields.searchSummary.textContent, /10 recherches/);
   assert.equal(fields.searchPrice.textContent, "6");
 });
 
