@@ -12,6 +12,7 @@ import {
   parseAuthCallback,
   parseAuthError,
   recoveryRequestMessage,
+  frenchAuthError,
   passwordIssues,
   passwordMessage,
   workspaceForMigration
@@ -131,23 +132,23 @@ function state() {
 async function signUp({ email, password, displayName: name }) {
   if (passwordIssues(password).length) return { data: { user: null, session: null }, error: { message: passwordMessage() } };
   const supabase = await requireClient();
-  return supabase.auth.signUp({
+  return frenchAuthError(await supabase.auth.signUp({
     email: String(email || "").trim(),
     password,
     options: {
       emailRedirectTo: redirectUrl(),
       data: { display_name: displayName(name) }
     }
-  });
+  }));
 }
 
 async function resendSignUp(email) {
   const supabase = await requireClient();
-  return supabase.auth.resend({
+  return frenchAuthError(await supabase.auth.resend({
     type: "signup",
     email: String(email || "").trim(),
     options: { emailRedirectTo: redirectUrl() }
-  });
+  }));
 }
 
 async function signIn({ email, password }) {

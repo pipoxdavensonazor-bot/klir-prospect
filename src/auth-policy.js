@@ -52,6 +52,14 @@ export function parseAuthError(search) {
     : "Ce lien n’a pas pu être validé. Demandez un nouveau lien ou revenez à la connexion.";
 }
 
+export function frenchAuthError(result) {
+  const error = result && result.error;
+  if (error && (error.status === 429 || error.code === "over_email_send_rate_limit" || /rate limit/i.test(String(error.message || "")))) {
+    return { ...result, error: { ...error, message: "Trop de demandes ont été envoyées. Patientez avant de réessayer." } };
+  }
+  return result;
+}
+
 export function recoveryRequestMessage(error) {
   if (!error || ["user_not_found", "email_not_found", "user_not_registered"].includes(error.code)) {
     return "Si ce compte existe, le lien a été envoyé.";
