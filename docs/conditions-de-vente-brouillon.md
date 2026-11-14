@@ -10,8 +10,7 @@ Dernière mise à jour : [date de publication]
 
 KlirProspect est un service en ligne exploité par **Klirline Inc.**, société par actions
 (entreprise incorporée), numéro d'entreprise (NE) : **777880576RC0001**.
-Adresse d'affaires : **[À COMPLÉTER — adresse postale d'affaires manquante]**.
-Courriel : [adresse de soutien], téléphone : [facultatif].
+Pour nous joindre : par courriel à **contact@klirline.ca**.
 
 ## 2. Objet
 
@@ -79,7 +78,7 @@ forfait Gratuit. Les crédits restants demeurent au compte.
 - Les montants payés pour une période commencée et les crédits achetés ne sont pas
   remboursables, **sous réserve des droits que la loi vous accorde**.
 - En cas de double facturation, d'erreur de notre part ou de service indisponible de façon
-  prolongée, écrivez à [adresse de soutien] : nous corrigerons ou rembourserons.
+  prolongée, écrivez à contact@klirline.ca : nous corrigerons ou rembourserons.
 - Consommateurs du Québec (contrat conclu à distance, *Loi sur la protection du
   consommateur*, art. 54.1 et suivants) : vous pouvez résoudre le contrat dans les 7 jours
   de la réception de son exemplaire si nous n'avons pas fourni les renseignements exigés
@@ -108,4 +107,4 @@ conditions ne limite les droits que la loi accorde aux consommateurs.
 
 ## 12. Contact
 
-Klirline Inc. (NE 777880576RC0001) — [adresse de soutien] — **[À COMPLÉTER — adresse postale d'affaires manquante]**.
+Klirline Inc. (NE 777880576RC0001) — par courriel : contact@klirline.ca.
