@@ -284,7 +284,7 @@
   }
 
   var TERMS_SUMMARY = [
-    "Vendeur : Klirline Inc., entreprise incorporée, numéro d'entreprise (NE) 777880576RC0001. Pour nous joindre : contact@klirline.ca.",
+    "Vendeur : Klirline Inc., entreprise incorporée, numéro d'entreprise (NE) 777880576RC0001, 4848 rue de Castille, Montréal (Québec) H1G 3B7. Pour nous joindre : contact@klirline.ca.",
     "Prix en dollars canadiens. Aucune TPS ni TVQ n'est facturée : Klirline Inc. est un petit fournisseur, non inscrit aux fichiers de la TPS/TVQ. Le prix affiché est le prix payé.",
     "Si l'inscription aux taxes devient obligatoire, les prix pourront être ajustés pour ajouter les taxes applicables, avec un préavis par courriel avant tout renouvellement concerné.",
     "Abonnements mensuels ou annuels renouvelés automatiquement jusqu'à l'annulation.",

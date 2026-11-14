@@ -9,7 +9,7 @@ Dernière mise à jour : [date de publication]
 ## 1. Qui vend
 
 KlirProspect est un service en ligne exploité par **Klirline Inc.**, société par actions
-(entreprise incorporée), numéro d'entreprise (NE) : **777880576RC0001**.
+(entreprise incorporée), numéro d'entreprise (NE) : **777880576RC0001**, 4848 rue de Castille, Montréal (Québec) H1G 3B7.
 Pour nous joindre : par courriel à **contact@klirline.ca**.
 
 ## 2. Objet
@@ -107,4 +107,4 @@ conditions ne limite les droits que la loi accorde aux consommateurs.
 
 ## 12. Contact
 
-Klirline Inc. (NE 777880576RC0001) — par courriel : contact@klirline.ca.
+Klirline Inc. (NE 777880576RC0001), 4848 rue de Castille, Montréal (Québec) H1G 3B7 — par courriel : contact@klirline.ca.

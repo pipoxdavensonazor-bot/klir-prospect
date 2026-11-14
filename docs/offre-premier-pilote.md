@@ -60,8 +60,8 @@ Le montant de 49 $ CA de l'essai Stripe reste un essai technique non déployé, 
 | Annulation et remboursement | Proposition : remboursement intégral seulement si aucune recherche complète n'est livrée avant la fin de la première séance |
 | Taxes et mention sur la facture | À écrire |
 | Support : canal, personne, horaire, délai | À écrire |
-| Responsable de la protection des renseignements personnels | À écrire |
-| Adresse et numéros d'entreprise sur la facture | À écrire |
+| Responsable de la protection des renseignements personnels | Philippe Davenson Azor, chef de la direction (CEO), contact@klirline.ca |
+| Adresse et numéros d'entreprise sur la facture | 4848 rue de Castille, Montréal (Québec) H1G 3B7 ; NE 777880576RC0001 (NEQ à confirmer) |
 | Moyen de paiement déjà utilisé par Klirline | À écrire |
 
 ## Texte client, si la proposition est retenue
