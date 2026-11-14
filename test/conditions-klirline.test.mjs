@@ -22,6 +22,7 @@ test("conditions : vendeur Klirline Inc., NE 777880576RC0001, aucune taxe (petit
   assert.match(app.innerHTML, /Aucune TPS ni TVQ n&#39;est facturée : Klirline Inc\. est un petit fournisseur/);
   assert.match(app.innerHTML, /prix pourront être ajustés pour ajouter les taxes applicables, avec un préavis/);
   assert.match(app.innerHTML, /Pour nous joindre : contact@klirline\.ca/);
+  assert.doesNotMatch(app.innerHTML, /avant l'ouverture des paiements réels/);
   assert.doesNotMatch(app.innerHTML, /COMPLÉTER|[Aa]dresse d&#39;affaires/);
   assert.doesNotMatch(app.innerHTML, /en sus/);
   assert.match(doc, /\*\*Klirline Inc\.\*\*/);
