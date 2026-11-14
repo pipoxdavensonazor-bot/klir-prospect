@@ -40,3 +40,11 @@ test("Android : assetlinks pour ca.klirline.klirprospect et politique de confide
   const build = await read("tools/build.mjs");
   for (const f of ["sw.js", "confidentialite.html", ".well-known"]) assert.ok(build.includes(`"../src/${f}"`), f);
 });
+
+test("assetlinks : clé de signature Play et clé d'envoi", async () => {
+  const links = JSON.parse(await read("src/.well-known/assetlinks.json"));
+  assert.deepEqual(links[0].target.sha256_cert_fingerprints, [
+    "18:7D:F8:3A:2F:0D:DC:8E:0C:4C:A4:28:6F:18:87:3E:0E:2D:29:4B:8A:A3:45:F0:FB:29:65:1E:07:47:14:24",
+    "70:2E:AE:55:15:03:11:2D:81:49:7D:CD:C2:C8:BE:0A:B8:AD:38:8C:53:64:2B:F4:D8:AC:79:04:A8:79:16:66"
+  ]);
+});
