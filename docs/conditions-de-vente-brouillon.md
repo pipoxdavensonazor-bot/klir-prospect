@@ -4,7 +4,7 @@
 > juridique. Ne pas le publier ni le lier depuis Stripe avant validation. Les éléments
 > entre crochets sont à compléter.
 
-Dernière mise à jour : [date de publication]
+Dernière mise à jour : 14 novembre 2026 (date d’entrée en vigueur)
 
 ## 1. Qui vend
 
