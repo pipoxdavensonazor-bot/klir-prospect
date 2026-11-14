@@ -65,6 +65,11 @@
     { offer: "pack_500", credits: "500 crédits", price: 10 },
     { offer: "pack_2000", credits: "2 000 crédits", price: 39 }
   ];
+  // Pilote : seuls Gratuit et Starter sont en vente (décision du 14 nov. 2026). Pro et Équipe restent définis
+  // pour les abonnements existants et le suivi, mais ne sont plus proposés sur la page Tarifs.
+  var PILOT_ON_SALE = ["gratuit", "starter"];
+  function PILOT_TIERS() { return TIERS.filter(function (t) { return PILOT_ON_SALE.indexOf(t.key) !== -1; }); }
+  var PILOT_NOTE = '<p class="kp-pilot-note"><small>Pro et Équipe ne sont pas en vente pendant le pilote.</small></p>';
   var TIER_NAMES = { gratuit: "Gratuit", starter: "Starter", pro: "Pro", equipe: "Équipe" };
 
   var state = { interval: "month", status: null, plan: null, loading: false, error: "" };
@@ -230,7 +235,7 @@
       '<button type="button" class="' + (state.interval === "month" ? "cta" : "ghost") + '" data-kp-interval="month" aria-pressed="' + (state.interval === "month") + '">Mensuel</button>' +
       '<button type="button" class="' + (state.interval === "year" ? "cta" : "ghost") + '" data-kp-interval="year" aria-pressed="' + (state.interval === "year") + '">Annuel (environ 20 % de rabais)</button></div>';
     return '<h1>Tarifs</h1><p>Des commerces locaux à prospecter, un CRM intégré, en français et en dollars canadiens. Sans engagement.</p>' +
-      (inAndroidApp() ? androidNote() : "") + testBanner() + toggle + '<div class="kp-tiers">' + TIERS.map(tierCard).join("") + "</div>" + packsBlock(false) + creditRules();
+      (inAndroidApp() ? androidNote() : "") + testBanner() + toggle + '<div class="kp-tiers">' + PILOT_TIERS().map(tierCard).join("") + "</div>" + PILOT_NOTE + packsBlock(false) + creditRules();
   }
 
   function bindPricing(root, rerender) {
@@ -303,7 +308,7 @@
   }
 
   window.KlirBilling = {
-    TIERS: TIERS, PACKS: PACKS, state: state, inAndroidApp: inAndroidApp, ANDROID_APP_NOTE: ANDROID_APP_NOTE, refresh: refresh, checkoutUrl: checkoutUrl, portalUrl: portalUrl,
+    TIERS: TIERS, PILOT_ON_SALE: PILOT_ON_SALE, PACKS: PACKS, state: state, inAndroidApp: inAndroidApp, ANDROID_APP_NOTE: ANDROID_APP_NOTE, refresh: refresh, checkoutUrl: checkoutUrl, portalUrl: portalUrl,
     viewTarifs: viewTarifs, refreshPlan: refreshPlan, crmRoom: crmRoom, CRM_LIMIT_MSG: CRM_LIMIT_MSG, limitsBlock: limitsBlock, viewAbonnement: viewAbonnement, viewConditions: viewConditions, TERMS_SUMMARY: TERMS_SUMMARY,
     accountShell: function () { return '<div id="kpAbonnement">' + accountBody() + "</div>"; },
     pricingBody: pricingBody, accountBody: accountBody
