@@ -88,6 +88,7 @@ await cp(new URL("../src/icons", import.meta.url), new URL("icons", out), { recu
 // confidentialité statique et Digital Asset Links pour l'app Play (TWA).
 await cp(new URL("../src/sw.js", import.meta.url), new URL("sw.js", out));
 await cp(new URL("../src/confidentialite.html", import.meta.url), new URL("confidentialite.html", out));
+await cp(new URL("../src/gouvernance.html", import.meta.url), new URL("gouvernance.html", out));
 await cp(new URL("../src/.well-known", import.meta.url), new URL(".well-known", out), { recursive: true });
 for (const file of runtime) {
   await cp(new URL("../src/" + file, import.meta.url), new URL(file, out));
@@ -183,7 +184,7 @@ if (html.includes("icons/icon-192.png") || html.includes("icons/logo.png") || ma
 }
 await writeFile(new URL("build.json", out), JSON.stringify({
   reproducible: true,
-  files: runtime.length + 9,
+  files: runtime.length + 10,
   supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
   supabaseSource: published.supabaseSource,
   supabaseHost: published.supabaseHost || "",
@@ -191,5 +192,5 @@ await writeFile(new URL("build.json", out), JSON.stringify({
   builtAt: new Date().toISOString(),
   environment
 }, null, 2) + "\n");
-console.log(`dist créé avec ${runtime.length + 9} fichiers`);
+console.log(`dist créé avec ${runtime.length + 10} fichiers`);
 console.log(`build-identity environment=${environment} supabase=${published.supabaseSource}`);

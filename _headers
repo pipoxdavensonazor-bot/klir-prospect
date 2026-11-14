@@ -6,6 +6,9 @@
 /confidentialite
   Cache-Control: public, max-age=300
 
+/gouvernance
+  Cache-Control: public, max-age=300
+
 /manifest.webmanifest
   Content-Type: application/manifest+json
 
