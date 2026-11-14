@@ -4,7 +4,19 @@ import { matchIndustry } from "../../../tools/overture-places-bounds.mjs";
 const CITY_KEYS = new Set(["montréal", "laval", "québec", "toronto", "paris", "lyon", "marseille"]);
 
 export const CATALOG_LOOKUP_SQL =
-  "select gers_id, name, basic_category, licenses, release from private.search_catalog_lookup($1, $2, $3)";
+  "select gers_id, name, basic_category, licenses, release, website, phone from private.search_catalog_lookup_contacts($1, $2, $3)";
+
+const WEBSITE = /^https?:\/\//i;
+
+function cleanWebsite(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text && text.length <= 300 && WEBSITE.test(text) ? text : "";
+}
+
+function cleanPhone(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? text.slice(0, 40) : "";
+}
 
 function coded(code, retryable = false) {
   const error = new Error(code);
@@ -32,6 +44,9 @@ function mapLookupRow(row) {
     basicCategory: row.basic_category || row.basicCategory || "",
     licenses: Array.isArray(licenses) ? licenses : [],
     release: row.release || "",
+    website: cleanWebsite(row.website),
+    phone: cleanPhone(row.phone),
+    contactFields: true,
     contactsVerified: false
   };
 }

@@ -10,6 +10,7 @@ import { CATALOG_LOOKUP_SQL, createCatalogQueryProvider } from "../supabase/func
 const catalogSql = await readFile(new URL("../supabase/migrations/20261113120000_search_catalog_places.sql", import.meta.url), "utf8");
 const snapshotSql = await readFile(new URL("../supabase/migrations/20261108163000_search_pilot_snapshot.sql", import.meta.url), "utf8");
 const loadTool = await readFile(new URL("../tools/overture-places-load-test.mjs", import.meta.url), "utf8");
+const contactsSql = (await readFile(new URL("../supabase/migrations/20261114020000_web_opportunity_contacts.sql", import.meta.url), "utf8")).split("-- Fiches de résultats du propriétaire")[0];
 const runnerSql = await readFile(new URL("../supabase/functions/_shared/search-job-runner-edge.mjs", import.meta.url), "utf8");
 
 const stub = `
@@ -63,6 +64,7 @@ async function database() {
   await db.exec(stub);
   await db.exec(snapshotSql);
   await db.exec(catalogSql);
+  await db.exec(contactsSql);
   return db;
 }
 
@@ -80,7 +82,9 @@ test("la migration force le RLS, n'accorde rien à anon, et borne la lecture du 
   assert.doesNotMatch(loadTool, /update private\.search_pilot_snapshot set document/);
   assert.match(runnerSql, /createCatalogQueryProvider/);
   assert.doesNotMatch(runnerSql, /pilot_snapshot\(\)/);
-  assert.match(CATALOG_LOOKUP_SQL, /private\.search_catalog_lookup\(\$1, \$2, \$3\)/);
+  assert.match(CATALOG_LOOKUP_SQL, /private\.search_catalog_lookup_contacts\(\$1, \$2, \$3\)/);
+  assert.match(contactsSql, /grant execute on function private\.search_catalog_lookup_contacts\(text, text, integer\) to klir_job_runner/);
+  assert.match(contactsSql, /force row level security/);
 });
 
 test("les jetons de secteur du SQL restent alignés sur le module JS", () => {
@@ -160,8 +164,17 @@ test("la table remplie est lue à la place de l'instantané, avec un plafond de 
     assert.equal(text, CATALOG_LOOKUP_SQL);
     return db.query(text, params);
   });
+  await db.query("insert into private.search_catalog_contacts(city_key,id,website,phone) values ('laval','laval-001','https://www.facebook.com/cafe1','+1 450 555 0101'),('laval','laval-003',null,'+1 450 555 0103')");
+  await assert.rejects(db.query("insert into private.search_catalog_contacts(city_key,id,website) values ('laval','laval-005','javascript:alert(1)')"), /website_chk/);
+  await assert.rejects(db.query("insert into private.search_catalog_contacts(city_key,id,website) values ('laval','absent','https://a.example')"), /place_fk/);
   const ran = await provider.run({ place_status: "supported", cityKey: "laval", industry: "restauration", quantity: 10 });
   assert.equal(ran.count, 10);
+  const byId = Object.fromEntries(ran.records.map((r) => [r.gersId, r]));
+  assert.equal(byId["laval-001"].website, "https://www.facebook.com/cafe1");
+  assert.equal(byId["laval-001"].phone, "+1 450 555 0101");
+  assert.equal(byId["laval-003"].website, "");
+  assert.equal(byId["laval-007"].phone, "");
+  assert.ok(ran.records.every((r) => r.contactFields === true));
   assert.equal(ran.contactsVerified, false);
   assert.equal(ran.network, undefined);
   assert.equal(provider.network, false);
