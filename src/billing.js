@@ -289,7 +289,7 @@
   }
 
   var TERMS_SUMMARY = [
-    "Vendeur : Klirline Inc., entreprise incorporée, numéro d'entreprise (NE) 777880576RC0001. Pour nous joindre : contact@klirline.ca.",
+    "Vendeur : Klirline Inc., entreprise incorporée, numéro d'entreprise (NE) 777880576RC0001, 4848 rue de Castille, Montréal (Québec) H1G 3B7. Pour nous joindre : contact@klirline.ca.",
     "Prix en dollars canadiens. Aucune TPS ni TVQ n'est facturée : Klirline Inc. est un petit fournisseur, non inscrit aux fichiers de la TPS/TVQ. Le prix affiché est le prix payé.",
     "Si l'inscription aux taxes devient obligatoire, les prix pourront être ajustés pour ajouter les taxes applicables, avec un préavis par courriel avant tout renouvellement concerné.",
     "Abonnements mensuels ou annuels renouvelés automatiquement jusqu'à l'annulation.",
@@ -298,12 +298,14 @@
     "Crédits : non remboursables et sans valeur monétaire, sous réserve des droits prévus par la Loi sur la protection du consommateur du Québec et des lois applicables.",
     "Les crédits déjà versés restent au compte après une annulation ou un retour au forfait Gratuit.",
     "Fonctions marquées « à venir » : non incluses tant qu'elles ne sont pas publiées.",
-    "Paiement traité par Stripe ; KlirProspect ne voit ni ne conserve votre numéro de carte."
+    "Paiement traité par Stripe ; KlirProspect ne voit ni ne conserve votre numéro de carte.",
+    "Support par courriel à contact@klirline.ca : réponse en 1 jour ouvrable (lundi au vendredi, 9 h à 17 h, heure de l'Est), 4 h ouvrables pour les clients du pilote.",
+    "Droit applicable : lois du Québec et lois fédérales applicables ; tribunaux du district judiciaire de Montréal, sans limiter les droits que la loi accorde aux consommateurs."
   ];
 
   function viewConditions(app) {
     app.innerHTML = '<div class="land">' + landNav() + '<main class="kp-wrap card"><p class="pill kp-soon">Version préliminaire — en cours de validation</p>' +
-      "<h1>Conditions de vente — résumé</h1><ul>" + TERMS_SUMMARY.map(function (t) { return "<li>" + h(t) + "</li>"; }).join("") + "</ul>" +
+      "<h1>Conditions de vente — résumé</h1><p><small>En vigueur le 14 novembre 2026.</small></p><ul>" + TERMS_SUMMARY.map(function (t) { return "<li>" + h(t) + "</li>"; }).join("") + "</ul>" +
       "</main></div>";
   }
 
