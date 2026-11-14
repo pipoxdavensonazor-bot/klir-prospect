@@ -24,7 +24,7 @@ Chaque jour 02:17 (Toronto, heure normale) et à la demande :
    illisible sans la clé privée. Les journaux n'affichent que des compteurs/noms de clés.
 
 La clé **privée** n'est jamais sur GitHub. Celle générée pour la recette est sur la
-machine d'exploitation (`/workspace/secrets/klir_backup_age_identity.txt`, mode 600).
+machine d'exploitation, dans un dossier séparé des archives (`/home/box/secrets/klirprospect-backup/age-identity.txt`, dossier 700, fichier 600). Une seconde copie hors de la machine (gestionnaire de mots de passe de Philippe) est requise avant de considérer la clé comme protégée.
 À copier dans le gestionnaire de mots de passe (sinon les archives sont perdues avec elle),
 ou à remplacer : `age-keygen -o cle.txt`, puis mettre la ligne `age1…` dans
 `ops/backup/age-recipient.txt`.
