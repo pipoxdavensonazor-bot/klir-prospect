@@ -23,11 +23,11 @@ test("le viewport mobile autorise le zoom et les zones sûres", () => {
 });
 
 test("le manifeste permet l’installation Chrome", () => {
-  assert.equal(manifest.name, "Klir Prospect");
-  assert.equal(manifest.short_name, "Klir");
+  assert.equal(manifest.name, "KlirProspect");
+  assert.equal(manifest.short_name, "KlirProspect");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.start_url, "./");
-  assert.equal(manifest.scope, "./");
+  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.scope, "/");
   assert.equal(manifest.prefer_related_applications, false);
   assert.equal(manifest.lang, "fr");
   const icons = new Map(manifest.icons.map((icon) => [icon.purpose + ":" + icon.sizes, icon.src]));

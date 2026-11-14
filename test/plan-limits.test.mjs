@@ -111,7 +111,8 @@ test("messages IA : 0 en Gratuit, 50 par mois en Starter, compteur serveur", asy
 
 test("pack : lot de 12 mois, consommé en premier, reste retiré à l'échéance", async () => {
   const db = await boot();
-  assert.equal(await buyPack(db, ADA), "pack_granted");
+  // Compte Gratuit : crédité quand même, marqué pour revue manuelle.
+  assert.equal(await buyPack(db, ADA), "pack_granted_review");
   assert.equal(await balance(db, ADA), 700);
   let l = await lots(db, ADA);
   assert.equal(l.length, 1); assert.equal(l[0].remaining, 500);
