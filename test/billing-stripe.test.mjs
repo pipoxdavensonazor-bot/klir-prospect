@@ -88,7 +88,11 @@ test("abonnement : démarrage, renouvellement plafonné, mise à niveau, annulat
     lines: { data: [{ amount: 1900, pricing: { price_details: { price: "price_sm" } }, period: { start: now, end: now + 2592000 } }] } };
   assert.equal(await ingest(db, evt("invoice.paid", inv1)), "ignored_unknown_subscription");
   // Même facture marquée pour ce projet, reçue avant la session : relivraison demandée.
-  const inv1p = { ...inv1, parent: { subscription_details: { subscription: "sub_a", metadata: { project: "test" } } } };
+  const inv1p = { ...inv1, parent: { subscription_details: { subscription: "sub_a", metadata: { app: "klirprospect", project: "test" } } } };
+  // Un autre produit Klirline avec le même nom de projet : ignoré tout de suite, sans relivraison.
+  const other = { ...inv1, id: "in_autre", parent: { subscription_details: { subscription: "sub_autre", metadata: { app: "klirmarket", project: "test" } } } };
+  assert.equal(await ingest(db, evt("invoice.paid", other, { created: Math.floor(Date.now() / 1000) })), "ignored_unknown_subscription");
+  assert.equal(await ingest(db, evt("customer.subscription.updated", { id: "sub_autre", status: "active", metadata: { app: "klirmarket", project: "test" } }, { created: Math.floor(Date.now() / 1000) })), "ignored_unknown_subscription");
   await assert.rejects(ingest(db, evt("invoice.paid", inv1p, { created: Math.floor(Date.now() / 1000) })), /reessayer_plus_tard/);
   assert.equal(await ingest(db, evt("invoice.paid", inv1p, { created: Math.floor(Date.now() / 1000) - 7200 })), "ignored_unknown_subscription");
   assert.equal(await ingest(db, evt("checkout.session.completed", start)), "subscription_started");
