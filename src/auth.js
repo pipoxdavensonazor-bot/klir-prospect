@@ -264,6 +264,16 @@ async function deleteAccount(confirmation, password) {
   const result = await supabase.functions.invoke("delete-account", {
     body: { confirmation }
   });
+  if (result.error) {
+    let code = "";
+    try { code = (await result.error.context.json()).error || ""; } catch {}
+    const messages = {
+      active_subscription: "Votre abonnement payant est encore actif. Annulez-le d'abord dans « Gérer mon abonnement » sur le site klirprospect.klirline.ca, puis supprimez le compte.",
+      recent_authentication_required: "Session trop ancienne : reconnectez-vous puis réessayez.",
+      origin_not_allowed: "Suppression impossible depuis cette adresse. Utilisez klirprospect.klirline.ca."
+    };
+    if (messages[code]) return { data: null, error: { message: messages[code] } };
+  }
   if (!result.error && result.data?.deleted) {
     currentUser = null;
     currentProfile = null;
