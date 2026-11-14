@@ -84,6 +84,11 @@ await cp(new URL("../src/index.html", import.meta.url), new URL("index.html", ou
 await cp(new URL("../_headers", import.meta.url), new URL("_headers", out));
 await cp(new URL("../src/manifest.webmanifest", import.meta.url), new URL("manifest.webmanifest", out));
 await cp(new URL("../src/icons", import.meta.url), new URL("icons", out), { recursive: true });
+// PWA / Android : service worker à la racine (sans empreinte), politique de
+// confidentialité statique et Digital Asset Links pour l'app Play (TWA).
+await cp(new URL("../src/sw.js", import.meta.url), new URL("sw.js", out));
+await cp(new URL("../src/confidentialite.html", import.meta.url), new URL("confidentialite.html", out));
+await cp(new URL("../src/.well-known", import.meta.url), new URL(".well-known", out), { recursive: true });
 for (const file of runtime) {
   await cp(new URL("../src/" + file, import.meta.url), new URL(file, out));
 }

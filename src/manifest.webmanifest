@@ -1,17 +1,22 @@
 {
   "id": "/",
-  "name": "Klir Prospect",
-  "short_name": "Klir",
-  "description": "Prospection assistée : recherche, qualification et démonstration locale.",
+  "name": "KlirProspect",
+  "short_name": "KlirProspect",
+  "description": "Trouvez vos prochains clients B2B : recherche d'entreprises, qualification et CRM.",
   "lang": "fr",
   "dir": "ltr",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#0b0e1a",
   "theme_color": "#0e1230",
-  "categories": ["business"],
+  "categories": [
+    "business"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {

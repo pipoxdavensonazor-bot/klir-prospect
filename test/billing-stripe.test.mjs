@@ -65,7 +65,7 @@ test("pack : crédité une seule fois, lien étranger, compte inconnu et mode li
   const db = await boot();
   const session = { id: "cs_test_1", object: "checkout.session", payment_status: "paid", payment_link: "plink_p5", client_reference_id: ADA, customer: "cus_1", mode: "payment" };
   const raw = evt("checkout.session.completed", session);
-  assert.equal(await ingest(db, raw), "pack_granted");
+  assert.equal(await ingest(db, raw), "pack_granted_review");
   assert.equal(await balance(db, ADA), 700);
   assert.equal(await ingest(db, raw), "duplicate_event");
   assert.equal(await ingest(db, evt("checkout.session.completed", session)), "duplicate");
@@ -125,7 +125,9 @@ test("Gratuit : remonté à 50 une fois par mois ; annuel : allocation mensuelle
   assert.equal(s.tier, "gratuit");
   assert.equal(s.balance, 200);
   assert.equal(s.monthly_credits, 50);
-  assert.equal(s.offers.length, 4);
+  // Compte Gratuit : forfaits proposés, aucun lien de pack.
+  assert.equal(s.offers.length, 3);
+  assert.equal(s.offers.some((o) => o.kind === "pack"), false);
   assert.match(s.portal_url, /^https:\/\/billing\.stripe\.com/);
   await assert.rejects(db.query("select * from private.credit_grants"), /permission denied/);
   await assert.rejects(db.query("select public.stripe_webhook_ingest('{}','')"), /permission denied/);
@@ -147,6 +149,9 @@ test("Gratuit : remonté à 50 une fois par mois ; annuel : allocation mensuelle
   s = (await one(db, "select public.billing_status() s")).s;
   assert.equal(s.tier, "starter");
   assert.equal(s.balance, 1200);
+  // Forfait payant : le lien du pack est remis.
+  assert.equal(s.offers.length, 4);
+  assert.equal(s.offers.filter((o) => o.kind === "pack").length, 1);
   await db.exec("reset role");
   assert.ok(now > 0);
 });
@@ -180,4 +185,21 @@ test("fonction Edge : rejette sans signature, relaie le corps brut, 400 si refus
   assert.equal(res.status, 500);
   res = await handleStripeBillingWebhook(new Request("https://x", { method: "GET" }), { ingest: async () => assert.fail() });
   assert.equal(res.status, 405);
+});
+
+test("pack : acheté par un compte payant = pack_granted ; par un Gratuit = crédité et marqué pour revue, sans remboursement", async () => {
+  const db = await boot();
+  await ingest(db, evt("checkout.session.completed", { id: "cs_test_sub", payment_status: "paid", payment_link: "plink_sm", client_reference_id: BEA, customer: "cus_b", subscription: "sub_b2", invoice: "in_b2", mode: "subscription" }));
+  assert.equal(await tier(db, BEA), "starter");
+  const before = await balance(db, BEA);
+  const paid = { id: "cs_test_pk", object: "checkout.session", payment_status: "paid", payment_link: "plink_p5", client_reference_id: BEA, customer: "cus_b", mode: "payment" };
+  assert.equal(await ingest(db, evt("checkout.session.completed", paid)), "pack_granted");
+  assert.equal(await balance(db, BEA), before + 500);
+  const free = { ...paid, id: "cs_test_pk_free", client_reference_id: ADA, customer: "cus_a" };
+  assert.equal(await ingest(db, evt("checkout.session.completed", free)), "pack_granted_review");
+  assert.equal(await balance(db, ADA), 700);
+  assert.equal(await ingest(db, evt("checkout.session.completed", free)), "duplicate");
+  assert.equal(await balance(db, ADA), 700);
+  const review = await one(db, "select count(*)::int n from private.stripe_events where outcome='pack_granted_review'");
+  assert.equal(review.n, 1);
 });

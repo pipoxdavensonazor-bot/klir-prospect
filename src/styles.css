@@ -312,3 +312,9 @@ button:disabled,select:disabled,input:disabled{opacity:.6;cursor:not-allowed}
 .kp-badge { position: absolute; top: 10px; right: 10px; background: #4f46e5; }
 .kp-soon { background: #3b2f12; color: #fcd34d; font-size: 0.75rem; }
 .kp-toggle { margin: 0.5rem 0 1rem; }
+
+/* Pages de connexion : logo et promotion */
+.auth-brand { text-align: center; margin-bottom: 0.5rem; }
+.auth-brand img { width: min(16rem, 80%); height: auto; display: block; margin: 0.25rem auto 0.75rem; }
+.auth-promo { font-weight: 600; font-size: 1.05rem; color: #ffd27a; margin: 0.25rem 0; }
+.auth-brand [data-install-app] { margin-top: 0.25rem; }
