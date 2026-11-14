@@ -126,6 +126,8 @@ function sqlCode(error) {
     "place_rejected",
     "authentication_required",
     "rate_limited",
+    "limite_recherches_heure",
+    "limite_recherches_jour",
     "credits_insuffisants",
     "quantite_invalide",
     "idempotency_key_invalide",
@@ -251,7 +253,7 @@ async function handleSearchJobRequestBody(request, options = {}) {
     const code = error?.code || sqlCode(error);
     if (code === "jobs_disabled") return json(403, { error: code });
     if (code === "job_not_found") return json(404, { error: code });
-    if (code === "rate_limited") return json(429, { error: code });
+    if (code === "rate_limited" || code === "limite_recherches_heure" || code === "limite_recherches_jour") return json(429, { error: code });
     if (code === "place_rejected" || code === "quantite_invalide" || code === "idempotency_key_invalide" || code === "payload_trop_grand") {
       return json(422, { error: code });
     }
