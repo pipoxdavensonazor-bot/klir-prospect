@@ -1,6 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.117.2";
 
 const jsonHeaders = { "content-type": "application/json; charset=utf-8" };
+// Origine du site de production : utilisée si le secret ALLOWED_ORIGIN est absent du projet.
+const PROD_SITE_ORIGIN = "https://klirprospect.klirline.ca";
+// Statuts Stripe pour lesquels un renouvellement reste programmé.
+const BILLABLE_STATUSES = new Set(["active", "trialing", "past_due", "unpaid", "incomplete"]);
 
 function response(status: number, body: Record<string, unknown>, origin = "") {
   const headers: Record<string, string> = { ...jsonHeaders };
@@ -12,7 +16,7 @@ function response(status: number, body: Record<string, unknown>, origin = "") {
 }
 
 Deno.serve(async (request) => {
-  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "";
+  const allowedOrigin = (Deno.env.get("ALLOWED_ORIGIN") || PROD_SITE_ORIGIN).replace(/\/+$/, "");
   const origin = request.headers.get("origin") ?? "";
   if (origin && origin !== allowedOrigin) return response(403, { error: "origin_not_allowed" });
 
@@ -21,7 +25,7 @@ Deno.serve(async (request) => {
       status: 204,
       headers: {
         "access-control-allow-origin": allowedOrigin,
-        "access-control-allow-headers": "authorization, apikey, content-type",
+        "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
         "access-control-allow-methods": "POST",
         vary: "origin"
       }
@@ -45,7 +49,8 @@ Deno.serve(async (request) => {
 
   const url = Deno.env.get("SUPABASE_URL");
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRole) return response(503, { error: "service_unavailable" }, origin);
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !serviceRole || !anonKey) return response(503, { error: "service_unavailable" }, origin);
 
   const admin = createClient(url, serviceRole, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -63,6 +68,19 @@ Deno.serve(async (request) => {
   const issuedAt = Number(payload.iat || 0) * 1000;
   if (!issuedAt || Date.now() - issuedAt > 10 * 60 * 1000) {
     return response(403, { error: "recent_authentication_required" }, origin);
+  }
+
+  // Un abonnement Stripe qui se renouvelle doit d'abord être annulé dans le portail :
+  // sinon la carte continuerait d'être débitée après la suppression du compte.
+  const asUser = createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  });
+  const { data: billing, error: billingError } = await asUser.rpc("billing_status");
+  if (billingError) return response(503, { error: "billing_check_failed" }, origin);
+  const status = String(billing?.status ?? "");
+  if (billing?.tier && billing.tier !== "gratuit" && BILLABLE_STATUSES.has(status) && !billing.cancel_at_period_end) {
+    return response(409, { error: "active_subscription" }, origin);
   }
 
   const { error: signOutError } = await admin.auth.admin.signOut(token, "global");

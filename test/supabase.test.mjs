@@ -43,3 +43,12 @@ test("la suppression exige identité, confirmation et révocation globale", () =
   assert.match(deleteAccount, /admin\.deleteUser\(user\.id\)/);
   assert.doesNotMatch(deleteAccount, /SUPABASE_SERVICE_ROLE_KEY["']?\s*[:=]\s*["'][^"']+/);
 });
+
+test("la suppression refuse un abonnement payant encore renouvelable et accepte l'origine Prod", () => {
+  assert.match(deleteAccount, /rpc\("billing_status"\)/);
+  assert.match(deleteAccount, /active_subscription/);
+  assert.match(deleteAccount, /cancel_at_period_end/);
+  assert.match(deleteAccount, /PROD_SITE_ORIGIN = "https:\/\/klirprospect\.klirline\.ca"/);
+  assert.ok(deleteAccount.indexOf("active_subscription") < deleteAccount.indexOf("admin.deleteUser"));
+  assert.match(authClient, /active_subscription:/);
+});
