@@ -58,7 +58,10 @@ async function finishJob(query, ledger, adapter, job) {
         JSON.stringify(records.map((row) => ({
           name: row && row.name ? String(row.name).slice(0, 160) : "",
           basicCategory: row && row.basicCategory ? String(row.basicCategory).slice(0, 80) : "",
-          release: row && row.release ? String(row.release).slice(0, 40) : ""
+          release: row && row.release ? String(row.release).slice(0, 40) : "",
+          website: row && typeof row.website === "string" ? row.website.slice(0, 300) : "",
+          phone: row && typeof row.phone === "string" ? row.phone.slice(0, 40) : "",
+          contactFields: Boolean(row && row.contactFields === true)
         })))
       ]);
     }
