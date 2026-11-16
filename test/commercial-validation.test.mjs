@@ -137,29 +137,31 @@ test("les exports de 1, 10 et 30 fiches gardent les champs publiés et neutralis
     const csv = sandbox.exportCsvText(rows);
     const parsed = parseCsv(csv);
     assert.equal(parsed.length, count + 1, "lignes CSV " + count);
-    assert.equal(parsed[0][24], "Address");
-    assert.equal(parsed[0][29], "Collected At");
+    assert.equal(parsed[0][22], "Address");
+    assert.equal(parsed[0][27], "Collected At");
     assert.equal(parsed[0].includes("Phone"), true);
     assert.equal(parsed[0].includes("Public Email"), true);
+    assert.equal(parsed[0].includes("Top Service"), false);
+    assert.equal(parsed[0].includes("Service Match"), false);
     assert.equal(csv.split("\n").length, count + 1);
     for (const line of csv.split("\n").slice(1)) assert.equal(/^[=+\-@]/.test(line), false);
     parsed.slice(1).forEach((record, index) => {
       const source = rows[index];
-      assert.equal(record.length, 44);
-      assert.deepEqual(parsed[0].slice(36,39), ["Attribution", "License", "License URL"]);
-      assert.deepEqual(record.slice(36,39), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
-      assert.equal(parsed[0][32], "Source Ids");
-      assert.equal(parsed[0][33], "Field Sources");
-      assert.equal(parsed[0][34], "Collection Status");
-      assert.equal(parsed[0][35], "Size");
-      assert.equal(record[22], source.phone && /^[=+\-@\t]/.test(source.phone) ? "'" + source.phone : source.phone);
-      assert.equal(record[23], source.public_email);
-      assert.equal(record[24], source.address.replace(/\n/g, " "));
-      assert.equal(record[25], "Montréal");
-      assert.equal(record[29], source.collected_at ? "2026-10-10" : "");
-      assert.equal(record[20], "Secteur construction indiqué, pas une découverte");
-      assert.equal(record[20].includes("construction_fit"), false);
-      assert.equal(record[20].includes("détecté"), false);
+      assert.equal(record.length, 42);
+      assert.deepEqual(parsed[0].slice(34,37), ["Attribution", "License", "License URL"]);
+      assert.deepEqual(record.slice(34,37), ["© les contributeurs OpenStreetMap", "ODbL 1.0", "https://opendatacommons.org/licenses/odbl/1-0/"]);
+      assert.equal(parsed[0][30], "Source Ids");
+      assert.equal(parsed[0][31], "Field Sources");
+      assert.equal(parsed[0][32], "Collection Status");
+      assert.equal(parsed[0][33], "Size");
+      assert.equal(record[20], source.phone && /^[=+\-@\t]/.test(source.phone) ? "'" + source.phone : source.phone);
+      assert.equal(record[21], source.public_email);
+      assert.equal(record[22], source.address.replace(/\n/g, " "));
+      assert.equal(record[23], "Montréal");
+      assert.equal(record[27], source.collected_at ? "2026-10-10" : "");
+      assert.equal(record[18], "Secteur construction indiqué, pas une découverte");
+      assert.equal(record[18].includes("construction_fit"), false);
+      assert.equal(record[18].includes("détecté"), false);
       if (source.company_name.startsWith("=")) assert.equal(record[0].startsWith("'="), true);
       else assert.equal(record[0], source.company_name);
     });
@@ -200,6 +202,9 @@ test("un secteur demandé n'est pas présenté comme une découverte et l'histor
   assert.equal(html.includes("Secteur construction indiqué, pas une découverte"), true);
   assert.equal(html.includes("construction_fit"), false);
   assert.equal(html.includes("Profil bâtiment / construction détecté"), false);
+  assert.equal(html.includes("RECOMMENDED SERVICE"), false);
+  assert.equal(html.includes("KlirBuild"), false);
+  assert.equal(html.includes("KlirPromo"), false);
 
   const named = {
     id: "n2",
@@ -263,13 +268,13 @@ test("les réserves Overture restent lisibles dans les exports et le CRM", async
  const {sandbox}=await loadHelpers();sandbox.esc=String;
  const p={...fiche(2),overture_id:'raw-id',overture_release:'2026-10-21.0',source:'Overture Maps',review:{status:'review',reason:'Identité ambiguë, ne pas fusionner',evidence:['https://example.org']}};
  const csv=parseCsv(sandbox.exportCrmCsvText([{prospectId:p.id,stage:'New',value:0,nextAction:'Revue documentaire',log:[{t:'Note : conserver la réserve'}]}],[p]));
- assert.equal(csv[0].length,50);assert.match(csv[1][39],/À revoir/);assert.equal(csv[1][40],p.review.reason);assert.match(csv[1][41],/inconnus/);
- assert.match(csv[1][33],/example.org/);assert.match(csv[1][49],/conserver la réserve/);
+ assert.equal(csv[0].length,48);assert.match(csv[1][37],/À revoir/);assert.equal(csv[1][38],p.review.reason);assert.match(csv[1][39],/inconnus/);
+ assert.match(csv[1][31],/example.org/);assert.match(csv[1][47],/conserver la réserve/);
  assert.match(sandbox.reviewNotice(p),/Identité ambiguë/);assert.match(sandbox.reviewNotice({...p,review:null}),/Non vérifiée/);
 });
 
 test("le CSV conserve un téléphone avec zéro initial comme texte",async()=>{
  const {sandbox}=await loadHelpers();const row={...fiche(1),phone:'0012345678'};
- assert.equal(parseCsv(sandbox.exportCsvText([row]))[1][22],"'0012345678");
+ assert.equal(parseCsv(sandbox.exportCsvText([row]))[1][20],"'0012345678");
  assert.equal(row.phone,'0012345678');
 });
