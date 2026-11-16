@@ -228,6 +228,202 @@ a.cta, .big {
 .wide { max-width: min(40rem, 100%); }
 .tbl table, .demo table, .card table { width: max-content; min-width: 100%; border-collapse: collapse; }
 .tbl th, .tbl td, .demo th, .demo td { padding: 0.6rem; border-bottom: 1px solid #343b78; text-align: left; }
+
+/* Tableau des résultats de recherche : colonnes resserrées, hors autres tableaux. */
+.tbl-results table { width: max-content; min-width: 100%; border-collapse: collapse; }
+.tbl-results th, .tbl-results td {
+  padding: 0.3rem 0.35rem;
+  vertical-align: top;
+  text-align: left;
+  border-bottom: 1px solid #343b78;
+}
+.tbl-results th {
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: normal;
+  overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+.tbl-results .col-check, .tbl-results th:first-child, .tbl-results td:first-child {
+  width: 2.1rem;
+  max-width: 2.1rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+.tbl-results .cell-company {
+  max-width: 20rem;
+  width: 18rem;
+}
+.tbl-results .cell-company > b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+.tbl-results .cell-url {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+.tbl-results .cell-web small small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+.tbl-results .cell-compact {
+  width: 1%;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tbl-results .cell-phone {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.625rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tbl-results .cell-email {
+  width: 5.4rem;
+  max-width: 5.4rem;
+}
+.tbl-results .cell-web {
+  width: 9.5rem;
+  max-width: 9.5rem;
+}
+.tbl-results .cell-actions {
+  width: 5.4rem;
+  max-width: 5.4rem;
+}
+.tbl-results .trialReview {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0.15rem 0 0;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  border-left-width: 2px;
+}
+.tbl-results .trialReview b {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.tbl-results .trialReview small {
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+.tbl-results button {
+  padding: 0.25rem 0.35rem;
+  margin: 0.08rem 0;
+  font-size: 0.75rem;
+  line-height: 1.15;
+  white-space: normal;
+  height: auto;
+  max-width: 100%;
+}
+.tbl-results button.scoreBtn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.15rem;
+  margin: 0;
+}
+.tbl-results .cell-actions button {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tbl-results .col-dq,
+.tbl-results .col-rel,
+.tbl-results td:nth-child(9),
+.tbl-results td:nth-child(10),
+.tbl-results th:nth-child(9),
+.tbl-results th:nth-child(10) {
+  font-size: 0.6875rem;
+}
+.tbl-results .col-source,
+.tbl-results .cell-source,
+.tbl-results td:nth-child(11),
+.tbl-results th:nth-child(11) {
+  font-size: 0.625rem;
+  line-height: 1.2;
+}
+.tbl-results th:nth-child(n+8):nth-child(-n+11) {
+  font-size: 0.5rem;
+  letter-spacing: -0.03em;
+  padding-inline: 0.18rem;
+  line-height: 1.15;
+}
+@media (min-width: 1280px) {
+  .lay:has(.tbl-results) {
+    width: min(90rem, calc(100% - 1.25rem - var(--safe-left) - var(--safe-right)));
+  }
+  .page:has(.tbl-results) {
+    max-width: none;
+    padding-inline: 0.4rem;
+  }
+  .page:has(.tbl-results) .card:has(.tbl-results) {
+    padding-inline: 0.45rem;
+  }
+  .tbl-results table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .tbl-results .col-check { width: 2.7%; }
+  .tbl-results .col-company { width: 28%; }
+  .tbl-results .col-industry { width: 5.2%; }
+  .tbl-results .col-city { width: 4.9%; }
+  .tbl-results .col-phone { width: 11%; }
+  .tbl-results .col-email { width: 5.6%; }
+  .tbl-results .col-web { width: 12.4%; }
+  .tbl-results .col-opp { width: 5.8%; }
+  .tbl-results .col-dq { width: 5.6%; }
+  .tbl-results .col-rel { width: 5.8%; }
+  .tbl-results .col-source { width: 7%; }
+  .tbl-results .col-actions { width: 6%; }
+  .tbl-results .cell-company,
+  .tbl-results .cell-web,
+  .tbl-results .cell-email,
+  .tbl-results .cell-actions {
+    width: auto;
+    max-width: none;
+  }
+}
+@media (min-width: 1440px) {
+  .tbl-results th:nth-child(n+8):nth-child(-n+11) {
+    font-size: 0.625rem;
+    letter-spacing: 0;
+    padding-inline: 0.3rem;
+  }
+  .tbl-results .col-check { width: 2.9%; }
+  .tbl-results .col-company { width: 29.2%; }
+  .tbl-results .col-industry { width: 4.2%; }
+  .tbl-results .col-city { width: 3.8%; }
+  .tbl-results .col-phone { width: 10.4%; }
+  .tbl-results .col-email { width: 5.8%; }
+  .tbl-results .col-web { width: 13.6%; }
+  .tbl-results .col-opp { width: 5.6%; }
+  .tbl-results .col-dq { width: 5.5%; }
+  .tbl-results .col-rel { width: 5.5%; }
+  .tbl-results .col-source { width: 7%; }
+  .tbl-results .col-actions { width: 6.5%; }
+}
 .kanban { display: flex; gap: 0.5rem; max-width: 100%; }
 .col { min-width: 210px; padding: 0.5rem; background: #141941; border-radius: 12px; }
 .lead { padding: 0.5rem; margin: 0.4rem 0; background: #1e2450; border-radius: 8px; }
