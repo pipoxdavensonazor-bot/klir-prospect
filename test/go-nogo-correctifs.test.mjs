@@ -55,3 +55,18 @@ test("l'export CSV d'une fiche de la file serveur porte l'attribution et la lice
   const osm = vm.runInContext("exportLicenseValues", sandbox)({ source: "OpenStreetMap" });
   assert.equal(osm[1], "ODbL 1.0");
 });
+
+test("LCAP/CASL : chaque brouillon de message porte l'identification de l'expéditeur et un mécanisme d'exclusion", () => {
+  const sandbox = { KS: { S: { org: { name: "Agence Exemple" } } } };
+  vm.createContext(sandbox);
+  vm.runInContext(body("caslFooter") + "\n" + body("withCaslFooter"), sandbox);
+  const out = vm.runInContext("withCaslFooter", sandbox)("Bonjour,\nUn échange de 15 min ?");
+  assert.match(out, /Agence Exemple · \[adresse postale\]/);
+  assert.match(out, /Répondez « STOP »/);
+  assert.equal(vm.runInContext("withCaslFooter", sandbox)(out), out);
+  for (const fn of ["genMessages", "genMessagesRadar"]) {
+    const start = app.indexOf("async function " + fn);
+    const code = app.slice(start, app.indexOf("\nasync function ", start + 10) > 0 ? app.indexOf("\n", app.indexOf("drafts.push", start)) : undefined);
+    assert.match(code, /text:withCaslFooter\(/, fn);
+  }
+});

@@ -870,13 +870,16 @@ function exportCsv(){if(window.KlirTeam&&!window.KlirTeam.guard("export"))return
   const csv=exportCsvText(rows);
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}));a.download="klir-prospects.csv";a.click();KS.save();KS.addActivity("Export CSV ("+rows.length+")");KS.audit("prospect.exported",rows.length+" rows");}
 function createCamp(ids){if(window.KlirTeam&&!window.KlirTeam.guard("campaigns"))return;if(!ids.length){KS.addActivity("Sélection vide");return alert("Sélectionnez des prospects.");}const c={id:KS.uid("c"),name:`Campagne ${KS.S.campaigns.length+1} — ${ids.length} prospects`,prospects:ids,status:"Draft",created:new Date().toLocaleDateString(),message:"Objet : Une question concernant votre activité"};KS.S.campaigns.unshift(c);KS.save();KS.addActivity("Campagne créée");KS.audit("campaign.created",c.name);nav("/campaigns");}
+// LCAP/CASL : tout brouillon de message électronique commercial porte l'identification de l'expéditeur et un mécanisme d'exclusion.
+function caslFooter(){const org=KS.S.org&&KS.S.org.name?String(KS.S.org.name):"[Nom de votre entreprise]";return "\n\n—\n"+org+" · [adresse postale] · [courriel ou téléphone]\nVous ne souhaitez plus recevoir nos messages ? Répondez « STOP » : nous retirerons votre adresse sous 10 jours ouvrables.";}
+function withCaslFooter(txt){const t=String(txt||"");return /Répondez « STOP »/.test(t)?t:t+caslFooter();}
 async function genMessages(){if(window.KlirTeam&&!window.KlirTeam.guard("messages"))return;const rows=KS.S.prospects.filter(p=>sel.has(p.id)).slice(0,5);if(!rows.length){KS.addActivity("Sélection vide");return alert("Sélectionnez des prospects.");}
   if(!spendCredits(rows.length,"Messages IA"))return;
   document.getElementById("msgOut").innerHTML="<div class='card'>⏳ Klir AI rédige... (revue humaine requise avant envoi)</div>";
   const drafts=[];const out=[];for(const p of rows){const fb=`Bonjour ${p.company_name},\nJ'ai remarqué votre activité (${p.industry}) à ${p.city}. ${p.signals[0]? "Félicitations pour : "+p.signals[0]+".":""} Seriez-vous ouvert à un échange de 15 min sur la façon dont nous aidons les entreprises comme la vôtre ?\nCordialement,\n${KS.S.org?KS.S.org.name:"Klirline"}`;
     const txt=await KS.aiText(`Rédige un message de prospection B2B court et poli pour ${p.company_name} (${p.industry}, ${p.city}). Basé uniquement sur des infos publiques.`,fb);
-    drafts.push({id:KS.uid("d"),prospectId:p.id,text:typeof absorbExternal==="function"?absorbExternal(txt):txt,status:"Draft"});
-    out.push(`<div class="card"><b>${hx(p.company_name)}</b> <span class="pill">Draft</span><p>${hx(txt).replace(/\n/g,"<br>")}</p></div>`);}
+    drafts.push({id:KS.uid("d"),prospectId:p.id,text:withCaslFooter(typeof absorbExternal==="function"?absorbExternal(txt):txt),status:"Draft"});
+    out.push(`<div class="card"><b>${hx(p.company_name)}</b> <span class="pill">Draft</span><p>${hx(drafts[drafts.length-1].text).replace(/\n/g,"<br>")}</p></div>`);}
   const c={id:KS.uid("c"),name:`Brouillons IA — ${rows.length} prospects (${new Date().toLocaleDateString()})`,prospects:rows.map(p=>p.id),drafts,status:"Review",created:new Date().toLocaleDateString(),message:"Objet : Une question concernant votre activité"};
   KS.S.campaigns.unshift(c);KS.S.usage.ai+=rows.length;KS.save();KS.addActivity("Messages IA préparés → campagne en Review");KS.audit("ai.tool.executed","generate_outreach x"+rows.length);
   document.getElementById("msgOut").innerHTML=out.join("")+`<div class="card"><b>→ Brouillons enregistrés dans « ${hx(c.name)} » (statut Review).</b> <button data-nav="#/campaigns">Revoir et approuver</button></div>`;}
@@ -933,7 +936,7 @@ function copilot(){const noAct=KS.S.prospects.filter(p=>p.rel>=75&&!p.inCrm);con
   document.querySelectorAll("[data-co]").forEach(b=>b.onclick=()=>{if(b.dataset.co==="crm"){const ids=(icpHit.length?icpHit:noAct).slice(0,10).map(p=>p.id);sel=new Set(ids);curSearch=null;toCrm();}else{const ids=noAct.slice(0,5).map(p=>p.id);sel=new Set(ids);genMessagesRadar(ids);}});
   KS.audit("ai.tool.executed","sales_copilot");}
 async function genMessagesRadar(ids){const rows=KS.S.prospects.filter(p=>ids.includes(p.id));if(!rows.length)return alert("Sélection vide.");if(!spendCredits(rows.length,"Messages IA"))return;
-  const drafts=[];for(const p of rows){const txt=await KS.aiText(`Message B2B court pour ${p.company_name} (${p.industry}, ${p.city}).`, `Bonjour ${p.company_name}, échange de 15 min ? — ${KS.S.org?KS.S.org.name:"Klirline"}`);drafts.push({id:KS.uid("d"),prospectId:p.id,text:typeof absorbExternal==="function"?absorbExternal(txt):txt,status:"Draft"});}
+  const drafts=[];for(const p of rows){const txt=await KS.aiText(`Message B2B court pour ${p.company_name} (${p.industry}, ${p.city}).`, `Bonjour ${p.company_name}, échange de 15 min ? — ${KS.S.org?KS.S.org.name:"Klirline"}`);drafts.push({id:KS.uid("d"),prospectId:p.id,text:withCaslFooter(typeof absorbExternal==="function"?absorbExternal(txt):txt),status:"Draft"});}
   KS.S.campaigns.unshift({id:KS.uid("c"),name:`Brouillons Copilot — ${rows.length} prospects`,prospects:rows.map(p=>p.id),drafts,status:"Review",created:new Date().toLocaleDateString(),message:"Objet : Une question concernant votre activité"});KS.save();KS.addActivity("Copilot : brouillons en Review");KS.notify("Copilot : campagne en Review, à valider.");nav("/campaigns");}
 async function radarRun(){
   // Le radar débitait directement le registre depuis le navigateur. Il reste
