@@ -304,8 +304,7 @@ function dismissCallback() {
 
 function usageMessage(error) {
   const message = error && error.message ? String(error.message) : "";
-  if (/credits_insuffisants/i.test(message)) return "Crédits insuffisants. L'achat de crédits n'est pas ouvert. Le solde reste celui du compte.";
-  if (/quota_mensuel/i.test(message)) return "Quota mensuel atteint. Il repart à zéro au mois suivant, fuseau America/Toronto.";
+  if (/credits_insuffisants/i.test(message)) return "Solde de crédits insuffisant. Aucun crédit n'a été débité. Pour continuer, choisissez un forfait sur la page Tarifs (#/tarifs).";
   if (/limite_recherches_heure/i.test(message)) return "Trop de recherches en une heure (30 au maximum). Réessayez un peu plus tard. Aucun crédit n'a été débité.";
   if (/limite_recherches_jour/i.test(message)) return "Limite de 200 recherches par jour atteinte. Réessayez demain. Aucun crédit n'a été débité.";
   if (/session_requise/i.test(message)) return "Session requise.";
