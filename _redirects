@@ -1,0 +1,14 @@
+# Adresses sans « # » vers les pages de l'application (routage par fragment).
+# Sans ces règles, /guide, /tarifs… répondent 404 (constat du 22 nov. 2026).
+/guide /#/guide 302
+/guide/ /#/guide 302
+/tarifs /#/tarifs 302
+/tarifs/ /#/tarifs 302
+/offre /#/offre 302
+/offre/ /#/offre 302
+/conditions /#/conditions 302
+/conditions/ /#/conditions 302
+/demo /#/demo 302
+/demo/ /#/demo 302
+/inscription /#/register 302
+/connexion /#/login 302

@@ -48,11 +48,15 @@ test("la prévisualisation Overture n'affiche pas le parcours OpenStreetMap publ
   assert.match(search, /Pas la ville entière/);
 });
 
-test("le site sans catalogue Overture continue de décrire OpenStreetMap", () => {
+test("le site public décrit la source réelle de la file serveur : le catalogue Overture Maps", () => {
   const { landing, search } = render(false);
-  assert.match(landing, /dans OpenStreetMap/);
-  assert.equal(landing.includes("catalogue Overture"), false);
-  assert.match(search, /OpenStreetMap/);
+  assert.match(landing, /catalogue Overture Maps/);
+  assert.equal(landing.includes("dans OpenStreetMap"), false);
+  assert.equal(landing.includes("Le pilote payant reste fermé"), false);
+  assert.match(landing, /href="#\/tarifs"/);
+  assert.match(search, /catalogue Overture Maps 2026-10-21\.0/);
+  assert.match(search, /Sept villes seulement/);
+  assert.doesNotMatch(search, /\/ 10\./);
   assert.match(search, /toronto/);
   assert.match(search, /paris/);
   assert.match(search, /lyon/);

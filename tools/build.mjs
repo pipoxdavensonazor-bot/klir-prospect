@@ -82,6 +82,7 @@ await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 await cp(new URL("../src/index.html", import.meta.url), new URL("index.html", out));
 await cp(new URL("../_headers", import.meta.url), new URL("_headers", out));
+await cp(new URL("../_redirects", import.meta.url), new URL("_redirects", out));
 await cp(new URL("../src/manifest.webmanifest", import.meta.url), new URL("manifest.webmanifest", out));
 await cp(new URL("../src/icons", import.meta.url), new URL("icons", out), { recursive: true });
 // PWA / Android : service worker à la racine (sans empreinte), politique de
@@ -184,7 +185,7 @@ if (html.includes("icons/icon-192.png") || html.includes("icons/logo.png") || ma
 }
 await writeFile(new URL("build.json", out), JSON.stringify({
   reproducible: true,
-  files: runtime.length + 10,
+  files: runtime.length + 11,
   supabaseConfigured: Boolean(supabaseUrl && supabasePublishableKey),
   supabaseSource: published.supabaseSource,
   supabaseHost: published.supabaseHost || "",
